@@ -1,0 +1,25 @@
+[package]
+name = "governance"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "governance"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["oapp/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
+oapp = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", branch = "main" }
+solana-program = "=1.17.31"
+
+[dev-dependencies]
+hex = "0.4.3"

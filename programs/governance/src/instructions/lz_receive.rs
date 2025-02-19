@@ -1,0 +1,103 @@
+//! General purpose governance program.
+//!
+//! This program is designed to be a generic governance program that can be used to
+//! execute arbitrary instructions.
+//! The program being governed simply needs to expose admin instructions that can be
+//! invoked by a signer account (that's checked by the program's access control logic).
+//!
+//! If the signer is set to be the "governance" PDA of this program, then the governance
+//! instruction is able to invoke the program's admin instructions.
+//!
+//! The instruction needs to be encoded in the cross chain message payload, with all the
+//! accounts. These accounts may be in any order, with two placeholder accounts:
+//! - [`OWNER`]: the program will replace this account with the governance PDA
+//! - [`PAYER`]: the program will replace this account with the payer account
+
+use anchor_lang::prelude::*;
+use solana_program::instruction::Instruction;
+use crate::msg_codec::{GovernanceMessage, msg_codec};
+use crate::GOVERNANCE_SEED;
+use crate::state::Governance;
+use oapp::{
+    endpoint::{
+        cpi::accounts::Clear, instructions::ClearParams, ConstructCPIContext, ID as ENDPOINT_ID
+    },
+    LzReceiveParams,
+};
+
+pub const OWNER: Pubkey = sentinel_pubkey(b"owner");
+pub const PAYER: Pubkey = sentinel_pubkey(b"payer");
+
+#[derive(Accounts)]
+#[instruction(params: LzReceiveParams)]
+pub struct LzReceive<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(mut, seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()], bump = governance.bump)]
+    pub governance: Account<'info, Governance>,
+
+    #[account(executable)]
+    pub program: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+impl<'info> LzReceive<'info> {
+    pub fn apply(ctx: &mut Context<'_, '_, '_, 'info, Self>, params: &LzReceiveParams) -> Result<()> {
+        let seeds: &[&[u8]] =
+            &[GOVERNANCE_SEED, &ctx.accounts.governance.id.to_be_bytes(), &[ctx.accounts.governance.bump]];
+
+        // the first 9 accounts are for clear()
+        let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];
+        let _ = oapp::endpoint_cpi::clear(
+            ENDPOINT_ID,
+            ctx.accounts.governance.key(),
+            accounts_for_clear,
+            seeds,
+            ClearParams {
+                receiver: ctx.accounts.governance.key(),
+                src_eid: params.src_eid,
+                sender: params.sender,
+                nonce: params.nonce,
+                guid: params.guid,
+                message: params.message.clone(),
+            },
+        )?;
+        // Decode governance message from LZ message
+        let gov_msg: GovernanceMessage = msg_codec::decode_governance(&params.message)?;
+        let mut instruction: Instruction = gov_msg.into();
+
+        // Replace placeholder accounts
+        instruction.accounts.iter_mut().for_each(|acc| {
+            if acc.pubkey == OWNER {
+                acc.pubkey = ctx.accounts.governance.key();
+            } else if acc.pubkey == PAYER {
+                acc.pubkey = ctx.accounts.payer.key();
+            }
+        });
+
+        let mut all_account_infos = ctx.accounts.to_account_infos();
+        all_account_infos.extend_from_slice(&ctx.remaining_accounts[Clear::MIN_ACCOUNTS_LEN..]);
+
+        solana_program::program::invoke_signed(
+            &instruction,
+            &all_account_infos,
+            &[seeds],
+        )?;
+
+        Ok(())
+    }
+}
+
+const fn sentinel_pubkey(input: &[u8]) -> Pubkey {
+    let mut output: [u8; 32] = [0; 32];
+
+    let mut i = 0;
+    while i < input.len() {
+        output[i] = input[i];
+        i += 1;
+    }
+
+    Pubkey::new_from_array(output)
+}

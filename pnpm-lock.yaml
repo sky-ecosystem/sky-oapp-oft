@@ -99,12 +99,21 @@ devDependencies:
   '@layerzerolabs/ua-devtools-solana':
     specifier: ~4.1.0
     version: 4.1.0(@layerzerolabs/devtools-solana@1.0.6)(@layerzerolabs/devtools@0.4.5)(@layerzerolabs/io-devtools@0.1.15)(@layerzerolabs/lz-definitions@3.0.68)(@layerzerolabs/lz-solana-sdk-v2@3.0.0)(@layerzerolabs/lz-v2-utilities@3.0.68)(@layerzerolabs/oft-v2-solana-sdk@3.0.68)(@layerzerolabs/protocol-devtools-solana@4.0.7)(@layerzerolabs/protocol-devtools@1.1.4)(@layerzerolabs/ua-devtools@3.0.4)(@solana/web3.js@1.95.8)(fp-ts@2.16.9)(zod@3.24.2)
+  '@metaplex-foundation/beet':
+    specifier: ^0.7.2
+    version: 0.7.2
+  '@metaplex-foundation/beet-solana':
+    specifier: ^0.4.1
+    version: 0.4.1
   '@metaplex-foundation/mpl-token-metadata':
     specifier: ^3.2.1
     version: 3.4.0(@metaplex-foundation/umi@0.9.2)
   '@metaplex-foundation/mpl-toolbox':
     specifier: ^0.9.4
     version: 0.9.4(@metaplex-foundation/umi@0.9.2)
+  '@metaplex-foundation/solita':
+    specifier: ^0.20.1
+    version: 0.20.1
   '@metaplex-foundation/umi':
     specifier: ^0.9.2
     version: 0.9.2
@@ -156,6 +165,9 @@ devDependencies:
   '@swc/jest':
     specifier: ^0.2.36
     version: 0.2.37(@swc/core@1.10.17)
+  '@types/bn.js':
+    specifier: ^5.1.5
+    version: 5.1.6
   '@types/chai':
     specifier: ^4.3.11
     version: 4.3.20
@@ -168,6 +180,9 @@ devDependencies:
   '@types/node':
     specifier: ~18.18.14
     version: 18.18.14
+  bn.js:
+    specifier: ^5.2.1
+    version: 5.2.1
   bs58:
     specifier: ^6.0.0
     version: 6.0.0
@@ -938,7 +953,7 @@ packages:
   /@ethereumjs/tx@3.4.0:
     resolution: {integrity: sha512-WWUwg1PdjHKZZxPPo274ZuPsJCWV3SqATrEKQP1n2DrVYVP1aZIYpo/mFaA0BDoE0tIQmBeimRCEA0Lgil+yYw==}
     dependencies:
-      '@ethereumjs/common': 2.6.0
+      '@ethereumjs/common': 2.6.5
       ethereumjs-util: 7.1.5
     dev: true
 
@@ -963,8 +978,8 @@ packages:
     dependencies:
       '@ethereumjs/block': 3.6.3
       '@ethereumjs/blockchain': 5.5.3
-      '@ethereumjs/common': 2.6.0
-      '@ethereumjs/tx': 3.4.0
+      '@ethereumjs/common': 2.6.5
+      '@ethereumjs/tx': 3.5.2
       async-eventemitter: 0.2.4
       core-js-pure: 3.40.0
       debug: 2.6.9
@@ -4362,7 +4377,7 @@ packages:
     deprecated: Superseded by abstract-level (https://github.com/Level/community#faq)
     dependencies:
       buffer: 5.7.1
-      immediate: 3.2.3
+      immediate: 3.3.0
       level-concat-iterator: 2.0.1
       level-supports: 1.0.1
       xtend: 4.0.2
