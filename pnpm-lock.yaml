@@ -51,6 +51,9 @@ devDependencies:
   '@layerzerolabs/lz-v2-utilities':
     specifier: ^3.0.12
     version: 3.0.68
+  '@layerzerolabs/metadata-tools':
+    specifier: ^0.3.1
+    version: 0.3.1(@layerzerolabs/devtools-evm-hardhat@2.0.6)(@layerzerolabs/ua-devtools@3.0.4)
   '@layerzerolabs/oapp-evm':
     specifier: ^0.3.0
     version: 0.3.0(@layerzerolabs/lz-evm-messagelib-v2@3.0.68)(@layerzerolabs/lz-evm-protocol-v2@3.0.68)(@layerzerolabs/lz-evm-v1-0.7@3.0.68)(@openzeppelin/contracts-upgradeable@5.2.0)(@openzeppelin/contracts@5.2.0)
@@ -2157,6 +2160,16 @@ packages:
       '@ethersproject/solidity': 5.7.0
       bs58: 5.0.0
       tiny-invariant: 1.3.3
+    dev: true
+
+  /@layerzerolabs/metadata-tools@0.3.1(@layerzerolabs/devtools-evm-hardhat@2.0.6)(@layerzerolabs/ua-devtools@3.0.4):
+    resolution: {integrity: sha512-SB8Z/kKLSeOtQEXqRUqIRH5N9Rx66cBSWLo9NRgycoll1GGMDzbYmHTkc8w4pQPvPekr5zTYIzqkGcPN7PV8zw==}
+    peerDependencies:
+      '@layerzerolabs/devtools-evm-hardhat': ~2.0.6
+      '@layerzerolabs/ua-devtools': ~3.0.4
+    dependencies:
+      '@layerzerolabs/devtools-evm-hardhat': 2.0.6(@ethersproject/abi@5.7.0)(@ethersproject/abstract-signer@5.7.0)(@ethersproject/contracts@5.7.0)(@ethersproject/providers@5.7.2)(@layerzerolabs/devtools-evm@1.0.4)(@layerzerolabs/devtools@0.4.5)(@layerzerolabs/io-devtools@0.1.15)(@layerzerolabs/lz-definitions@3.0.68)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.7.2)(fp-ts@2.16.9)(hardhat-deploy@0.12.4)(hardhat@2.22.18)
+      '@layerzerolabs/ua-devtools': 3.0.4(@layerzerolabs/devtools@0.4.5)(@layerzerolabs/io-devtools@0.1.15)(@layerzerolabs/lz-definitions@3.0.68)(@layerzerolabs/lz-v2-utilities@3.0.68)(@layerzerolabs/protocol-devtools@1.1.4)(zod@3.24.2)
     dev: true
 
   /@layerzerolabs/oapp-evm@0.3.0(@layerzerolabs/lz-evm-messagelib-v2@3.0.68)(@layerzerolabs/lz-evm-protocol-v2@3.0.68)(@layerzerolabs/lz-evm-v1-0.7@3.0.68)(@openzeppelin/contracts-upgradeable@5.2.0)(@openzeppelin/contracts@5.2.0):
