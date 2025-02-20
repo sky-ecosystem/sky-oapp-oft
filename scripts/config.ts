@@ -2,16 +2,22 @@ import { Connection, Keypair, PublicKey, Signer, TransactionInstruction } from '
 import bs58 from 'bs58';
 import {
     EndpointProgram,
+    ExecutorPDADeriver,
+    SetConfigType,
+    UlnProgram,
     buildVersionedTransaction,
 } from '@layerzerolabs/lz-solana-sdk-v2'
-
+import { arrayify, hexZeroPad } from '@ethersproject/bytes'
 import { GovernanceProgram } from '../src'
+import { EndpointId } from '@layerzerolabs/lz-definitions';
 
 if (!process.env.SOLANA_PRIVATE_KEY) {
     throw new Error("SOLANA_PRIVATE_KEY env required");
 }
 
 const endpointProgram = new EndpointProgram.Endpoint(new PublicKey('76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6')) // endpoint program id, mainnet and testnet are the same
+const ulnProgram = new UlnProgram.Uln(new PublicKey('7a4WjyR8VZ7yZz5XJAKm39BUGn5iT9CKcv2pmG9tdXVH')) // uln program id, mainnet and testnet are the same
+const executorProgram = new PublicKey('6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn') // executor program id, mainnet and testnet are the same
 
 const governanceProgramId = process.env.GOVERNANCE_PROGRAM_ID
 if (!governanceProgramId) {
@@ -22,9 +28,24 @@ const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governa
 
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
+const remotePeers: { [key in EndpointId]?: string } = {
+    [EndpointId.AVALANCHE_V2_TESTNET]: '0xF941318E00FB58E00701423Ba1aDC607574bce99',
+}
 
 ;(async () => {
     await initGovernance(connection, signer, signer)
+    for (const [remoteStr, remotePeer] of Object.entries(remotePeers)) {
+        const remotePeerBytes = arrayify(hexZeroPad(remotePeer, 32))
+        const remote = parseInt(remoteStr) as EndpointId
+        await setPeers(connection, signer, remote, remotePeerBytes)
+        // await initSendLibrary(connection, signer, remote)
+        // await initReceiveLibrary(connection, signer, remote)
+        await initOAppNonce(connection, signer, remote, remotePeerBytes)
+        await setSendLibrary(connection, signer, remote)
+        await setReceiveLibrary(connection, signer, remote)
+        await initUlnConfig(connection, signer, signer, remote)
+        await setOAppExecutor(connection, signer, remote)
+    }
 })()
 
 async function initGovernance(connection: Connection, payer: Keypair, admin: Keypair): Promise<void> {
@@ -49,6 +70,162 @@ async function initGovernance(connection: Connection, payer: Keypair, admin: Key
         console.log('initGovernance: already initialized');
         // already initialized
         return Promise.resolve()
+    }
+    sendAndConfirm(connection, [admin], [ix])
+}
+
+async function setPeers(
+    connection: Connection,
+    admin: Keypair,
+    remote: EndpointId,
+    remotePeer: Uint8Array
+): Promise<void> {
+    const ix = governanceProgram.setRemote(admin.publicKey, remotePeer, remote)
+    const [remotePDA] = governanceProgram.governanceDeriver.remote(remote)
+    let current = ''
+    try {
+        const info = await GovernanceProgram.accounts.Remote.fromAccountAddress(connection, remotePDA, {
+            commitment: 'confirmed',
+        })
+        current = Buffer.from(info.address).toString('hex')
+    } catch (e) {
+        /*remote not init*/
+    }
+    if (current == Buffer.from(remotePeer).toString('hex')) {
+        console.log('setPeers: already set');
+        return Promise.resolve()
+    }
+    console.log('setPeer: changing peer')
+    sendAndConfirm(connection, [admin], [ix])
+}
+
+async function initUlnConfig(
+    connection: Connection,
+    payer: Keypair,
+    admin: Keypair,
+    remote: EndpointId
+): Promise<void> {
+    const [id] = governanceProgram.idPDA()
+
+    const current = await ulnProgram.getSendConfigState(connection, id, remote)
+    if (current) {
+        console.log('initUlnConfig: already initialized')
+        return Promise.resolve()
+    }
+    console.log('initUlnConfig: initializing')
+    const ix = await endpointProgram.initOAppConfig(admin.publicKey, ulnProgram, payer.publicKey, id, remote)
+    sendAndConfirm(connection, [admin], [ix])
+}
+
+async function setOAppExecutor(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
+    const [id] = governanceProgram.idPDA()
+    const defaultOutboundMaxMessageSize = 10000
+
+    const [executorPda] = new ExecutorPDADeriver(executorProgram).config()
+    const expected: UlnProgram.types.ExecutorConfig = {
+        maxMessageSize: defaultOutboundMaxMessageSize,
+        executor: executorPda,
+    }
+
+    const current = (await ulnProgram.getSendConfigState(connection, id, remote))?.executor
+    const ix = await endpointProgram.setOappConfig(connection, admin.publicKey, id, ulnProgram.program, remote, {
+        configType: SetConfigType.EXECUTOR,
+        value: expected,
+    })
+    if (
+        current &&
+        current.executor.toBase58() === expected.executor.toBase58() &&
+        current.maxMessageSize === expected.maxMessageSize
+    ) {
+        console.log('setOappExecutor: already set');
+        return Promise.resolve()
+    }
+    console.log('setOAppExecutor: setting')
+    await sendAndConfirm(connection, [admin], [ix])
+}
+
+async function setSendLibrary(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
+    console.log('setSendLibrary', {
+        remote
+    });
+    const [idPDA] = governanceProgram.idPDA()
+    const sendLib = await endpointProgram.getSendLibrary(connection, idPDA, remote)
+    const current = sendLib ? sendLib.msgLib.toBase58() : ''
+    const [expectedSendLib] = ulnProgram.deriver.messageLib()
+    const expected = expectedSendLib.toBase58()
+    if (current === expected) {
+        console.log('setSendLibrary: already set', {
+            idPDA: idPDA.toBase58(),
+            current
+        });
+        return Promise.resolve()
+    }
+    console.log('setSendLibrary: setting')
+    const ix = await endpointProgram.setSendLibrary(admin.publicKey, idPDA, ulnProgram.program, remote)
+    sendAndConfirm(connection, [admin], [ix])
+}
+
+async function setReceiveLibrary(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
+    const [id] = governanceProgram.idPDA()
+    const receiveLib = await endpointProgram.getReceiveLibrary(connection, id, remote)
+    const current = receiveLib ? receiveLib.msgLib.toBase58() : ''
+    const [expectedMessageLib] = ulnProgram.deriver.messageLib()
+    const expected = expectedMessageLib.toBase58()
+    if (current === expected) {
+        console.log('setReceiveLibrary: already set', {
+            idPDA: id.toBase58(),
+            current
+        });
+        return Promise.resolve()
+    }
+    console.log('setReceiveLibrary: setting')
+    const ix = await endpointProgram.setReceiveLibrary(admin.publicKey, id, ulnProgram.program, remote)
+    sendAndConfirm(connection, [admin], [ix])
+}
+
+async function initSendLibrary(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
+    const [id] = governanceProgram.idPDA()
+    const ix = await endpointProgram.initSendLibrary(admin.publicKey, id, remote)
+    if (ix == null) {
+        console.log('initSendLibrary: already initialized')
+        return Promise.resolve()
+    }
+    console.log('initSendLibrary: initializing')
+    sendAndConfirm(connection, [admin], [ix])
+}
+
+async function initReceiveLibrary(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
+    const [id] = governanceProgram.idPDA()
+    const ix = await endpointProgram.initReceiveLibrary(admin.publicKey, id, remote)
+    if (ix == null) {
+        console.log('initReceiveLibrary: already initialized')
+        return Promise.resolve()
+    }
+    console.log('initReceiveLibrary: initializing')
+    sendAndConfirm(connection, [admin], [ix])
+}
+
+async function initOAppNonce(
+    connection: Connection,
+    admin: Keypair,
+    remote: EndpointId,
+    remotePeer: Uint8Array
+): Promise<void> {
+    const [id] = governanceProgram.idPDA()
+    const ix = await endpointProgram.initOAppNonce(admin.publicKey, remote, id, remotePeer)
+    if (ix === null) {
+        console.log('initOappNonce: ix === null, early exit');
+        return Promise.resolve()
+    }
+
+    try {
+        const nonce = await endpointProgram.getNonce(connection, id, remote, remotePeer)
+        if (nonce) {
+            console.log('initOappNonce: already set')
+            return Promise.resolve()
+        }
+    } catch (e) {
+        console.log('initOappNonce: nonce not initialized');
     }
     sendAndConfirm(connection, [admin], [ix])
 }
