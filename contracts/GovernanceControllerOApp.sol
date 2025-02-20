@@ -5,7 +5,8 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { OApp, MessagingFee, Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
-import { GovernanceMessageCodec } from "./GovernanceMessageCodec.sol";
+import { GovernanceMessageEVMCodec } from "./GovernanceMessageEVMCodec.sol";
+import { GovernanceMessageGenericCodec } from "./GovernanceMessageGenericCodec.sol";
 
 contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
     /// @notice The known set of governance actions.
@@ -34,47 +35,87 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
 
     constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
 
-    function send(
-        GovernanceMessageCodec.GovernanceMessage calldata _message,
+    /**
+     * @notice Sends an EVM action
+     */
+    function sendEVMAction(
+        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
     ) external payable onlyOwner returns (MessagingReceipt memory receipt) {
-        return _send(_message, _extraOptions, _fee, _refundAddress);
+        return _sendEVMAction(_message, _extraOptions, _fee, _refundAddress);
     }
 
-    function _send(
-        GovernanceMessageCodec.GovernanceMessage calldata _message,
+    function quoteEVMAction(
+        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
+        bytes calldata _extraOptions,
+        bool _payInLzToken
+    ) public view returns (MessagingFee memory fee) {
+        // @dev Builds the options and message to quote in the endpoint.
+        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
+
+        // @dev Calculates the LayerZero fee for the send() operation.
+        return _quote(_message.dstEid, message, options, _payInLzToken);
+    }
+
+    function _sendEVMAction(
+        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
     ) internal virtual returns (MessagingReceipt memory msgReceipt) {
         // @dev Builds the options and message to quote in the endpoint.
-        (bytes memory message, bytes memory options) = _buildMsgAndOptions(_message, _extraOptions);
+        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
 
         // @dev Sends the message to the LayerZero endpoint and returns the LayerZero msg receipt.
         msgReceipt = _lzSend(_message.dstEid, message, options, _fee, _refundAddress);
     }
 
-    function _buildMsgAndOptions(
-        GovernanceMessageCodec.GovernanceMessage calldata _message,
+    function _buildMsgAndOptionsEVMAction(
+        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         bytes calldata _extraOptions
     ) internal view virtual returns (bytes memory message, bytes memory options) {
         // @dev This generated message has the msg.sender encoded into the payload so the remote knows who the caller is.
-        message = GovernanceMessageCodec.encode(_message);
+        message = GovernanceMessageEVMCodec.encode(_message);
         options = combineOptions(_message.dstEid, SEND, _extraOptions);
     }
 
-    function quote(
-        GovernanceMessageCodec.GovernanceMessage calldata _message,
+    /**
+     * @notice Sends a raw bytes action
+     */
+    function sendRawBytesAction(
+        bytes calldata _message,
+        bytes calldata _extraOptions,
+        MessagingFee calldata _fee,
+        address _refundAddress
+    ) external payable onlyOwner returns (MessagingReceipt memory receipt) {
+        return _sendRawBytesAction(_message, _extraOptions, _fee, _refundAddress);
+    }
+
+    function quoteRawBytesAction(
+        bytes calldata _message,
         bytes calldata _extraOptions,
         bool _payInLzToken
     ) public view returns (MessagingFee memory fee) {
-        // @dev Builds the options and message to quote in the endpoint.
-        (bytes memory message, bytes memory options) = _buildMsgAndOptions(_message, _extraOptions);
+        uint32 dstEid = GovernanceMessageGenericCodec.dstEid(_message);
+        bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
 
         // @dev Calculates the LayerZero fee for the send() operation.
-        return _quote(_message.dstEid, message, options, _payInLzToken);
+        return _quote(dstEid, _message, options, _payInLzToken);
+    }
+
+    function _sendRawBytesAction(
+        bytes calldata _message,
+        bytes calldata _extraOptions,
+        MessagingFee calldata _fee,
+        address _refundAddress
+    ) internal virtual returns (MessagingReceipt memory msgReceipt) {
+        uint32 dstEid = GovernanceMessageGenericCodec.dstEid(_message);
+        bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
+
+        // @dev Sends the message to the LayerZero endpoint and returns the LayerZero msg receipt.
+        msgReceipt = _lzSend(dstEid, _message, options, _fee, _refundAddress);
     }
 
     function _lzReceive(
@@ -84,7 +125,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
         address /*_executor*/,
         bytes calldata /*_extraData*/
     ) internal override {
-        GovernanceMessageCodec.GovernanceMessage memory message = GovernanceMessageCodec.decode(payload);
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.decode(payload);
 
         if (message.action != uint8(GovernanceAction.EVM_CALL)) {
             revert InvalidAction(message.action);

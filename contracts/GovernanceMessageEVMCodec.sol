@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-library GovernanceMessageCodec {
+library GovernanceMessageEVMCodec {
     // "GeneralPurposeGovernance" (left padded)
     bytes32 public constant MODULE = 0x000000000000000047656E6572616C507572706F7365476F7665726E616E6365;
 
@@ -14,7 +14,7 @@ library GovernanceMessageCodec {
     uint8 private constant CALLDATA_OFFSET = CALLDATA_LENGTH_OFFSET + 2;
 
     /*
-     * @dev General purpose governance message to call arbitrary methods on a governed smart contract.
+     * @dev General purpose governance message to call arbitrary methods on a governed EVM smart contract.
      *      The wire format for this message is:
      *      - MODULE - 32 bytes
      *      - action - 1 byte

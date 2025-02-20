@@ -2,7 +2,8 @@
 pragma solidity ^0.8.20;
 
 import { GovernanceControllerOApp } from "../../contracts/GovernanceControllerOApp.sol";
-import { GovernanceMessageCodec } from "../../contracts/GovernanceMessageCodec.sol";
+import { GovernanceMessageEVMCodec } from "../../contracts/GovernanceMessageEVMCodec.sol";
+
 // OApp imports
 import { IOAppOptionsType3, EnforcedOptionParam } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
 import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
@@ -76,11 +77,11 @@ contract MyOAppTest is TestHelperOz5 {
         assertEq(address(bOApp.endpoint()), address(endpoints[bEid]));
     }
 
-    function decodeOFTMsgCodec(
+    function decodeEVMMessageCodec(
         bytes calldata _message
     ) public pure returns (uint8 action, uint32 dstEid, address governanceContract, address governedContract, bytes memory callData) {
-        GovernanceMessageCodec.GovernanceMessage memory message = 
-            GovernanceMessageCodec.decode(_message);
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = 
+            GovernanceMessageEVMCodec.decode(_message);
 
         action = message.action;
         dstEid = message.dstEid;
@@ -89,10 +90,10 @@ contract MyOAppTest is TestHelperOz5 {
         callData = message.callData;
     }
 
-    function test_parse_message() public view {
+    function test_parse_evm_message() public view {
         bytes memory foo = hex"000000000000000047656e6572616c507572706f7365476f7665726e616e6365010000a869d8e4c2dbdd2e2bd8f1336ea691dbff6952b1a6ebf890982f9310df57d00f659cf4fd87e65aded8d70004beefface";
 
-        (uint8 action, uint32 dstEid, address governanceContract, address governedContract, bytes memory callData) = this.decodeOFTMsgCodec(foo);
+        (uint8 action, uint32 dstEid, address governanceContract, address governedContract, bytes memory callData) = this.decodeEVMMessageCodec(foo);
         assertEq(action, uint8(GovernanceControllerOApp.GovernanceAction.EVM_CALL));
         assertEq(dstEid, uint32(43113));
         assertEq(governanceContract, address(0xD8E4C2DbDd2e2bd8F1336EA691dBFF6952B1a6eB));
@@ -101,7 +102,7 @@ contract MyOAppTest is TestHelperOz5 {
     }
 
     function test_encode_message() public view {
-        GovernanceMessageCodec.GovernanceMessage memory message = GovernanceMessageCodec.GovernanceMessage({
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceControllerOApp.GovernanceAction.EVM_CALL),
             dstEid: uint32(43113),
             governanceContract: address(0xD8E4C2DbDd2e2bd8F1336EA691dBFF6952B1a6eB),
@@ -109,9 +110,9 @@ contract MyOAppTest is TestHelperOz5 {
             callData: hex"beefface"
         });
         
-        bytes memory encoded = GovernanceMessageCodec.encode(message);
+        bytes memory encoded = GovernanceMessageEVMCodec.encode(message);
 
-        (uint8 action, uint32 dstEid, address governanceContract, address governedContract, bytes memory callData) = this.decodeOFTMsgCodec(encoded);
+        (uint8 action, uint32 dstEid, address governanceContract, address governedContract, bytes memory callData) = this.decodeEVMMessageCodec(encoded);
         assertEq(action, message.action);
         assertEq(dstEid, message.dstEid);
         assertEq(governanceContract, message.governanceContract);
@@ -120,7 +121,7 @@ contract MyOAppTest is TestHelperOz5 {
     }
 
     function test_governance() public {
-        GovernanceMessageCodec.GovernanceMessage memory message = GovernanceMessageCodec.GovernanceMessage({
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceControllerOApp.GovernanceAction.EVM_CALL),
             dstEid: bEid,
             governanceContract: address(bOApp),
@@ -129,9 +130,9 @@ contract MyOAppTest is TestHelperOz5 {
         });
 
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
-        MessagingFee memory fee = aOApp.quote(message, options, false);
+        MessagingFee memory fee = aOApp.quoteEVMAction(message, options, false);
 
-        aOApp.send{value: fee.nativeFee}(message, options, fee, address(this));
+        aOApp.sendEVMAction{value: fee.nativeFee}(message, options, fee, address(this));
 
         verifyPackets(bEid, addressToBytes32(address(bOApp)));
 
