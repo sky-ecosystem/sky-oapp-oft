@@ -116,10 +116,6 @@ fn test_governance_message_parse() {
     );
     let h = hex::decode(hex_string).unwrap();
 
-    // println!("Governance Message Hex: {:?}", hex::encode(&h));
-
-    println!("Program ID as bytes32: {:?}", program_id_as_hex);
-
     let actual = GovernanceMessage::deserialize(&mut h.as_slice()).unwrap();
 
     let accounts = vec![

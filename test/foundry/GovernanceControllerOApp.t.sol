@@ -57,7 +57,6 @@ contract MyOAppTest is TestHelperOz5 {
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
         aOApp = GovernanceControllerOApp(_deployOApp(type(GovernanceControllerOApp).creationCode, abi.encode(address(endpoints[aEid]), address(this))));
-
         bOApp = GovernanceControllerOApp(_deployOApp(type(GovernanceControllerOApp).creationCode, abi.encode(address(endpoints[bEid]), address(this))));
 
         address[] memory oapps = new address[](2);
@@ -120,7 +119,7 @@ contract MyOAppTest is TestHelperOz5 {
         assertEq(callData, message.callData);
     }
 
-    function test_governance() public {
+    function test_governance_evm_action() public {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceControllerOApp.GovernanceAction.EVM_CALL),
             dstEid: bEid,
@@ -137,5 +136,35 @@ contract MyOAppTest is TestHelperOz5 {
         verifyPackets(bEid, addressToBytes32(address(bOApp)));
 
         assertEq(governedContractB.governanceStuffCalled(), true);
+    }
+
+    function test_governance_evm_action_as_raw_bytes() public {
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceControllerOApp.GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            governanceContract: address(bOApp),
+            governedContract: address(governedContractB),
+            callData: abi.encodeWithSignature("governanceStuff()")
+        });
+
+        bytes memory messageBytes = GovernanceMessageEVMCodec.encode(message);
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        MessagingFee memory fee = aOApp.quoteRawBytesAction(messageBytes, options, false);
+
+        aOApp.sendRawBytesAction{value: fee.nativeFee}(messageBytes, options, fee, address(this));
+
+        verifyPackets(bEid, addressToBytes32(address(bOApp)));
+
+        assertEq(governedContractB.governanceStuffCalled(), true);
+    }
+
+    function test_governance_solana_action_as_raw_bytes() public {
+        bytes memory messageBytes = hex"000000000000000047656e6572616c507572706f7365476f7665726e616e636502000000021ec45091234fe52f120b17cc8f112012d4b717191716aeefd88f7b034218606500000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405";
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        MessagingFee memory fee = aOApp.quoteRawBytesAction(messageBytes, options, false);
+
+        aOApp.sendRawBytesAction{value: fee.nativeFee}(messageBytes, options, fee, address(this));
     }
 }
