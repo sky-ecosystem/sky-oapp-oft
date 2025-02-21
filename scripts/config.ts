@@ -38,8 +38,8 @@ const remotePeers: { [key in EndpointId]?: string } = {
         const remotePeerBytes = arrayify(hexZeroPad(remotePeer, 32))
         const remote = parseInt(remoteStr) as EndpointId
         await setPeers(connection, signer, remote, remotePeerBytes)
-        // await initSendLibrary(connection, signer, remote)
-        // await initReceiveLibrary(connection, signer, remote)
+        await initSendLibrary(connection, signer, remote)
+        await initReceiveLibrary(connection, signer, remote)
         await initOAppNonce(connection, signer, remote, remotePeerBytes)
         await setSendLibrary(connection, signer, remote)
         await setReceiveLibrary(connection, signer, remote)
@@ -50,6 +50,7 @@ const remotePeers: { [key in EndpointId]?: string } = {
 
 async function initGovernance(connection: Connection, payer: Keypair, admin: Keypair): Promise<void> {
     const [governance] = governanceProgram.idPDA()
+    console.log('initGovernance', governance.toBase58());
     let current = false
     try {
         await GovernanceProgram.accounts.Governance.fromAccountAddress(connection, governance, {
@@ -82,6 +83,7 @@ async function setPeers(
 ): Promise<void> {
     const ix = governanceProgram.setRemote(admin.publicKey, remotePeer, remote)
     const [remotePDA] = governanceProgram.governanceDeriver.remote(remote)
+    console.log(remotePDA.toBase58());
     let current = ''
     try {
         const info = await GovernanceProgram.accounts.Remote.fromAccountAddress(connection, remotePDA, {
@@ -153,6 +155,7 @@ async function setSendLibrary(connection: Connection, admin: Keypair, remote: En
     const current = sendLib ? sendLib.msgLib.toBase58() : ''
     const [expectedSendLib] = ulnProgram.deriver.messageLib()
     const expected = expectedSendLib.toBase58()
+
     if (current === expected) {
         console.log('setSendLibrary: already set', {
             idPDA: idPDA.toBase58(),

@@ -16,8 +16,9 @@
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 use crate::msg_codec::{GovernanceMessage, msg_codec};
-use crate::GOVERNANCE_SEED;
+use crate::{GOVERNANCE_SEED, REMOTE_SEED};
 use crate::state::Governance;
+use crate::state::Remote;
 use oapp::{
     endpoint::{
         cpi::accounts::Clear, instructions::ClearParams, ConstructCPIContext, ID as ENDPOINT_ID
@@ -36,6 +37,13 @@ pub struct LzReceive<'info> {
 
     #[account(mut, seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()], bump = governance.bump)]
     pub governance: Account<'info, Governance>,
+
+    #[account(
+        seeds = [REMOTE_SEED, &governance.key().to_bytes(), &params.src_eid.to_be_bytes()],
+        bump = remote.bump,
+        constraint = params.sender == remote.address
+    )]
+    pub remote: Account<'info, Remote>,
 
     #[account(executable)]
     pub program: UncheckedAccount<'info>,
@@ -78,7 +86,7 @@ impl<'info> LzReceive<'info> {
         });
 
         let mut all_account_infos = ctx.accounts.to_account_infos();
-        all_account_infos.extend_from_slice(&ctx.remaining_accounts[Clear::MIN_ACCOUNTS_LEN..]);
+        all_account_infos.extend_from_slice(&ctx.remaining_accounts);
 
         solana_program::program::invoke_signed(
             &instruction,

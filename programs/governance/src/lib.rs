@@ -9,7 +9,7 @@ use instructions::*;
 use oapp::{endpoint_cpi::LzAccount, LzReceiveParams};
 use state::*;
 
-declare_id!("356rTMX9NQYuLCXcpDa3qqCAq4c9Q56kTnPrCyrRX8K6");
+declare_id!("EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3");
 
 pub const SOLANA_CHAIN_ID: u32 = 40168;
 

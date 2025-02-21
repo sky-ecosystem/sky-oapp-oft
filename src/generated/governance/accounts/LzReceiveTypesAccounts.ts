@@ -80,7 +80,7 @@ export class LzReceiveTypesAccounts implements LzReceiveTypesAccountsArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      '356rTMX9NQYuLCXcpDa3qqCAq4c9Q56kTnPrCyrRX8K6'
+      'EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(

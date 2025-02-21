@@ -38,7 +38,7 @@ export const lzReceiveStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [_writable_, **signer**] payer
  * @property [_writable_] governance
- * @property [] program
+ * @property [] remote
  * @category Instructions
  * @category LzReceive
  * @category generated
@@ -46,8 +46,7 @@ export const lzReceiveStruct = new beet.FixableBeetArgsStruct<
 export type LzReceiveInstructionAccounts = {
   payer: web3.PublicKey
   governance: web3.PublicKey
-  program: web3.PublicKey
-  systemProgram?: web3.PublicKey
+  remote: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -68,7 +67,7 @@ export const lzReceiveInstructionDiscriminator = [
 export function createLzReceiveInstruction(
   accounts: LzReceiveInstructionAccounts,
   args: LzReceiveInstructionArgs,
-  programId = new web3.PublicKey('356rTMX9NQYuLCXcpDa3qqCAq4c9Q56kTnPrCyrRX8K6')
+  programId = new web3.PublicKey('EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3')
 ) {
   const [data] = lzReceiveStruct.serialize({
     instructionDiscriminator: lzReceiveInstructionDiscriminator,
@@ -86,12 +85,7 @@ export function createLzReceiveInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.program,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      pubkey: accounts.remote,
       isWritable: false,
       isSigner: false,
     },

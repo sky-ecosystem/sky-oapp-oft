@@ -92,6 +92,8 @@ task('lz:oft:solana:clear', 'Clear a stored payload on Solana')
             const keypair = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY))
             tx.sign(keypair)
 
+            console.log(tx.serializeMessage().toString("base64"))
+
             const signature = await sendAndConfirmTransaction(connection, tx, [keypair], { skipPreflight: true })
             console.log(
                 `View Solana transaction here: ${getExplorerTxLink(signature.toString(), dstEid == EndpointId.SOLANA_V2_TESTNET)}`

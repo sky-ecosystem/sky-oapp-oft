@@ -78,20 +78,30 @@ fn test_governance_module() {
 
 #[test]
 fn test_governance_message_serde() {
-    let program_id = Pubkey::new_unique();
+    // hello world program id
+    let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
     let accounts = vec![
+        // owner placeholder
         Acc {
-            pubkey: Pubkey::new_unique(),
+            pubkey: Pubkey::try_from("8W7t3TfmNDrZS7QvXTa22N8wVEbLx1d6HVDXMAmq7AA3").unwrap(),
             is_signer: true,
             is_writable: true,
         },
+        // payer placeholder
         Acc {
-            pubkey: Pubkey::new_unique(),
+            pubkey: Pubkey::try_from("8ZgsPk5PGfgewaMqCtBQ6CpGTXxBD5AtDPqsKYDi2hLT").unwrap(),
             is_signer: false,
             is_writable: true,
         },
+        // hello world program id
+        Acc {
+            pubkey: program_id,
+            is_signer: false,
+            is_writable: false,
+        },
     ];
-    let data = vec![1, 2, 3, 4, 5];
+    // hello world "Initialize" instruction data that logs "Greetings"
+    let data = hex::decode("afaf6d1f0d989bed").unwrap();
     let msg = GovernanceMessage {
         governance_program_id: crate::ID,
         program_id,
@@ -101,6 +111,8 @@ fn test_governance_message_serde() {
 
     let mut buf = Vec::new();
     msg.serialize(&mut buf).unwrap();
+
+    println!("Serialized message: {:?}", hex::encode(&buf));
 
     let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
     assert_eq!(msg, msg2);

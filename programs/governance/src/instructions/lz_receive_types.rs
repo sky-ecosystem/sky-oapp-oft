@@ -34,12 +34,16 @@ impl LzReceiveTypes<'_> {
         let governance_message: GovernanceMessage = msg_codec::decode_governance(&params.message)?;
 
         let mut accounts = vec![
+            // payer
+            LzAccount { pubkey: Pubkey::default(), is_signer: true, is_writable: true }, // 0
             // governance
             LzAccount { pubkey: governance, is_signer: false, is_writable: true },
             // remote
             LzAccount { pubkey: remote, is_signer: false, is_writable: false },
             // program
             LzAccount { pubkey: governance_message.program_id, is_signer: false, is_writable: false },
+            // system program
+            LzAccount { pubkey: solana_program::system_program::ID, is_signer: false, is_writable: false },
         ];
 
         // append the accounts for the clear ix

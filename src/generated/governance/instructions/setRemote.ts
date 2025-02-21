@@ -68,7 +68,7 @@ export const setRemoteInstructionDiscriminator = [
 export function createSetRemoteInstruction(
   accounts: SetRemoteInstructionAccounts,
   args: SetRemoteInstructionArgs,
-  programId = new web3.PublicKey('356rTMX9NQYuLCXcpDa3qqCAq4c9Q56kTnPrCyrRX8K6')
+  programId = new web3.PublicKey('EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3')
 ) {
   const [data] = setRemoteStruct.serialize({
     instructionDiscriminator: setRemoteInstructionDiscriminator,

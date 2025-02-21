@@ -10,7 +10,7 @@ export const avalancheContract: OmniPointHardhat = {
 
 export const solanaContract: OmniPointHardhat = {
   eid: EndpointId.SOLANA_V2_TESTNET,
-  address: '6aMynG3nEeuke8bLFz4aH4XZhiys7C8EGr3eEBbYQxoT', // your OFT Store address
+  address: 'Duz2gkkEFaVPmsTnrkaRjDTKY6ua4AcbR5uVFPPT9TTL', // your OFT Store address
 };
 
 const EVM_ENFORCED_OPTIONS: OAppEnforcedOption[] = [
