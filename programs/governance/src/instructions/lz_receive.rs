@@ -16,7 +16,7 @@
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 use crate::msg_codec::{GovernanceMessage, msg_codec};
-use crate::{GOVERNANCE_SEED, REMOTE_SEED};
+use crate::{GOVERNANCE_SEED, REMOTE_SEED, OWNER_PLACEHOLDER, PAYER_PLACEHOLDER};
 use crate::state::Governance;
 use crate::state::Remote;
 use oapp::{
@@ -25,9 +25,6 @@ use oapp::{
     },
     LzReceiveParams,
 };
-
-pub const OWNER: Pubkey = sentinel_pubkey(b"owner");
-pub const PAYER: Pubkey = sentinel_pubkey(b"payer");
 
 #[derive(Accounts)]
 #[instruction(params: LzReceiveParams)]
@@ -78,9 +75,9 @@ impl<'info> LzReceive<'info> {
 
         // Replace placeholder accounts
         instruction.accounts.iter_mut().for_each(|acc| {
-            if acc.pubkey == OWNER {
+            if acc.pubkey == OWNER_PLACEHOLDER {
                 acc.pubkey = ctx.accounts.governance.key();
-            } else if acc.pubkey == PAYER {
+            } else if acc.pubkey == PAYER_PLACEHOLDER {
                 acc.pubkey = ctx.accounts.payer.key();
             }
         });
@@ -96,16 +93,4 @@ impl<'info> LzReceive<'info> {
 
         Ok(())
     }
-}
-
-const fn sentinel_pubkey(input: &[u8]) -> Pubkey {
-    let mut output: [u8; 32] = [0; 32];
-
-    let mut i = 0;
-    while i < input.len() {
-        output[i] = input[i];
-        i += 1;
-    }
-
-    Pubkey::new_from_array(output)
 }

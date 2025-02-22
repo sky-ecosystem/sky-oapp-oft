@@ -17,6 +17,9 @@ const LZ_RECEIVE_TYPES_SEED: &[u8] = b"LzReceiveTypes";
 const GOVERNANCE_SEED: &[u8] = b"Governance";
 const REMOTE_SEED: &[u8] = b"Remote";
 
+pub const OWNER_PLACEHOLDER: Pubkey = sentinel_pubkey(b"owner");
+pub const PAYER_PLACEHOLDER: Pubkey = sentinel_pubkey(b"payer");
+
 #[program]
 pub mod governance {
     use super::*;
@@ -42,4 +45,16 @@ pub mod governance {
     ) -> Result<Vec<LzAccount>> {
         LzReceiveTypes::apply(&ctx, &params)
     }
+}
+
+const fn sentinel_pubkey(input: &[u8]) -> Pubkey {
+    let mut output: [u8; 32] = [0; 32];
+
+    let mut i = 0;
+    while i < input.len() {
+        output[i] = input[i];
+        i += 1;
+    }
+
+    Pubkey::new_from_array(output)
 }

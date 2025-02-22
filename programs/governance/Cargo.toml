@@ -19,7 +19,10 @@ idl-build = ["oapp/idl-build"]
 [dependencies]
 anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
 oapp = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", branch = "main" }
-solana-program = "=1.17.31"
+solana-program = "1.17.31"
+bincode = "1.3"
 
 [dev-dependencies]
 hex = "0.4.3"
+spl-token = "4.0.0"
+spl-associated-token-account = "^2.2"

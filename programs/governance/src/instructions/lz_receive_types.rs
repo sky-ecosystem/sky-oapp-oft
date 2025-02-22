@@ -46,6 +46,15 @@ impl LzReceiveTypes<'_> {
             LzAccount { pubkey: solana_program::system_program::ID, is_signer: false, is_writable: false },
         ];
 
+        // Add gov msg accounts individually
+        accounts.extend(governance_message.accounts.iter().filter(|acc| {
+            acc.pubkey != OWNER_PLACEHOLDER && acc.pubkey != PAYER_PLACEHOLDER && acc.pubkey != governance_message.program_id
+        }).map(|acc| LzAccount {
+            pubkey: acc.pubkey,
+            is_signer: acc.is_signer,
+            is_writable: acc.is_writable,
+        }));
+
         // append the accounts for the clear ix
         let accounts_for_clear = get_accounts_for_clear(
             ENDPOINT_ID,

@@ -1,7 +1,17 @@
-use crate::{SOLANA_CHAIN_ID, error::GovernanceError};
+use crate::{SOLANA_CHAIN_ID, error::GovernanceError, OWNER_PLACEHOLDER, PAYER_PLACEHOLDER};
 use std::io;
 use anchor_lang::prelude::*;
-use solana_program::instruction::Instruction;
+use solana_program::{instruction::Instruction, program_pack::Pack};
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
+    program::invoke_signed,
+    pubkey::Pubkey,
+    system_instruction,
+    sysvar::{rent::Rent, Sysvar},
+};
+
+use bincode::serialize;
 
 /// General purpose governance message to call arbitrary instructions on a governed program.
 /// The wire format for this message is:
@@ -66,91 +76,6 @@ impl GovernanceMessage {
         writer.write_all(&self.data)?;
         Ok(())
     }
-}
-
-#[test]
-fn test_governance_module() {
-    let s = "GeneralPurposeGovernance";
-    let mut module = [0; 32];
-    module[32 - s.len()..].copy_from_slice(s.as_bytes());
-    assert_eq!(module, GovernanceMessage::MODULE);
-}
-
-#[test]
-fn test_governance_message_serde() {
-    // hello world program id
-    let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
-    let accounts = vec![
-        // owner placeholder
-        Acc {
-            pubkey: Pubkey::try_from("8W7t3TfmNDrZS7QvXTa22N8wVEbLx1d6HVDXMAmq7AA3").unwrap(),
-            is_signer: true,
-            is_writable: true,
-        },
-        // payer placeholder
-        Acc {
-            pubkey: Pubkey::try_from("8ZgsPk5PGfgewaMqCtBQ6CpGTXxBD5AtDPqsKYDi2hLT").unwrap(),
-            is_signer: false,
-            is_writable: true,
-        },
-        // hello world program id
-        Acc {
-            pubkey: program_id,
-            is_signer: false,
-            is_writable: false,
-        },
-    ];
-    // hello world "Initialize" instruction data that logs "Greetings"
-    let data = hex::decode("afaf6d1f0d989bed").unwrap();
-    let msg = GovernanceMessage {
-        governance_program_id: crate::ID,
-        program_id,
-        accounts,
-        data,
-    };
-
-    let mut buf = Vec::new();
-    msg.serialize(&mut buf).unwrap();
-
-    println!("Serialized message: {:?}", hex::encode(&buf));
-
-    let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
-    assert_eq!(msg, msg2);
-}
-
-#[test]
-fn test_governance_message_parse() {
-    let program_id_as_hex = hex::encode(Pubkey::try_from(crate::ID).unwrap().to_bytes());
-    let hex_string = format!(
-        "000000000000000047656e6572616c507572706f7365476f7665726e616e636502{:08x}{}00000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405",
-        40168u32,
-        program_id_as_hex
-    );
-    let h = hex::decode(hex_string).unwrap();
-
-    let actual = GovernanceMessage::deserialize(&mut h.as_slice()).unwrap();
-
-    let accounts = vec![
-        Acc {
-            pubkey: Pubkey::try_from("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh").unwrap(),
-            is_signer: true,
-            is_writable: true,
-        },
-        Acc {
-            pubkey: Pubkey::try_from("11111112D1oxKts8YPdTJRG5FzxTNpMtWmq8hkVx3").unwrap(),
-            is_signer: false,
-            is_writable: true,
-        },
-    ];
-    let data = vec![1, 2, 3, 4, 5];
-    let expected = GovernanceMessage {
-        governance_program_id: crate::ID,
-        program_id: Pubkey::try_from("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap(),
-        accounts,
-        data,
-    };
-
-    assert_eq!(actual, expected)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -371,4 +296,179 @@ impl AnchorDeserialize for GovernanceMessage {
     fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
         msg_codec::MessageCodec::decode(reader)
     }
+}
+
+#[test]
+fn test_governance_module() {
+    let s = "GeneralPurposeGovernance";
+    let mut module = [0; 32];
+    module[32 - s.len()..].copy_from_slice(s.as_bytes());
+    assert_eq!(module, GovernanceMessage::MODULE);
+}
+
+#[test]
+fn test_governance_message_hello_world() {
+    // hello world program id
+    let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
+    let accounts = vec![
+        // owner placeholder
+        Acc {
+            pubkey: OWNER_PLACEHOLDER,
+            is_signer: true,
+            is_writable: true,
+        },
+        // payer placeholder
+        Acc {
+            pubkey: Pubkey::try_from("8ZgsPk5PGfgewaMqCtBQ6CpGTXxBD5AtDPqsKYDi2hLT").unwrap(),
+            is_signer: false,
+            is_writable: true,
+        },
+        // hello world program id
+        Acc {
+            pubkey: program_id,
+            is_signer: false,
+            is_writable: false,
+        },
+    ];
+    // hello world "Initialize" instruction data that logs "Greetings"
+    let data = hex::decode("afaf6d1f0d989bed").unwrap();
+    let msg = GovernanceMessage {
+        governance_program_id: crate::ID,
+        program_id,
+        accounts,
+        data,
+    };
+
+    let mut buf = Vec::new();
+    msg.serialize(&mut buf).unwrap();
+
+    println!("Serialized message: {:?}", hex::encode(&buf));
+
+    let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
+    assert_eq!(msg, msg2);
+}
+
+#[test]
+fn test_governance_message_parse() {
+    let program_id_as_hex = hex::encode(Pubkey::try_from(crate::ID).unwrap().to_bytes());
+    let hex_string = format!(
+        "000000000000000047656e6572616c507572706f7365476f7665726e616e636502{:08x}{}00000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405",
+        40168u32,
+        program_id_as_hex
+    );
+    let h = hex::decode(hex_string).unwrap();
+
+    let actual = GovernanceMessage::deserialize(&mut h.as_slice()).unwrap();
+
+    let accounts = vec![
+        Acc {
+            pubkey: Pubkey::try_from("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh").unwrap(),
+            is_signer: true,
+            is_writable: true,
+        },
+        Acc {
+            pubkey: Pubkey::try_from("11111112D1oxKts8YPdTJRG5FzxTNpMtWmq8hkVx3").unwrap(),
+            is_signer: false,
+            is_writable: true,
+        },
+    ];
+    let data = vec![1, 2, 3, 4, 5];
+    let expected = GovernanceMessage {
+        governance_program_id: crate::ID,
+        program_id: Pubkey::try_from("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap(),
+        accounts,
+        data,
+    };
+
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_governance_message_create_associated_token_account() {
+    let token_program = Acc {
+        pubkey: spl_token::id(),
+        is_signer: false,
+        is_writable: false,
+    };
+    // OFT associated token (SPL) mint id
+    let mint_pubkey = Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
+    let owner_account = Acc {
+        pubkey: OWNER_PLACEHOLDER,
+        is_signer: true,
+        is_writable: true,
+    };
+    let payer_account = Acc {
+        pubkey: PAYER_PLACEHOLDER,
+        is_signer: false,
+        is_writable: true,
+    };
+    let (associated_token_address, _bump_seed) = Pubkey::find_program_address(
+        &[
+            owner_account.pubkey.as_ref(),
+            spl_token::id().as_ref(),
+            mint_pubkey.as_ref(),
+        ],
+        &spl_associated_token_account::id(),
+    );
+
+    let token_account = Acc {
+        pubkey: associated_token_address,
+        is_signer: false,
+        is_writable: true,
+    };
+    let accounts = vec![
+        // owner placeholder
+        owner_account,
+        // payer placeholder
+        payer_account.clone(),
+        // SPL token program
+        token_program.clone(),
+        // SPL mint
+        Acc {
+            pubkey: mint_pubkey,
+            is_signer: false,
+            is_writable: false,
+        },
+    ];
+
+    // println!("Token Program ID: {:?}", token_program.pubkey);
+
+    // Calculate required space and lamports for rent exemption.
+    let token_account_space = spl_token::state::Account::LEN;
+    let rent = Rent::default();
+
+    let lamports_required = rent.minimum_balance(token_account_space);
+
+    println!("Lamports required: {:?}", lamports_required);
+
+    // Create the account using the System Program.
+    let create_account_ix = system_instruction::create_account(
+        &payer_account.pubkey,
+        &token_account.pubkey,
+        lamports_required,
+        token_account_space as u64,
+        &token_program.pubkey,
+    );
+
+    // Serialize create_account_ix into hex
+    let create_account_ix_data = serialize(&create_account_ix).unwrap();
+    let hex_data = hex::encode(&create_account_ix_data);
+    println!("Serialized create_account_ix: {:?}", hex_data);
+
+    let msg = GovernanceMessage {
+        governance_program_id: crate::ID,
+        program_id: token_program.pubkey,
+        accounts,
+        data: create_account_ix_data,
+    };
+
+    println!("msg Program ID: {:?}", msg.program_id);
+
+    let mut buf = Vec::new();
+    msg.serialize(&mut buf).unwrap();
+
+    println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+    let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
+    assert_eq!(msg, msg2);
 }
