@@ -33,6 +33,7 @@ impl LzReceiveTypes<'_> {
 
         let governance_message: GovernanceMessage = msg_codec::decode_governance(&params.message)?;
 
+        // accounts 0..4
         let mut accounts = vec![
             // payer
             LzAccount { pubkey: Pubkey::default(), is_signer: true, is_writable: true }, // 0
@@ -46,15 +47,7 @@ impl LzReceiveTypes<'_> {
             LzAccount { pubkey: solana_program::system_program::ID, is_signer: false, is_writable: false },
         ];
 
-        // Add gov msg accounts individually
-        accounts.extend(governance_message.accounts.iter().filter(|acc| {
-            acc.pubkey != OWNER_PLACEHOLDER && acc.pubkey != PAYER_PLACEHOLDER && acc.pubkey != governance_message.program_id
-        }).map(|acc| LzAccount {
-            pubkey: acc.pubkey,
-            is_signer: acc.is_signer,
-            is_writable: acc.is_writable,
-        }));
-
+        // accounts 5..12
         // append the accounts for the clear ix
         let accounts_for_clear = get_accounts_for_clear(
             ENDPOINT_ID,
@@ -64,6 +57,16 @@ impl LzReceiveTypes<'_> {
             params.nonce,
         );
         accounts.extend(accounts_for_clear);
+
+        // accounts 13..
+        // Add gov msg accounts individually
+        accounts.extend(governance_message.accounts.iter().filter(|acc| {
+            acc.pubkey != OWNER_PLACEHOLDER && acc.pubkey != PAYER_PLACEHOLDER && acc.pubkey != governance_message.program_id
+        }).map(|acc| LzAccount {
+            pubkey: acc.pubkey,
+            is_signer: acc.is_signer,
+            is_writable: acc.is_writable,
+        }));
 
         Ok(accounts)
     }

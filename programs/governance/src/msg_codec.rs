@@ -1,6 +1,6 @@
 use crate::{SOLANA_CHAIN_ID, error::GovernanceError, OWNER_PLACEHOLDER, PAYER_PLACEHOLDER};
 use std::io;
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, system_program};
 use solana_program::{instruction::Instruction, program_pack::Pack};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -319,7 +319,7 @@ fn test_governance_message_hello_world() {
         },
         // payer placeholder
         Acc {
-            pubkey: Pubkey::try_from("8ZgsPk5PGfgewaMqCtBQ6CpGTXxBD5AtDPqsKYDi2hLT").unwrap(),
+            pubkey: PAYER_PLACEHOLDER,
             is_signer: false,
             is_writable: true,
         },
@@ -384,7 +384,7 @@ fn test_governance_message_parse() {
 }
 
 #[test]
-fn test_governance_message_create_associated_token_account() {
+fn test_governance_message_transfer_token() {
     let token_program = Acc {
         pubkey: spl_token::id(),
         is_signer: false,
@@ -404,65 +404,116 @@ fn test_governance_message_create_associated_token_account() {
     };
     let (associated_token_address, _bump_seed) = Pubkey::find_program_address(
         &[
-            owner_account.pubkey.as_ref(),
+            Pubkey::try_from("3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a").unwrap().as_ref(),
+            // owner_account.pubkey.as_ref(),
             spl_token::id().as_ref(),
             mint_pubkey.as_ref(),
         ],
         &spl_associated_token_account::id(),
     );
 
+    println!("Associated Token Address: {}", associated_token_address);
+
     let token_account = Acc {
         pubkey: associated_token_address,
         is_signer: false,
         is_writable: true,
     };
+    // let accounts = vec![
+    //     // owner placeholder
+    //     // owner_account,
+    //     // payer placeholder
+    //     // payer_account.clone(),
+    //     // SPL token program
+    //     token_program.clone(),
+    //     // SPL mint
+    //     // Acc {
+    //     //     pubkey: mint_pubkey,
+    //     //     is_signer: false,
+    //     //     is_writable: false,
+    //     // },
+    // ];
+    // let mint_pubkey = Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
+    let destination_account = Acc {
+        pubkey: Pubkey::try_from("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8").unwrap(),
+        is_signer: false,
+        is_writable: true,
+    };
+    let amount_to_transfer = 10u64;
+
     let accounts = vec![
         // owner placeholder
-        owner_account,
-        // payer placeholder
-        payer_account.clone(),
+        owner_account.clone(),
         // SPL token program
         token_program.clone(),
-        // SPL mint
-        Acc {
-            pubkey: mint_pubkey,
-            is_signer: false,
-            is_writable: false,
-        },
+        // SPL token source account
+        token_account.clone(),
+        // SPL token destination account
+        destination_account.clone(),
     ];
 
-    // println!("Token Program ID: {:?}", token_program.pubkey);
-
-    // Calculate required space and lamports for rent exemption.
-    let token_account_space = spl_token::state::Account::LEN;
-    let rent = Rent::default();
-
-    let lamports_required = rent.minimum_balance(token_account_space);
-
-    println!("Lamports required: {:?}", lamports_required);
-
-    // Create the account using the System Program.
-    let create_account_ix = system_instruction::create_account(
-        &payer_account.pubkey,
+    let transfer_ix = spl_token::instruction::transfer(
+        &spl_token::id(),
         &token_account.pubkey,
-        lamports_required,
-        token_account_space as u64,
-        &token_program.pubkey,
-    );
+        &destination_account.pubkey,
+        &Pubkey::try_from("3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a").unwrap(),
+        &[],
+        amount_to_transfer,
+    ).unwrap();
+    
 
-    // Serialize create_account_ix into hex
-    let create_account_ix_data = serialize(&create_account_ix).unwrap();
-    let hex_data = hex::encode(&create_account_ix_data);
-    println!("Serialized create_account_ix: {:?}", hex_data);
+    // Serialize transfer_ix into hex
+    let transfer_ix_data = serialize(&transfer_ix).unwrap();
+    let hex_data = hex::encode(&transfer_ix_data);
+    println!("Serialized transfer_ix: {:?}", hex_data);
 
     let msg = GovernanceMessage {
         governance_program_id: crate::ID,
-        program_id: token_program.pubkey,
-        accounts,
-        data: create_account_ix_data,
+        program_id: spl_token::id(),
+        accounts: accounts.clone(),
+        data: transfer_ix_data,
     };
 
-    println!("msg Program ID: {:?}", msg.program_id);
+    // let mut buf = Vec::new();
+    // msg.serialize(&mut buf).unwrap();
+
+    // println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+    // let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
+    // assert_eq!(msg, msg2);
+
+    // println!("Token Program ID: {:?}", token_program.pubkey);
+
+    // // Calculate required space and lamports for rent exemption.
+    // let token_account_space = spl_token::state::Account::LEN;
+    // let rent = Rent::default();
+
+    // let lamports_required = rent.minimum_balance(token_account_space);
+
+    // println!("Lamports required: {:?}", lamports_required);
+
+    // // Create the account using the System Program.
+    // let create_account_ix = system_instruction::create_account(
+    //     &payer_account.pubkey,
+    //     &token_account.pubkey,
+    //     lamports_required,
+    //     token_account_space as u64,
+    //     &token_program.pubkey,
+    // );
+
+    // // Serialize create_account_ix into hex
+    // let create_account_ix_data = serialize(&create_account_ix).unwrap();
+    // let hex_data = hex::encode(&create_account_ix_data);
+    // println!("Serialized create_account_ix: {:?}", hex_data);
+
+    // let msg = GovernanceMessage {
+    //     governance_program_id: crate::ID,
+    //     program_id: token_program.pubkey,
+    //     accounts,
+    //     data: create_account_ix_data,
+    // };
+
+    // println!("msg Program ID: {:?}", msg.program_id);
 
     let mut buf = Vec::new();
     msg.serialize(&mut buf).unwrap();
