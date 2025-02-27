@@ -686,17 +686,6 @@ checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 [[package]]
 name = "cpi-helper"
 version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main#a3637f851ab1b987bff9fb3db31bf40a59ac374b"
-dependencies = [
- "bs58 0.5.1",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "cpi-helper"
-version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "bs58 0.5.1",
@@ -904,27 +893,14 @@ checksum = "3dca9240753cf90908d7e4aac30f630662b02aebaa1b58a3cadabdb23385b58b"
 [[package]]
 name = "endpoint"
 version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main#a3637f851ab1b987bff9fb3db31bf40a59ac374b"
-dependencies = [
- "anchor-lang",
- "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main)",
- "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main)",
- "solana-helper",
- "solana-program",
- "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main)",
-]
-
-[[package]]
-name = "endpoint"
-version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "anchor-lang",
- "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
- "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "cpi-helper",
+ "messagelib-interface",
  "solana-helper",
  "solana-program",
- "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "utils",
 ]
 
 [[package]]
@@ -932,7 +908,7 @@ name = "endpoint-mock"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
- "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "cpi-helper",
  "solana-program",
 ]
 
@@ -1009,10 +985,12 @@ name = "governance"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "anchor-spl",
  "bincode",
  "hex",
- "oapp 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main)",
+ "oapp",
  "solana-program",
+ "solana-sdk",
  "spl-associated-token-account",
  "spl-token",
 ]
@@ -1302,14 +1280,6 @@ dependencies = [
 [[package]]
 name = "messagelib-interface"
 version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main#a3637f851ab1b987bff9fb3db31bf40a59ac374b"
-dependencies = [
- "anchor-lang",
-]
-
-[[package]]
-name = "messagelib-interface"
-version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "anchor-lang",
@@ -1410,19 +1380,10 @@ dependencies = [
 [[package]]
 name = "oapp"
 version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main#a3637f851ab1b987bff9fb3db31bf40a59ac374b"
-dependencies = [
- "anchor-lang",
- "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main)",
-]
-
-[[package]]
-name = "oapp"
-version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "anchor-lang",
- "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "endpoint",
 ]
 
 [[package]]
@@ -1431,9 +1392,26 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
- "oapp 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "cpi-helper",
+ "oapp",
  "solana-helper",
- "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "solana-program",
+ "utils",
+]
+
+[[package]]
+name = "oft_token_manager"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "bincode",
+ "hex",
+ "oapp",
+ "oft",
+ "solana-program",
+ "spl-associated-token-account",
+ "spl-token",
 ]
 
 [[package]]
@@ -2531,14 +2509,6 @@ checksum = "0200d0fc04d809396c2ad43f3c95da3582a2556eba8d453c1087f4120ee352ff"
 dependencies = [
  "fnv",
  "lazy_static",
-]
-
-[[package]]
-name = "utils"
-version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?branch=main#a3637f851ab1b987bff9fb3db31bf40a59ac374b"
-dependencies = [
- "anchor-lang",
 ]
 
 [[package]]

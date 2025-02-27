@@ -7,9 +7,9 @@ pub mod instructions;
 pub mod msg_codec;
 pub mod state;
 
+pub use instructions::*;
 use errors::*;
 use events::*;
-use instructions::*;
 use oapp::{
     endpoint::{MessagingFee, MessagingReceipt},
     LzReceiveParams,
@@ -31,9 +31,10 @@ pub const LZ_RECEIVE_TYPES_SEED: &[u8] = oapp::LZ_RECEIVE_TYPES_SEED;
 pub mod oft {
     use super::*;
 
-    pub fn oft_version(_ctx: Context<OFTVersion>) -> Result<Version> {
-        Ok(Version { interface: 2, message: 1 })
-    }
+    // commented out due to struct lifetime errors when using cpi
+    // pub fn oft_version(_ctx: Context<OFTVersion>) -> Result<Version> {
+    //     Ok(Version { interface: 2, message: 1 })
+    // }
 
     pub fn init_oft(mut ctx: Context<InitOFT>, params: InitOFTParams) -> Result<()> {
         InitOFT::apply(&mut ctx, &params)
@@ -98,4 +99,17 @@ pub struct OFTVersion {}
 pub struct Version {
     pub interface: u64,
     pub message: u64,
+}
+
+#[cfg(feature = "cpi")]
+pub trait ConstructCPIContext<'a, 'b, 'c, 'info, T>
+where
+    T: ToAccountMetas + ToAccountInfos<'info>,
+{
+    const MIN_ACCOUNTS_LEN: usize;
+
+    fn construct_context(
+        program_id: Pubkey,
+        accounts: &[AccountInfo<'info>],
+    ) -> Result<CpiContext<'a, 'b, 'c, 'info, T>>;
 }

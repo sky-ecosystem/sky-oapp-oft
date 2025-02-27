@@ -1,5 +1,6 @@
 use crate::*;
 use oapp::endpoint::{instructions::QuoteParams, MessagingFee};
+use cpi_helper::CpiContext;
 
 use anchor_spl::{
     token_2022::spl_token_2022::{
@@ -12,7 +13,7 @@ use anchor_spl::{
     token_interface::Mint,
 };
 
-#[derive(Accounts)]
+#[derive(CpiContext, Accounts)]
 #[instruction(params: QuoteSendParams)]
 pub struct QuoteSend<'info> {
     #[account(

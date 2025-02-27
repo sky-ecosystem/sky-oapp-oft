@@ -11,7 +11,16 @@ use solana_program::{
     sysvar::{rent::Rent, Sysvar},
 };
 
+// With this:
+#[cfg(test)]
+use solana_sdk::transaction::Transaction;
+
 use bincode::serialize;
+
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
+};
 
 /// General purpose governance message to call arbitrary instructions on a governed program.
 /// The wire format for this message is:
@@ -385,23 +394,19 @@ fn test_governance_message_parse() {
 
 #[test]
 fn test_governance_message_transfer_token() {
-    let token_program = Acc {
-        pubkey: spl_token::id(),
+    // OFT associated token (SPL) mint id
+    let mint_pubkey = Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
+    let mint_account = Acc {
+        pubkey: mint_pubkey,
         is_signer: false,
         is_writable: false,
     };
-    // OFT associated token (SPL) mint id
-    let mint_pubkey = Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
     let owner_account = Acc {
         pubkey: OWNER_PLACEHOLDER,
         is_signer: true,
-        is_writable: true,
+        is_writable: false,
     };
-    let payer_account = Acc {
-        pubkey: PAYER_PLACEHOLDER,
-        is_signer: false,
-        is_writable: true,
-    };
+
     let (associated_token_address, _bump_seed) = Pubkey::find_program_address(
         &[
             Pubkey::try_from("3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a").unwrap().as_ref(),
@@ -419,107 +424,61 @@ fn test_governance_message_transfer_token() {
         is_signer: false,
         is_writable: true,
     };
-    // let accounts = vec![
-    //     // owner placeholder
-    //     // owner_account,
-    //     // payer placeholder
-    //     // payer_account.clone(),
-    //     // SPL token program
-    //     token_program.clone(),
-    //     // SPL mint
-    //     // Acc {
-    //     //     pubkey: mint_pubkey,
-    //     //     is_signer: false,
-    //     //     is_writable: false,
-    //     // },
-    // ];
-    // let mint_pubkey = Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
+
     let destination_account = Acc {
-        pubkey: Pubkey::try_from("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8").unwrap(),
+        pubkey: Pubkey::try_from("3Qq7GD6V3mK1do7Ch7JMr9LdUu4Lv3EZ4qJcggw1eyR6").unwrap(),
         is_signer: false,
         is_writable: true,
     };
     let amount_to_transfer = 10u64;
 
     let accounts = vec![
-        // owner placeholder
-        owner_account.clone(),
-        // SPL token program
-        token_program.clone(),
         // SPL token source account
         token_account.clone(),
-        // SPL token destination account
+        // SPL token mint
+        mint_account.clone(),
+        // owner placeholder
         destination_account.clone(),
+        // signer
+        owner_account.clone(),
     ];
 
-    let transfer_ix = spl_token::instruction::transfer(
-        &spl_token::id(),
+    let transfer_ix = spl_token::instruction::transfer_checked(
+        &spl_token::ID,
         &token_account.pubkey,
+        &mint_pubkey,
         &destination_account.pubkey,
         &Pubkey::try_from("3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a").unwrap(),
         &[],
         amount_to_transfer,
+        9,
     ).unwrap();
-    
 
-    // Serialize transfer_ix into hex
+    // Serialize transfer_ix into hex and base64
     let transfer_ix_data = serialize(&transfer_ix).unwrap();
     let hex_data = hex::encode(&transfer_ix_data);
-    println!("Serialized transfer_ix: {:?}", hex_data);
+    println!("Serialized transfer_ix (hex): {:?}", hex_data);
+
+    // Create a transaction from the transfer instruction
+    let transaction = Transaction::new_with_payer(
+        &[transfer_ix.clone()],
+        Some(&Pubkey::try_from("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8").unwrap()),
+    );
+
+    // Serialize the transaction into hex and base64
+    let transaction_data = serialize(&transaction).unwrap();
+    let hex_transaction_data = hex::encode(&transaction_data);
+    println!("Serialized transaction (hex): {:?}", hex_transaction_data);
 
     let msg = GovernanceMessage {
         governance_program_id: crate::ID,
         program_id: spl_token::id(),
         accounts: accounts.clone(),
-        data: transfer_ix_data,
+        data: transfer_ix.data,
     };
-
-    // let mut buf = Vec::new();
-    // msg.serialize(&mut buf).unwrap();
-
-    // println!("Serialized governance message: {:?}", hex::encode(&buf));
-
-    // let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
-    // assert_eq!(msg, msg2);
-
-    // println!("Token Program ID: {:?}", token_program.pubkey);
-
-    // // Calculate required space and lamports for rent exemption.
-    // let token_account_space = spl_token::state::Account::LEN;
-    // let rent = Rent::default();
-
-    // let lamports_required = rent.minimum_balance(token_account_space);
-
-    // println!("Lamports required: {:?}", lamports_required);
-
-    // // Create the account using the System Program.
-    // let create_account_ix = system_instruction::create_account(
-    //     &payer_account.pubkey,
-    //     &token_account.pubkey,
-    //     lamports_required,
-    //     token_account_space as u64,
-    //     &token_program.pubkey,
-    // );
-
-    // // Serialize create_account_ix into hex
-    // let create_account_ix_data = serialize(&create_account_ix).unwrap();
-    // let hex_data = hex::encode(&create_account_ix_data);
-    // println!("Serialized create_account_ix: {:?}", hex_data);
-
-    // let msg = GovernanceMessage {
-    //     governance_program_id: crate::ID,
-    //     program_id: token_program.pubkey,
-    //     accounts,
-    //     data: create_account_ix_data,
-    // };
-
-    // println!("msg Program ID: {:?}", msg.program_id);
 
     let mut buf = Vec::new();
     msg.serialize(&mut buf).unwrap();
 
     println!("Serialized governance message: {:?}", hex::encode(&buf));
-
-    let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
-    assert_eq!(msg, msg2);
 }

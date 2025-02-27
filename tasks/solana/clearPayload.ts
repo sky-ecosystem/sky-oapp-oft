@@ -1,15 +1,17 @@
 import { web3 } from '@coral-xyz/anchor'
 import { toWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
-import { ComputeBudgetProgram, Keypair, sendAndConfirmTransaction } from '@solana/web3.js'
+import { ComputeBudgetProgram, Keypair, PublicKey, sendAndConfirmTransaction } from '@solana/web3.js'
 import bs58 from 'bs58'
 import { task } from 'hardhat/config'
 
 import { makeBytes32 } from '@layerzerolabs/devtools'
 import { types } from '@layerzerolabs/devtools-evm-hardhat'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
-import { lzReceive } from '@layerzerolabs/lz-solana-sdk-v2'
+import { lzReceive, getLzReceiveAccounts } from '@layerzerolabs/lz-solana-sdk-v2'
 
 import { deriveConnection, getExplorerTxLink } from './index'
+import { addressToBytes32 } from '@layerzerolabs/lz-v2-utilities'
+import { arrayify } from '@ethersproject/bytes'
 
 interface Args {
     srcEid: EndpointId
@@ -61,21 +63,24 @@ task('lz:oft:solana:clear', 'Clear a stored payload on Solana')
                 lastValidBlockHeight,
             })
 
+            const packet = {
+                nonce: nonce.toString(),
+                srcEid,
+                sender: makeBytes32(sender),
+                dstEid,
+                receiver,
+                payload: '', // unused;  just added to satisfy typing
+                guid,
+                message: payload, // referred to as "payload" in scan-api
+                version: 1, // unused;  just added to satisfy typing
+            }
+            const callerParams = Uint8Array.from([computeUnits, lamports]);
+
             const instruction = await lzReceive(
                 connection,
                 signer.publicKey,
-                {
-                    nonce: nonce.toString(),
-                    srcEid,
-                    sender: makeBytes32(sender),
-                    dstEid,
-                    receiver,
-                    payload: '', // unused;  just added to satisfy typing
-                    guid,
-                    message: payload, // referred to as "payload" in scan-api
-                    version: 1, // unused;  just added to satisfy typing
-                },
-                Uint8Array.from([computeUnits, lamports]),
+                packet,
+                callerParams,
                 'confirmed'
             )
 
@@ -89,14 +94,17 @@ task('lz:oft:solana:clear', 'Clear a stored payload on Solana')
             tx.add(instruction)
             tx.recentBlockhash = blockhash
 
+            console.log('keys length', tx.instructions[1].keys.length)
+            console.log(tx.instructions[1]);
+
             const keypair = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY))
             tx.sign(keypair)
 
             console.log(tx.serializeMessage().toString("base64"))
 
-            const signature = await sendAndConfirmTransaction(connection, tx, [keypair], { skipPreflight: true })
-            console.log(
-                `View Solana transaction here: ${getExplorerTxLink(signature.toString(), dstEid == EndpointId.SOLANA_V2_TESTNET)}`
-            )
+            // const signature = await sendAndConfirmTransaction(connection, tx, [keypair], { skipPreflight: true })
+            // console.log(
+            //     `View Solana transaction here: ${getExplorerTxLink(signature.toString(), dstEid == EndpointId.SOLANA_V2_TESTNET)}`
+            // )
         }
     )
