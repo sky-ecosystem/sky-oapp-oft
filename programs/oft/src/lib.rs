@@ -7,9 +7,9 @@ pub mod instructions;
 pub mod msg_codec;
 pub mod state;
 
-pub use instructions::*;
 use errors::*;
 use events::*;
+pub use instructions::*;
 use oapp::{
     endpoint::{MessagingFee, MessagingReceipt},
     LzReceiveParams,
@@ -78,6 +78,10 @@ pub mod oft {
         params: SendParams,
     ) -> Result<(MessagingReceipt, OFTReceipt)> {
         Send::apply(&mut ctx, &params)
+    }
+
+    pub fn init_two_leg_send(mut ctx: Context<InitTwoLegSend>, params: SendParams) -> Result<()> {
+        InitTwoLegSend::apply(&mut ctx, &params)
     }
 
     pub fn lz_receive(mut ctx: Context<LzReceive>, params: LzReceiveParams) -> Result<()> {

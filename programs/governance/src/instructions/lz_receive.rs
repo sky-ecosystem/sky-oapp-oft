@@ -13,18 +13,18 @@
 //! - [`OWNER`]: the program will replace this account with the governance PDA
 //! - [`PAYER`]: the program will replace this account with the payer account
 
-use anchor_lang::prelude::*;
-use solana_program::instruction::Instruction;
-use crate::msg_codec::{GovernanceMessage, msg_codec};
-use crate::{GOVERNANCE_SEED, REMOTE_SEED, OWNER_PLACEHOLDER, PAYER_PLACEHOLDER};
+use crate::msg_codec::{msg_codec, GovernanceMessage};
 use crate::state::Governance;
 use crate::state::Remote;
+use crate::{GOVERNANCE_SEED, OWNER_PLACEHOLDER, PAYER_PLACEHOLDER, REMOTE_SEED};
+use anchor_lang::prelude::*;
 use oapp::{
     endpoint::{
-        cpi::accounts::Clear, instructions::ClearParams, ConstructCPIContext, ID as ENDPOINT_ID
+        cpi::accounts::Clear, instructions::ClearParams, ConstructCPIContext, ID as ENDPOINT_ID,
     },
     LzReceiveParams,
 };
+use solana_program::instruction::Instruction;
 
 #[derive(Accounts)]
 #[instruction(params: LzReceiveParams)]
@@ -49,9 +49,15 @@ pub struct LzReceive<'info> {
 }
 
 impl<'info> LzReceive<'info> {
-    pub fn apply(ctx: &mut Context<'_, '_, '_, 'info, Self>, params: &LzReceiveParams) -> Result<()> {
-        let seeds: &[&[u8]] =
-            &[GOVERNANCE_SEED, &ctx.accounts.governance.id.to_be_bytes(), &[ctx.accounts.governance.bump]];
+    pub fn apply(
+        ctx: &mut Context<'_, '_, '_, 'info, Self>,
+        params: &LzReceiveParams,
+    ) -> Result<()> {
+        let seeds: &[&[u8]] = &[
+            GOVERNANCE_SEED,
+            &ctx.accounts.governance.id.to_be_bytes(),
+            &[ctx.accounts.governance.bump],
+        ];
 
         // the first 9 accounts are for clear()
         let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];
@@ -85,11 +91,7 @@ impl<'info> LzReceive<'info> {
         let mut all_account_infos = ctx.accounts.to_account_infos();
         all_account_infos.extend_from_slice(&ctx.remaining_accounts);
 
-        solana_program::program::invoke_signed(
-            &instruction,
-            &all_account_infos,
-            &[seeds],
-        )?;
+        solana_program::program::invoke_signed(&instruction, &all_account_infos, &[seeds])?;
 
         Ok(())
     }

@@ -46,7 +46,10 @@ mod test_msg_codec {
             amount_ld,
             &[&compose_from[..], &compose_msg].concat(),
         );
-        assert_eq!(encoded.len(), 20 + [&compose_from[..], &compose_msg].concat().len());
+        assert_eq!(
+            encoded.len(),
+            20 + [&compose_from[..], &compose_msg].concat().len()
+        );
         assert_eq!(compose_msg_codec::nonce(&encoded), nonce);
         assert_eq!(compose_msg_codec::src_eid(&encoded), src_eid);
         assert_eq!(compose_msg_codec::amount_ld(&encoded), amount_ld);

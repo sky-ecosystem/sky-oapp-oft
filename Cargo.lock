@@ -989,6 +989,7 @@ dependencies = [
  "bincode",
  "hex",
  "oapp",
+ "oft",
  "solana-program",
  "solana-sdk",
  "spl-associated-token-account",
@@ -1397,21 +1398,6 @@ dependencies = [
  "solana-helper",
  "solana-program",
  "utils",
-]
-
-[[package]]
-name = "oft_token_manager"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "bincode",
- "hex",
- "oapp",
- "oft",
- "solana-program",
- "spl-associated-token-account",
- "spl-token",
 ]
 
 [[package]]

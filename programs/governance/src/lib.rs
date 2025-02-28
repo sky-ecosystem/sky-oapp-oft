@@ -1,8 +1,8 @@
 mod instructions;
-mod msg_codec;
 mod state;
 
 pub mod error;
+pub mod msg_codec;
 
 use anchor_lang::prelude::*;
 use instructions::*;
@@ -24,7 +24,10 @@ pub const PAYER_PLACEHOLDER: Pubkey = sentinel_pubkey(b"payer");
 pub mod governance {
     use super::*;
 
-    pub fn init_governance(mut ctx: Context<InitGovernance>, params: InitGovernanceParams) -> Result<()> {
+    pub fn init_governance(
+        mut ctx: Context<InitGovernance>,
+        params: InitGovernanceParams,
+    ) -> Result<()> {
         InitGovernance::apply(&mut ctx, &params)
     }
 
@@ -33,8 +36,8 @@ pub mod governance {
     }
 
     pub fn lz_receive<'info>(
-        mut ctx: Context<'_, '_, '_, 'info, LzReceive<'info>>, 
-        params: LzReceiveParams
+        mut ctx: Context<'_, '_, '_, 'info, LzReceive<'info>>,
+        params: LzReceiveParams,
     ) -> Result<()> {
         LzReceive::apply(&mut ctx, &params)
     }

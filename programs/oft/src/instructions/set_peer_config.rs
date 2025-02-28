@@ -27,31 +27,34 @@ impl SetPeerConfig<'_> {
         match params.config.clone() {
             PeerConfigParam::PeerAddress(peer_address) => {
                 ctx.accounts.peer.peer_address = peer_address;
-            },
+            }
             PeerConfigParam::FeeBps(fee_bps) => {
                 if let Some(fee_bps) = fee_bps {
                     require!(fee_bps < MAX_FEE_BASIS_POINTS, OFTError::InvalidFee);
                 }
                 ctx.accounts.peer.fee_bps = fee_bps;
-            },
-            PeerConfigParam::EnforcedOptions { send, send_and_call } => {
+            }
+            PeerConfigParam::EnforcedOptions {
+                send,
+                send_and_call,
+            } => {
                 oapp::options::assert_type_3(&send)?;
                 ctx.accounts.peer.enforced_options.send = send;
                 oapp::options::assert_type_3(&send_and_call)?;
                 ctx.accounts.peer.enforced_options.send_and_call = send_and_call;
-            },
+            }
             PeerConfigParam::OutboundRateLimit(rate_limit_params) => {
                 Self::update_rate_limiter(
                     &mut ctx.accounts.peer.outbound_rate_limiter,
                     &rate_limit_params,
                 )?;
-            },
+            }
             PeerConfigParam::InboundRateLimit(rate_limit_params) => {
                 Self::update_rate_limiter(
                     &mut ctx.accounts.peer.inbound_rate_limiter,
                     &rate_limit_params,
                 )?;
-            },
+            }
         }
         ctx.accounts.peer.bump = ctx.bumps.peer;
         Ok(())
@@ -87,7 +90,10 @@ pub struct SetPeerConfigParams {
 pub enum PeerConfigParam {
     PeerAddress([u8; 32]),
     FeeBps(Option<u16>),
-    EnforcedOptions { send: Vec<u8>, send_and_call: Vec<u8> },
+    EnforcedOptions {
+        send: Vec<u8>,
+        send_and_call: Vec<u8>,
+    },
     OutboundRateLimit(Option<RateLimitParams>),
     InboundRateLimit(Option<RateLimitParams>),
 }

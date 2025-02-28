@@ -18,11 +18,14 @@ impl SetOFTConfig<'_> {
         match params.clone() {
             SetOFTConfigParams::Admin(admin) => {
                 ctx.accounts.oft_store.admin = admin;
-            },
+            }
             SetOFTConfigParams::Delegate(delegate) => {
                 let oft_store_seed = ctx.accounts.oft_store.token_escrow.key();
-                let seeds: &[&[u8]] =
-                    &[OFT_SEED, &oft_store_seed.to_bytes(), &[ctx.accounts.oft_store.bump]];
+                let seeds: &[&[u8]] = &[
+                    OFT_SEED,
+                    &oft_store_seed.to_bytes(),
+                    &[ctx.accounts.oft_store.bump],
+                ];
                 let _ = oapp::endpoint_cpi::set_delegate(
                     ctx.accounts.oft_store.endpoint_program,
                     ctx.accounts.oft_store.key(),
@@ -30,20 +33,20 @@ impl SetOFTConfig<'_> {
                     seeds,
                     SetDelegateParams { delegate },
                 )?;
-            },
+            }
             SetOFTConfigParams::DefaultFee(fee_bps) => {
                 require!(fee_bps < MAX_FEE_BASIS_POINTS, OFTError::InvalidFee);
                 ctx.accounts.oft_store.default_fee_bps = fee_bps;
-            },
+            }
             SetOFTConfigParams::Paused(paused) => {
                 ctx.accounts.oft_store.paused = paused;
-            },
+            }
             SetOFTConfigParams::Pauser(pauser) => {
                 ctx.accounts.oft_store.pauser = pauser;
-            },
+            }
             SetOFTConfigParams::Unpauser(unpauser) => {
                 ctx.accounts.oft_store.unpauser = unpauser;
-            },
+            }
         }
         Ok(())
     }

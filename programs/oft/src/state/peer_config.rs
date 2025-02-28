@@ -56,7 +56,7 @@ impl RateLimiter {
             Some(new_tokens) => {
                 self.tokens = new_tokens;
                 Ok(())
-            },
+            }
             None => Err(error!(OFTError::RateLimitExceeded)),
         }
     }

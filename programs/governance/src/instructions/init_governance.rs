@@ -35,8 +35,14 @@ impl InitGovernance<'_> {
         ctx.accounts.lz_receive_types_accounts.governance = ctx.accounts.governance.key();
 
         // calling endpoint cpi
-        let register_params = RegisterOAppParams { delegate: ctx.accounts.governance.admin };
-        let seeds: &[&[u8]] = &[GOVERNANCE_SEED, &[ctx.accounts.governance.id], &[ctx.accounts.governance.bump]];
+        let register_params = RegisterOAppParams {
+            delegate: ctx.accounts.governance.admin,
+        };
+        let seeds: &[&[u8]] = &[
+            GOVERNANCE_SEED,
+            &[ctx.accounts.governance.id],
+            &[ctx.accounts.governance.bump],
+        ];
         oapp::endpoint_cpi::register_oapp(
             ENDPOINT_ID,
             ctx.accounts.governance.key(),

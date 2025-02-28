@@ -41,15 +41,31 @@ impl LzReceiveTypes<'_> {
         params: &LzReceiveParams,
     ) -> Result<Vec<LzAccount>> {
         let (peer, _) = Pubkey::find_program_address(
-            &[PEER_SEED, ctx.accounts.oft_store.key().as_ref(), &params.src_eid.to_be_bytes()],
+            &[
+                PEER_SEED,
+                ctx.accounts.oft_store.key().as_ref(),
+                &params.src_eid.to_be_bytes(),
+            ],
             ctx.program_id,
         );
 
         // account 0..3
         let mut accounts = vec![
-            LzAccount { pubkey: Pubkey::default(), is_signer: true, is_writable: true }, // 0
-            LzAccount { pubkey: peer, is_signer: false, is_writable: true },             // 1
-            LzAccount { pubkey: ctx.accounts.oft_store.key(), is_signer: false, is_writable: true }, // 2
+            LzAccount {
+                pubkey: Pubkey::default(),
+                is_signer: true,
+                is_writable: true,
+            }, // 0
+            LzAccount {
+                pubkey: peer,
+                is_signer: false,
+                is_writable: true,
+            }, // 1
+            LzAccount {
+                pubkey: ctx.accounts.oft_store.key(),
+                is_signer: false,
+                is_writable: true,
+            }, // 2
             LzAccount {
                 pubkey: ctx.accounts.oft_store.token_escrow.key(),
                 is_signer: false,
@@ -72,16 +88,36 @@ impl LzReceiveTypes<'_> {
                 ctx.program_id.key()
             };
         accounts.extend_from_slice(&[
-            LzAccount { pubkey: to_address, is_signer: false, is_writable: false }, // 4
-            LzAccount { pubkey: token_dest, is_signer: false, is_writable: true },  // 5
+            LzAccount {
+                pubkey: to_address,
+                is_signer: false,
+                is_writable: false,
+            }, // 4
+            LzAccount {
+                pubkey: token_dest,
+                is_signer: false,
+                is_writable: true,
+            }, // 5
             LzAccount {
                 pubkey: ctx.accounts.token_mint.key(),
                 is_signer: false,
                 is_writable: true,
             }, // 6
-            LzAccount { pubkey: mint_authority, is_signer: false, is_writable: false }, // 7
-            LzAccount { pubkey: *token_program, is_signer: false, is_writable: false }, // 8
-            LzAccount { pubkey: ASSOCIATED_TOKEN_ID, is_signer: false, is_writable: false }, // 9
+            LzAccount {
+                pubkey: mint_authority,
+                is_signer: false,
+                is_writable: false,
+            }, // 7
+            LzAccount {
+                pubkey: *token_program,
+                is_signer: false,
+                is_writable: false,
+            }, // 8
+            LzAccount {
+                pubkey: ASSOCIATED_TOKEN_ID,
+                is_signer: false,
+                is_writable: false,
+            }, // 9
         ]);
 
         // account 10..12
@@ -93,8 +129,16 @@ impl LzReceiveTypes<'_> {
                 is_signer: false,
                 is_writable: false,
             }, // 10
-            LzAccount { pubkey: event_authority_account, is_signer: false, is_writable: false }, // 11
-            LzAccount { pubkey: ctx.program_id.key(), is_signer: false, is_writable: false }, // 12
+            LzAccount {
+                pubkey: event_authority_account,
+                is_signer: false,
+                is_writable: false,
+            }, // 11
+            LzAccount {
+                pubkey: ctx.program_id.key(),
+                is_signer: false,
+                is_writable: false,
+            }, // 12
         ]);
 
         let endpoint_program = ctx.accounts.oft_store.endpoint_program;

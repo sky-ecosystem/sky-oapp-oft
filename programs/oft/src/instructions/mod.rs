@@ -1,4 +1,5 @@
 pub mod init_oft;
+pub mod init_two_leg_send;
 pub mod lz_receive;
 pub mod lz_receive_types;
 pub mod quote_oft;
@@ -10,6 +11,7 @@ pub mod set_peer_config;
 pub mod withdraw_fee;
 
 pub use init_oft::*;
+pub use init_two_leg_send::*;
 pub use lz_receive::*;
 pub use lz_receive_types::*;
 pub use quote_oft::*;

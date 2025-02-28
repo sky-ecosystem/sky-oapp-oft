@@ -1,6 +1,6 @@
 use crate::*;
-use oapp::endpoint::{instructions::QuoteParams, MessagingFee};
 use cpi_helper::CpiContext;
+use oapp::endpoint::{instructions::QuoteParams, MessagingFee};
 
 use anchor_spl::{
     token_2022::spl_token_2022::{
@@ -44,7 +44,10 @@ impl QuoteSend<'_> {
             &ctx.accounts.token_mint,
             ctx.accounts.peer.fee_bps,
         )?;
-        require!(amount_received_ld >= params.min_amount_ld, OFTError::SlippageExceeded);
+        require!(
+            amount_received_ld >= params.min_amount_ld,
+            OFTError::SlippageExceeded
+        );
 
         // calling endpoint cpi
         oapp::endpoint_cpi::quote(
@@ -106,7 +109,11 @@ pub fn compute_fee_and_adjust_amount(
 }
 
 fn calculate_fee(pre_fee_amount: u64, default_fee_bps: u16, fee_bps: Option<u16>) -> u64 {
-    let final_fee_bps = if let Some(bps) = fee_bps { bps as u128 } else { default_fee_bps as u128 };
+    let final_fee_bps = if let Some(bps) = fee_bps {
+        bps as u128
+    } else {
+        default_fee_bps as u128
+    };
     if final_fee_bps == 0 || pre_fee_amount == 0 {
         0
     } else {
@@ -174,12 +181,15 @@ fn calculate_pre_fee_amount(fee: &TransferFee, post_fee_amount: u64) -> Option<u
                 // should return `None` if `pre_fee_amount` overflows
                 u64::try_from(raw_pre_fee_amount).ok()
             }
-        },
+        }
     }
 }
 
 fn ceil_div(numerator: u128, denominator: u128) -> Option<u128> {
-    numerator.checked_add(denominator)?.checked_sub(1)?.checked_div(denominator)
+    numerator
+        .checked_add(denominator)?
+        .checked_sub(1)?
+        .checked_div(denominator)
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]

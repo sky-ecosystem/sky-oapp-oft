@@ -74,7 +74,11 @@ impl LzReceive<'_> {
         require!(!ctx.accounts.oft_store.paused, OFTError::Paused);
 
         let oft_store_seed = ctx.accounts.token_escrow.key();
-        let seeds: &[&[u8]] = &[OFT_SEED, oft_store_seed.as_ref(), &[ctx.accounts.oft_store.bump]];
+        let seeds: &[&[u8]] = &[
+            OFT_SEED,
+            oft_store_seed.as_ref(),
+            &[ctx.accounts.oft_store.bump],
+        ];
 
         // Validate and clear the payload
         let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];

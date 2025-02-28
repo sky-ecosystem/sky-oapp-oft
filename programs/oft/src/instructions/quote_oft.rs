@@ -32,9 +32,15 @@ impl QuoteOFT<'_> {
             &ctx.accounts.token_mint,
             ctx.accounts.peer.fee_bps,
         )?;
-        require!(amount_received_ld >= params.min_amount_ld, OFTError::SlippageExceeded);
+        require!(
+            amount_received_ld >= params.min_amount_ld,
+            OFTError::SlippageExceeded
+        );
 
-        let oft_limits = OFTLimits { min_amount_ld: 0, max_amount_ld: 0xffffffffffffffff };
+        let oft_limits = OFTLimits {
+            min_amount_ld: 0,
+            max_amount_ld: 0xffffffffffffffff,
+        };
         let mut oft_fee_details = if amount_received_ld + oft_fee_ld < amount_sent_ld {
             vec![OFTFeeDetail {
                 fee_amount_ld: amount_sent_ld - oft_fee_ld - amount_received_ld,
@@ -50,8 +56,15 @@ impl QuoteOFT<'_> {
                 description: "Cross Chain Fee".to_string(),
             });
         }
-        let oft_receipt = OFTReceipt { amount_sent_ld, amount_received_ld };
-        Ok(QuoteOFTResult { oft_limits, oft_fee_details, oft_receipt })
+        let oft_receipt = OFTReceipt {
+            amount_sent_ld,
+            amount_received_ld,
+        };
+        Ok(QuoteOFTResult {
+            oft_limits,
+            oft_fee_details,
+            oft_receipt,
+        })
     }
 }
 

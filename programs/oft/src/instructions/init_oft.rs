@@ -71,8 +71,14 @@ impl InitOFT<'_> {
             ctx.accounts.oft_store.endpoint_program,
             ctx.accounts.oft_store.key(),
             ctx.remaining_accounts,
-            &[OFT_SEED, ctx.accounts.token_escrow.key().as_ref(), &[ctx.bumps.oft_store]],
-            RegisterOAppParams { delegate: params.admin },
+            &[
+                OFT_SEED,
+                ctx.accounts.token_escrow.key().as_ref(),
+                &[ctx.bumps.oft_store],
+            ],
+            RegisterOAppParams {
+                delegate: params.admin,
+            },
         )
     }
 }
