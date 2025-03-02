@@ -1,4 +1,6 @@
 export * from './initGovernance'
 export * from './lzReceive'
 export * from './lzReceiveTypes'
+export * from './lzReceiveTypesWithAlt'
+export * from './setLzReceiveAlt'
 export * from './setRemote'

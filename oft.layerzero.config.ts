@@ -5,12 +5,12 @@ import {generateConnectionsConfig} from '@layerzerolabs/metadata-tools';
 
 export const avalancheContract: OmniPointHardhat = {
   eid: EndpointId.AVALANCHE_V2_TESTNET,
-  contractName: 'GovernanceControllerOApp',
+  contractName: 'MyOFT',
 };
 
 export const solanaContract: OmniPointHardhat = {
   eid: EndpointId.SOLANA_V2_TESTNET,
-  address: 'Duz2gkkEFaVPmsTnrkaRjDTKY6ua4AcbR5uVFPPT9TTL', // your OFT Store address
+  address: 'HUPW9dJZxxSafEVovebGxgbac3JamjMHXiThBxY5u43M', // your OFT Store address
 };
 
 const EVM_ENFORCED_OPTIONS: OAppEnforcedOption[] = [

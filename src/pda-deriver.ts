@@ -7,7 +7,7 @@ export const GOVERNANCE_SEED = 'Governance'
 export const REMOTE_SEED = 'Remote'
 export const LZ_RECEIVE_TYPES_SEED = 'LzReceiveTypes'
 export const LZ_COMPOSE_TYPES_SEED = 'LzComposeTypes'
-
+export const LZ_RECEIVE_ALT_SEED = 'LzReceiveAlt'
 export class GovernancePDADeriver {
     constructor(
         public readonly program: PublicKey,
@@ -28,6 +28,13 @@ export class GovernancePDADeriver {
     lzReceiveTypesAccounts(): [PublicKey, number] {
         return PublicKey.findProgramAddressSync(
             [Buffer.from(LZ_RECEIVE_TYPES_SEED, 'utf8'), this.governance()[0].toBytes()],
+            this.program
+        )
+    }
+
+    lzReceiveAlt(): [PublicKey, number] {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from(LZ_RECEIVE_ALT_SEED, 'utf8'), this.governance()[0].toBytes()],
             this.program
         )
     }

@@ -22,3 +22,12 @@ pub struct LzReceiveTypesAccounts {
 impl LzReceiveTypesAccounts {
     pub const SIZE: usize = 8 + std::mem::size_of::<Self>();
 }
+
+#[account]
+pub struct LzReceiveAlt {
+    pub address: Pubkey,
+}
+
+impl LzReceiveAlt {
+    pub const SIZE: usize = 8 + std::mem::size_of::<Self>();
+}

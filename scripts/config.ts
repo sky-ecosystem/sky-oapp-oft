@@ -1,4 +1,4 @@
-import { Connection, Keypair, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js'
+import { Connection, Keypair, PublicKey, Signer, TransactionInstruction, SimulatedTransactionResponse } from '@solana/web3.js'
 import bs58 from 'bs58';
 import {
     EndpointProgram,
@@ -238,8 +238,61 @@ async function sendAndConfirm(
     signers: Signer[],
     instructions: TransactionInstruction[]
 ): Promise<void> {
-    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, 'confirmed')
+    const { blockhash } = await connection.getLatestBlockhash();
+    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, 'confirmed', blockhash)
     tx.sign(signers)
-    const hash = await connection.sendTransaction(tx, { skipPreflight: true })
+    const hash = await connection.sendTransaction(tx)
     await connection.confirmTransaction(hash, 'confirmed')
+}
+
+async function logSerializedTransaction(
+    connection: Connection,
+    signers: Signer[],
+    instructions: TransactionInstruction[]
+): Promise<void> {
+    const { blockhash } = await connection.getLatestBlockhash();
+    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, 'confirmed', blockhash)
+    tx.sign(signers)
+    const serializedTx = Buffer.from(tx.serialize()).toString('base64');
+    console.log('serialized transaction');
+    console.log(serializedTx);
+}
+
+async function simulateTransaction(
+    connection: Connection,
+    signers: Signer[],
+    instructions: TransactionInstruction[]
+): Promise<SimulatedTransactionResponse> {
+    const { blockhash } = await connection.getLatestBlockhash();
+    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, 'confirmed', blockhash)
+    tx.sign(signers)
+    const serializedTx = Buffer.from(tx.serialize()).toString('base64');
+
+    const simulation = await connection.simulateTransaction(tx)
+    return simulation.value
+}
+
+async function setLzReceiveAlt(
+    connection: Connection,
+    admin: Keypair,
+    alt: PublicKey
+): Promise<void> {
+    const ix = governanceProgram.setLzReceiveAlt(admin.publicKey, alt)
+    const [lzReceiveAltPDA] = governanceProgram.governanceDeriver.lzReceiveAlt()
+    console.log('lzReceiveAltPDA', lzReceiveAltPDA.toBase58());
+    let current = ''
+    try {
+        const info = await GovernanceProgram.accounts.LzReceiveAlt.fromAccountAddress(connection, lzReceiveAltPDA, {
+            commitment: 'confirmed',
+        })
+        current = info.address.toBase58();
+    } catch (e) {
+        /*remote not init*/
+    }
+    if (current == alt.toBase58()) {
+        console.log('setLzReceiveAlt: already set');
+        return Promise.resolve()
+    }
+    console.log('setLzReceiveAlt: setting')
+    sendAndConfirm(connection, [admin], [ix])
 }

@@ -7,101 +7,92 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import {
-  InitGovernanceParams,
-  initGovernanceParamsBeet,
-} from '../types/InitGovernanceParams'
+import { LzReceiveParams, lzReceiveParamsBeet } from '../types/LzReceiveParams'
 
 /**
  * @category Instructions
- * @category InitGovernance
+ * @category LzReceiveTypesWithAlt
  * @category generated
  */
-export type InitGovernanceInstructionArgs = {
-  params: InitGovernanceParams
+export type LzReceiveTypesWithAltInstructionArgs = {
+  params: LzReceiveParams
 }
 /**
  * @category Instructions
- * @category InitGovernance
+ * @category LzReceiveTypesWithAlt
  * @category generated
  */
-export const initGovernanceStruct = new beet.BeetArgsStruct<
-  InitGovernanceInstructionArgs & {
+export const lzReceiveTypesWithAltStruct = new beet.FixableBeetArgsStruct<
+  LzReceiveTypesWithAltInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['params', initGovernanceParamsBeet],
+    ['params', lzReceiveParamsBeet],
   ],
-  'InitGovernanceInstructionArgs'
+  'LzReceiveTypesWithAltInstructionArgs'
 )
 /**
- * Accounts required by the _initGovernance_ instruction
+ * Accounts required by the _lzReceiveTypesWithAlt_ instruction
  *
- * @property [_writable_, **signer**] payer
- * @property [_writable_] governance
- * @property [_writable_] lzReceiveTypesAccounts
- * @property [_writable_] lzReceiveAlt
+ * @property [] governance
+ * @property [] lzReceiveAlt
+ * @property [] lookupTable
+ * @property [] addressLookupTableProgram
  * @category Instructions
- * @category InitGovernance
+ * @category LzReceiveTypesWithAlt
  * @category generated
  */
-export type InitGovernanceInstructionAccounts = {
-  payer: web3.PublicKey
+export type LzReceiveTypesWithAltInstructionAccounts = {
   governance: web3.PublicKey
-  lzReceiveTypesAccounts: web3.PublicKey
   lzReceiveAlt: web3.PublicKey
-  systemProgram?: web3.PublicKey
+  lookupTable: web3.PublicKey
+  addressLookupTableProgram: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const initGovernanceInstructionDiscriminator = [
-  23, 241, 166, 67, 20, 30, 182, 32,
+export const lzReceiveTypesWithAltInstructionDiscriminator = [
+  238, 226, 72, 5, 18, 65, 33, 176,
 ]
 
 /**
- * Creates a _InitGovernance_ instruction.
+ * Creates a _LzReceiveTypesWithAlt_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category InitGovernance
+ * @category LzReceiveTypesWithAlt
  * @category generated
  */
-export function createInitGovernanceInstruction(
-  accounts: InitGovernanceInstructionAccounts,
-  args: InitGovernanceInstructionArgs,
+export function createLzReceiveTypesWithAltInstruction(
+  accounts: LzReceiveTypesWithAltInstructionAccounts,
+  args: LzReceiveTypesWithAltInstructionArgs,
   programId = new web3.PublicKey('EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3')
 ) {
-  const [data] = initGovernanceStruct.serialize({
-    instructionDiscriminator: initGovernanceInstructionDiscriminator,
+  const [data] = lzReceiveTypesWithAltStruct.serialize({
+    instructionDiscriminator: lzReceiveTypesWithAltInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.payer,
-      isWritable: true,
-      isSigner: true,
-    },
-    {
       pubkey: accounts.governance,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.lzReceiveTypesAccounts,
-      isWritable: true,
+      isWritable: false,
       isSigner: false,
     },
     {
       pubkey: accounts.lzReceiveAlt,
-      isWritable: true,
+      isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      pubkey: accounts.lookupTable,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.addressLookupTableProgram,
       isWritable: false,
       isSigner: false,
     },

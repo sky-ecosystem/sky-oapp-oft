@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test_msg_codec {
     use anchor_lang::prelude::*;
-    use oft::SendParams;
+    use oft::{SendParams, PEER_SEED};
     use solana_program::pubkey::Pubkey;
     use spl_token::instruction::TokenInstruction;
 
@@ -169,12 +169,27 @@ mod test_msg_codec {
             Pubkey::try_from("3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a").unwrap();
         let oft_spl_mint_address =
             Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
-        let oft_program_address = oft::ID;
+        let oft_store_address =
+            Pubkey::try_from("HUPW9dJZxxSafEVovebGxgbac3JamjMHXiThBxY5u43M").unwrap();
+        let oft_escrow_address =
+            Pubkey::try_from("HwpzV5qt9QzYRuWkHqTRuhbqtaMhapSNuriS5oMynkny").unwrap();
+        let dst_eid = 40106u32;
+
+        let (peer_address, _) = Pubkey::find_program_address(
+            &[
+                PEER_SEED,
+                oft_store_address.as_ref(),
+                &dst_eid.to_be_bytes(),
+            ],
+            &oft::ID,
+        );
+
+        // AccountNotFoundError: The account of type [PeerConfig] was not found at the provided address [mvRjPDUEckjtX8qUWmXxL5qeT1GjbsYudps8Te7VkAa].
+        println!("peer address: {}", peer_address);
 
         let (governance_ata_address, _bump_seed) = Pubkey::find_program_address(
             &[
                 governance_oapp_address.as_ref(),
-                // owner_account.pubkey.as_ref(),
                 spl_token::id().as_ref(),
                 oft_spl_mint_address.as_ref(),
             ],
@@ -190,15 +205,15 @@ mod test_msg_codec {
             },
             // peer account
             Acc {
-                pubkey: Pubkey::default(), // @TODO: change to the peer account
+                pubkey: peer_address,
                 is_signer: false,
-                is_writable: false,
+                is_writable: true,
             },
             // OFT store account
             Acc {
-                pubkey: Pubkey::default(), // @TODO: change to the OFT store account
+                pubkey: oft_store_address,
                 is_signer: false,
-                is_writable: false,
+                is_writable: true,
             },
             // SPL token source account
             Acc {
@@ -208,7 +223,7 @@ mod test_msg_codec {
             },
             // SPL token escrow account
             Acc {
-                pubkey: Pubkey::default(), // @TODO: change to the escrow account
+                pubkey: oft_escrow_address,
                 is_signer: false,
                 is_writable: true,
             },
@@ -216,7 +231,7 @@ mod test_msg_codec {
             Acc {
                 pubkey: oft_spl_mint_address,
                 is_signer: false,
-                is_writable: false,
+                is_writable: true,
             },
             // token program
             Acc {
@@ -226,26 +241,20 @@ mod test_msg_codec {
             },
         ];
 
+        let options_hex = "00030100110100000000000000000000000000030d40";
+        let options = hex::decode(options_hex).unwrap();
+
         let send_params = SendParams {
-            to: [0; 32],
-            options: vec![],
+            to: evm_address_to_bytes32("0804a6e2798F42C7F3c97215DdF958d5500f8ec8"),
+            options: options, // 200k lzReceive gas
             compose_msg: None,
-            native_fee: 0,
-            lz_token_fee: 0,
+            native_fee: 0,   // empty for first leg
+            lz_token_fee: 0, // empty for first leg
             amount_ld: 1000,
             min_amount_ld: 1000,
-            dst_eid: 0,
+            dst_eid: dst_eid, // fuji
         };
 
-        pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
-            let preimage = format!("{}:{}", namespace, name);
-
-            let mut sighash = [0u8; 8];
-            sighash.copy_from_slice(
-                &anchor_lang::solana_program::hash::hash(preimage.as_bytes()).to_bytes()[..8],
-            );
-            sighash
-        }
         let mut instruction_data = Vec::new();
 
         let discriminator = sighash("global", "init_two_leg_send");
@@ -258,6 +267,18 @@ mod test_msg_codec {
             .expect("Failed to serialize SendParams");
 
         println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: oft::id(),
+            accounts: accounts.clone(),
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
 
         // let mut accounts_metas: Vec<AccountMeta> = Vec::with_capacity(accounts.len());
         // for account in accounts.iter() {
@@ -314,5 +335,40 @@ mod test_msg_codec {
         //     amount_to_transfer,
         //     9,
         // ).unwrap();
+    }
+
+    pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
+        let preimage = format!("{}:{}", namespace, name);
+
+        let mut sighash = [0u8; 8];
+        sighash.copy_from_slice(
+            &anchor_lang::solana_program::hash::hash(preimage.as_bytes()).to_bytes()[..8],
+        );
+        sighash
+    }
+
+    // Function to convert EVM address to bytes32
+    fn evm_address_to_bytes32(address: &str) -> [u8; 32] {
+        let mut result = [0u8; 32];
+
+        // Remove '0x' prefix if present
+        let clean_address = if address.starts_with("0x") {
+            &address[2..]
+        } else {
+            address
+        };
+
+        // Decode the hex string
+        let decoded = hex::decode(clean_address).expect("Invalid hex in EVM address");
+
+        // EVM addresses are 20 bytes, so we copy to the last 20 bytes of the 32-byte array
+        // This is the standard way to represent EVM addresses in a bytes32
+        if decoded.len() == 20 {
+            result[12..32].copy_from_slice(&decoded);
+        } else {
+            panic!("EVM address must be 20 bytes (40 hex chars)");
+        }
+
+        result
     }
 }

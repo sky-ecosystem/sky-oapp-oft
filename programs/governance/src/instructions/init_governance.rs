@@ -22,6 +22,14 @@ pub struct InitGovernance<'info> {
         bump
     )]
     pub lz_receive_types_accounts: Account<'info, LzReceiveTypesAccounts>,
+    #[account(
+        init,
+        payer = payer,
+        space = LzReceiveAlt::SIZE,
+        seeds = [LZ_RECEIVE_ALT_SEED, &governance.key().to_bytes()],
+        bump
+    )]
+    pub lz_receive_alt: Account<'info, LzReceiveAlt>,
     pub system_program: Program<'info, System>,
 }
 

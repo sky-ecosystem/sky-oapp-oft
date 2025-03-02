@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{
 };
 use cpi_helper::CpiContext;
 
-#[event_cpi]
+// #[event_cpi]
 #[derive(CpiContext, Accounts)]
 #[instruction(params: SendParams)]
 pub struct InitTwoLegSend<'info> {

@@ -1,4 +1,6 @@
 export * from './InitGovernanceParams'
 export * from './LzAccount'
+export * from './LzAccountAlt'
 export * from './LzReceiveParams'
+export * from './SetLzReceiveAltParams'
 export * from './SetRemoteParams'

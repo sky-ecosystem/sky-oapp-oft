@@ -71,6 +71,7 @@ export class Governance {
                 payer,
                 governance: id,
                 lzReceiveTypesAccounts: this.governanceDeriver.lzReceiveTypesAccounts()[0],
+                lzReceiveAlt: this.governanceDeriver.lzReceiveAlt()[0],
                 anchorRemainingAccounts: registerOAppAccounts,
             } satisfies instructions.InitGovernanceInstructionAccounts,
             {
@@ -117,6 +118,31 @@ export class Governance {
         )
     }
 
+    async getLzReceiveAltUnderlyingAddress(connection: Connection): Promise<PublicKey> {
+        const [lzReceiveAltPDA] = this.governanceDeriver.lzReceiveAlt()
+        const info = await accounts.LzReceiveAlt.fromAccountAddress(connection, lzReceiveAltPDA, {
+            commitment: 'confirmed',
+        })
+        return new PublicKey(info.address.toBase58())
+    }
+
+    setLzReceiveAlt(admin: PublicKey, alt: PublicKey): TransactionInstruction {
+        const [lzReceiveAltPDA] = this.governanceDeriver.lzReceiveAlt()
+        return instructions.createSetLzReceiveAltInstruction(
+            {
+                admin,
+                governance: this.idPDA()[0],
+                lzReceiveAlt: lzReceiveAltPDA,
+            } satisfies instructions.SetLzReceiveAltInstructionAccounts,
+            {
+                params: {
+                    alt
+                } satisfies types.SetLzReceiveAltParams,
+            },
+            this.program
+        )
+    }
+
     async getEndpoint(connection: Connection): Promise<EndpointProgram.Endpoint> {
         if (this.endpoint) {
             return this.endpoint
@@ -157,4 +183,29 @@ export class Governance {
 
         throw new Error(`Unsupported message library version: ${JSON.stringify(msgLibVersion, null, 2)}`)
     }
+
+    async getLzReceiveTypesWithAlt(connection: Connection, params: types.LzReceiveParams): Promise<TransactionInstruction> {
+        const [id] = this.governanceDeriver.governance()
+        const [lzReceiveAltPDA] = this.governanceDeriver.lzReceiveAlt()
+
+          const info = await accounts.LzReceiveAlt.fromAccountAddress(connection, lzReceiveAltPDA, {
+            commitment: 'confirmed',
+        })
+
+        const ix = instructions.createLzReceiveTypesWithAltInstruction(
+            {
+                governance: id,
+                lzReceiveAlt: lzReceiveAltPDA,
+                lookupTable: new PublicKey(info.address.toBase58()),
+                addressLookupTableProgram: new PublicKey('AddressLookupTab1e1111111111111111111111111'),
+            } satisfies instructions.LzReceiveTypesWithAltInstructionAccounts,
+            {
+                params,
+            },
+            this.program
+        )
+
+        return ix;
+    }
+
 }

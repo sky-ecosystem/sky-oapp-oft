@@ -39,6 +39,7 @@ export const lzReceiveStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_, **signer**] payer
  * @property [_writable_] governance
  * @property [] remote
+ * @property [] program
  * @category Instructions
  * @category LzReceive
  * @category generated
@@ -47,6 +48,8 @@ export type LzReceiveInstructionAccounts = {
   payer: web3.PublicKey
   governance: web3.PublicKey
   remote: web3.PublicKey
+  program: web3.PublicKey
+  systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -86,6 +89,16 @@ export function createLzReceiveInstruction(
     },
     {
       pubkey: accounts.remote,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
       isWritable: false,
       isSigner: false,
     },
