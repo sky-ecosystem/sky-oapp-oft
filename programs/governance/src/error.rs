@@ -10,4 +10,6 @@ pub enum GovernanceError {
     InvalidGovernanceProgram,
     #[msg("InvalidGovernanceMessage")]
     InvalidGovernanceMessage,
+    #[msg("InvalidInstruction")]
+    InvalidInstruction,
 }

@@ -8,6 +8,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use oapp::{endpoint_cpi::LzAccount, LzReceiveParams};
 use state::*;
+use error::*;
 
 declare_id!("EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3");
 
@@ -63,7 +64,12 @@ pub mod governance {
     ) -> Result<()> {
         SetLzReceiveAlt::apply(&mut ctx, &params)
     }
+
+    pub fn send_oft(mut ctx: Context<SendOFT>, params: SendOFTParams) -> Result<()> {
+        SendOFT::apply(&mut ctx, &params)
+    }
 }
+
 const fn sentinel_pubkey(input: &[u8]) -> Pubkey {
     let mut output: [u8; 32] = [0; 32];
 
