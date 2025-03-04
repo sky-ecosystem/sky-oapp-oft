@@ -86,6 +86,7 @@ task('lz:oapp:solana:clear-with-alt', 'Clear a stored payload on Solana')
 
         const governance = new Governance(new PublicKey(process.env.GOVERNANCE_PROGRAM_ID), 0)
         const lookupTableAddress = await governance.getLzReceiveAltUnderlyingAddress(connection)
+
         const lookupTableAccount = (
             await connection.getAddressLookupTable(new PublicKey(lookupTableAddress))
         ).value;

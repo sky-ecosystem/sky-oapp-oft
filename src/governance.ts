@@ -11,7 +11,7 @@ import { EndpointProgram, EventPDADeriver, SimpleMessageLibProgram, UlnProgram }
 import * as accounts from './generated/governance/accounts'
 import * as instructions from './generated/governance/instructions'
 import * as types from './generated/governance/types'
-import { GovernancePDADeriver } from './pda-deriver'
+import { GovernancePDADeriver } from './governance-pda-deriver'
 
 export { accounts, instructions, types }
 
@@ -207,5 +207,5 @@ export class Governance {
 
         return ix;
     }
-
+    
 }

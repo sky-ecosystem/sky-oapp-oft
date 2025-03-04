@@ -1,4 +1,6 @@
+pub mod execute_two_leg_send;
 pub mod init_oft;
+pub mod init_pending_messages_store;
 pub mod init_two_leg_send;
 pub mod lz_receive;
 pub mod lz_receive_types;
@@ -10,7 +12,9 @@ pub mod set_pause;
 pub mod set_peer_config;
 pub mod withdraw_fee;
 
+pub use execute_two_leg_send::*;
 pub use init_oft::*;
+pub use init_pending_messages_store::*;
 pub use init_two_leg_send::*;
 pub use lz_receive::*;
 pub use lz_receive_types::*;

@@ -11,4 +11,7 @@ pub enum OFTError {
     InvalidFee,
     InvalidMintAuthority,
     Paused,
+    MaxPendingTwoLegSendMessagesExceeded,
+    InvalidTwoLegSendParamsHash,
+    InvalidTwoLegSendNonce,
 }

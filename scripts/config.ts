@@ -1,4 +1,4 @@
-import { Connection, Keypair, PublicKey, Signer, TransactionInstruction, SimulatedTransactionResponse } from '@solana/web3.js'
+import { Connection, Keypair, PublicKey, Signer, TransactionInstruction, SimulatedTransactionResponse, SendTransactionError, ComputeBudgetProgram } from '@solana/web3.js'
 import bs58 from 'bs58';
 import {
     EndpointProgram,
@@ -10,7 +10,9 @@ import {
 import { arrayify, hexZeroPad } from '@ethersproject/bytes'
 import { GovernanceProgram } from '../src'
 import { EndpointId } from '@layerzerolabs/lz-definitions';
-
+import { OFTPDADeriver } from '../src/oft-pda-deriver';
+import { OFTProgram } from '../src/oft';
+import { SendParams } from '../src/generated/oft';
 if (!process.env.SOLANA_PRIVATE_KEY) {
     throw new Error("SOLANA_PRIVATE_KEY env required");
 }
@@ -24,7 +26,13 @@ if (!governanceProgramId) {
     throw new Error("GOVERNANCE_PROGRAM_ID env required");
 }
 
+const oftProgramId = process.env.OFT_PROGRAM_ID
+if (!oftProgramId) {
+    throw new Error("OFT_PROGRAM_ID env required");
+}
+
 const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governanceProgramId))
+const oftProgram = new OFTProgram(new PublicKey(oftProgramId))
 
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
@@ -237,12 +245,17 @@ async function sendAndConfirm(
     connection: Connection,
     signers: Signer[],
     instructions: TransactionInstruction[]
-): Promise<void> {
+): Promise<string> {
     const { blockhash } = await connection.getLatestBlockhash();
-    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, 'confirmed', blockhash)
+    // const ALT = new PublicKey('GvbvNTqJgRKn8diHeY2S3c3xLAGNZW2gUqycwdoKRWqe')
+    const tx = await buildVersionedTransaction(
+        connection, signers[0].publicKey, instructions, 'confirmed', blockhash,
+    )
+        // ALT)
     tx.sign(signers)
     const hash = await connection.sendTransaction(tx)
     await connection.confirmTransaction(hash, 'confirmed')
+    return hash
 }
 
 async function logSerializedTransaction(
@@ -279,7 +292,7 @@ async function setLzReceiveAlt(
 ): Promise<void> {
     const ix = governanceProgram.setLzReceiveAlt(admin.publicKey, alt)
     const [lzReceiveAltPDA] = governanceProgram.governanceDeriver.lzReceiveAlt()
-    console.log('lzReceiveAltPDA', lzReceiveAltPDA.toBase58());
+    // console.log('lzReceiveAltPDA', lzReceiveAltPDA.toBase58());
     let current = ''
     try {
         const info = await GovernanceProgram.accounts.LzReceiveAlt.fromAccountAddress(connection, lzReceiveAltPDA, {
@@ -295,4 +308,59 @@ async function setLzReceiveAlt(
     }
     console.log('setLzReceiveAlt: setting')
     sendAndConfirm(connection, [admin], [ix])
+}
+
+async function executeTwoLegSend(
+    connection: Connection,
+    admin: Keypair,
+): Promise<void> {
+    console.log('options bytes', Array.from(Buffer.from("00030100110100000000000000000000000000030d40", "hex")));
+    const sendParams = {
+        to: Array.from(Buffer.from("0000000000000000000000000804a6e2798f42c7f3c97215ddf958d5500f8ec8", "hex")),
+        options: Uint8Array.from(Buffer.from("00030100110100000000000000000000000000030d40", "hex")),
+        composeMsg: null,
+        nativeFee: 0,
+        lzTokenFee: 0,
+        amountLd: 1000,
+        minAmountLd: 1000,
+        dstEid: 40106,
+    } satisfies SendParams;
+
+    console.log(JSON.stringify(sendParams, null, 2));
+
+    const packetPath = {
+        dstEid: sendParams.dstEid,
+        sender: new PublicKey('HUPW9dJZxxSafEVovebGxgbac3JamjMHXiThBxY5u43M').toBuffer().toString('hex'),
+        receiver: "0x00000000000000000000000089e5fd9975e67a27dbbd2af085f4a5627ac14ed9"
+    };
+    // console.log('sender to base58', bs58.encode(packetPath.sender));
+    // console.log('sender', oftProgram.oftStorePDA().toBuffer().toString('hex'));
+    // const msgLibProgram = new UlnProgram.Uln(new PublicKey('6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn'))
+    const msgLibProgram = new UlnProgram.Uln(new PublicKey('7a4WjyR8VZ7yZz5XJAKm39BUGn5iT9CKcv2pmG9tdXVH'))
+
+    const remainingAccounts = await endpointProgram.getSendIXAccountMetaForCPI(connection, admin.publicKey, packetPath, msgLibProgram);
+    // console.log('remainingAccounts', remainingAccounts);
+
+    const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({
+        units: 1_000_000,
+    });
+
+    // ix.keys.push({
+    //     pubkey: computeBudgetIx.programId,
+    //     isSigner: false,
+    //     isWritable: false,
+    // });
+
+    const ix = await oftProgram.executeTwoLegSend(connection, admin.publicKey, {
+        sender: new PublicKey('3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a'),
+        nonce: 1,
+        sendParams,
+        nativeFee: 22155085,
+        lzTokenFee: 0,
+    });
+
+    ix.keys.push(...remainingAccounts);
+
+    const tx = await sendAndConfirm(connection, [admin], [computeBudgetIx, ix])
+    console.log('executeTwoLegSend tx hash', tx);
 }

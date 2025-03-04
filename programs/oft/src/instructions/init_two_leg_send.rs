@@ -1,11 +1,11 @@
 use crate::*;
+use anchor_lang::solana_program::keccak::hashv;
 use anchor_spl::token_interface::{
     self, Burn, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
-use cpi_helper::CpiContext;
 
 // #[event_cpi]
-#[derive(CpiContext, Accounts)]
+#[derive(Accounts)]
 #[instruction(params: SendParams)]
 pub struct InitTwoLegSend<'info> {
     pub signer: Signer<'info>,
@@ -47,11 +47,22 @@ pub struct InitTwoLegSend<'info> {
     )]
     pub token_mint: InterfaceAccount<'info, Mint>,
     pub token_program: Interface<'info, TokenInterface>,
+    #[account(
+        mut,
+        seeds = [TWO_LEG_SEND_PENDING_MESSAGE_STORE_SEED, oft_store.key().as_ref(), signer.key().as_ref()],
+        bump
+    )]
+    pub two_leg_send_pending_message_store: Account<'info, TwoLegSendPendingMessageStore>,
 }
 
 impl InitTwoLegSend<'_> {
     pub fn apply(ctx: &mut Context<InitTwoLegSend>, params: &SendParams) -> Result<()> {
         require!(!ctx.accounts.oft_store.paused, OFTError::Paused);
+        require!(
+            ctx.accounts.two_leg_send_pending_message_store.queue.len()
+                < MAX_PENDING_TWO_LEG_SEND_MESSAGES,
+            OFTError::MaxPendingTwoLegSendMessagesExceeded
+        );
 
         let (amount_sent_ld, amount_received_ld, oft_fee_ld) = compute_fee_and_adjust_amount(
             params.amount_ld,
@@ -63,13 +74,6 @@ impl InitTwoLegSend<'_> {
             amount_received_ld >= params.min_amount_ld,
             OFTError::SlippageExceeded
         );
-
-        if let Some(rate_limiter) = ctx.accounts.peer.outbound_rate_limiter.as_mut() {
-            rate_limiter.try_consume(amount_received_ld)?;
-        }
-        if let Some(rate_limiter) = ctx.accounts.peer.inbound_rate_limiter.as_mut() {
-            rate_limiter.refill(amount_received_ld)?;
-        }
 
         if ctx.accounts.oft_store.oft_type == OFTType::Adapter {
             // transfer all tokens to escrow with fee
@@ -120,47 +124,29 @@ impl InitTwoLegSend<'_> {
             }
         }
 
-        msg!("InitTwoLegSend: TODO: store the message for permissionless execution");
+        let send_params_hash = hash_send_params(params);
+        let new_nonce = ctx
+            .accounts
+            .two_leg_send_pending_message_store
+            .last_nonce_used
+            + 1;
+        ctx.accounts
+            .two_leg_send_pending_message_store
+            .queue
+            .push(TwoLegSendPendingMessage {
+                nonce: new_nonce,
+                send_params_hash,
+            });
+        ctx.accounts
+            .two_leg_send_pending_message_store
+            .last_nonce_used = new_nonce;
 
         Ok(())
-        // // send message to endpoint
-        // require!(
-        //     ctx.accounts.oft_store.key() == ctx.remaining_accounts[1].key(),
-        //     OFTError::InvalidSender
-        // );
-        // let amount_sd = ctx.accounts.oft_store.ld2sd(amount_received_ld);
-        // let msg_receipt = oapp::endpoint_cpi::send(
-        //     ctx.accounts.oft_store.endpoint_program,
-        //     ctx.accounts.oft_store.key(),
-        //     ctx.remaining_accounts,
-        //     &[OFT_SEED, ctx.accounts.token_escrow.key().as_ref(), &[ctx.accounts.oft_store.bump]],
-        //     EndpointSendParams {
-        //         dst_eid: params.dst_eid,
-        //         receiver: ctx.accounts.peer.peer_address,
-        //         message: msg_codec::encode(
-        //             params.to,
-        //             amount_sd,
-        //             ctx.accounts.signer.key(),
-        //             &params.compose_msg,
-        //         ),
-        //         options: ctx
-        //             .accounts
-        //             .peer
-        //             .enforced_options
-        //             .combine_options(&params.compose_msg, &params.options)?,
-        //         native_fee: params.native_fee,
-        //         lz_token_fee: params.lz_token_fee,
-        //     },
-        // )?;
-
-        // emit_cpi!(OFTSent {
-        //     guid: msg_receipt.guid,
-        //     dst_eid: params.dst_eid,
-        //     from: ctx.accounts.token_source.key(),
-        //     amount_sent_ld,
-        //     amount_received_ld
-        // });
-
-        // Ok((msg_receipt, OFTReceipt { amount_sent_ld, amount_received_ld }))
     }
+}
+
+fn hash_send_params(params: &SendParams) -> [u8; 32] {
+    let mut writer = Vec::new();
+    params.serialize(&mut writer).unwrap();
+    hashv(&[&writer]).to_bytes()
 }

@@ -26,15 +26,18 @@ pub const OFT_SEED: &[u8] = b"OFT";
 pub const PEER_SEED: &[u8] = b"Peer";
 pub const ENFORCED_OPTIONS_SEED: &[u8] = b"EnforcedOptions";
 pub const LZ_RECEIVE_TYPES_SEED: &[u8] = oapp::LZ_RECEIVE_TYPES_SEED;
+pub const TWO_LEG_SEND_PENDING_MESSAGE_STORE_SEED: &[u8] = b"TwoLegSendPendingMessageStore";
 
 #[program]
 pub mod oft {
     use super::*;
 
-    // commented out due to struct lifetime errors when using cpi
-    // pub fn oft_version(_ctx: Context<OFTVersion>) -> Result<Version> {
-    //     Ok(Version { interface: 2, message: 1 })
-    // }
+    pub fn oft_version(_ctx: Context<OFTVersion>) -> Result<Version> {
+        Ok(Version {
+            interface: 2,
+            message: 1,
+        })
+    }
 
     pub fn init_oft(mut ctx: Context<InitOFT>, params: InitOFTParams) -> Result<()> {
         InitOFT::apply(&mut ctx, &params)
@@ -94,6 +97,20 @@ pub mod oft {
     ) -> Result<Vec<oapp::endpoint_cpi::LzAccount>> {
         LzReceiveTypes::apply(&ctx, &params)
     }
+
+    pub fn init_pending_messages_store(
+        mut ctx: Context<InitPendingMessagesStore>,
+        params: InitPendingMessagesStoreParams,
+    ) -> Result<()> {
+        InitPendingMessagesStore::apply(&mut ctx, &params)
+    }
+
+    pub fn execute_two_leg_send(
+        mut ctx: Context<ExecuteTwoLegSend>,
+        params: ExecuteTwoLegSendParams,
+    ) -> Result<(MessagingReceipt, OFTReceipt)> {
+        ExecuteTwoLegSend::apply(&mut ctx, &params)
+    }
 }
 
 #[derive(Accounts)]
@@ -103,17 +120,4 @@ pub struct OFTVersion {}
 pub struct Version {
     pub interface: u64,
     pub message: u64,
-}
-
-#[cfg(feature = "cpi")]
-pub trait ConstructCPIContext<'a, 'b, 'c, 'info, T>
-where
-    T: ToAccountMetas + ToAccountInfos<'info>,
-{
-    const MIN_ACCOUNTS_LEN: usize;
-
-    fn construct_context(
-        program_id: Pubkey,
-        accounts: &[AccountInfo<'info>],
-    ) -> Result<CpiContext<'a, 'b, 'c, 'info, T>>;
 }

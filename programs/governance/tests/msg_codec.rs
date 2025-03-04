@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test_msg_codec {
     use anchor_lang::prelude::*;
-    use oft::{SendParams, PEER_SEED};
+    use oft::{SendParams, PEER_SEED, TWO_LEG_SEND_PENDING_MESSAGE_STORE_SEED};
     use solana_program::pubkey::Pubkey;
     use spl_token::instruction::TokenInstruction;
 
@@ -184,6 +184,20 @@ mod test_msg_codec {
             &oft::ID,
         );
 
+        let (two_leg_send_pending_message_store_address, _bump_seed) = Pubkey::find_program_address(
+            &[
+                TWO_LEG_SEND_PENDING_MESSAGE_STORE_SEED,
+                oft_store_address.as_ref(),
+                governance_oapp_address.as_ref(),
+            ],
+            &oft::ID,
+        );
+
+        println!(
+            "two leg send pending message store address: {}",
+            two_leg_send_pending_message_store_address
+        );
+
         // AccountNotFoundError: The account of type [PeerConfig] was not found at the provided address [mvRjPDUEckjtX8qUWmXxL5qeT1GjbsYudps8Te7VkAa].
         println!("peer address: {}", peer_address);
 
@@ -195,6 +209,8 @@ mod test_msg_codec {
             ],
             &spl_associated_token_account::id(),
         );
+
+        println!("governance ata address: {}", governance_ata_address);
 
         let accounts = vec![
             // signer
@@ -239,6 +255,12 @@ mod test_msg_codec {
                 is_signer: false,
                 is_writable: false,
             },
+            // two leg send pending message store
+            Acc {
+                pubkey: two_leg_send_pending_message_store_address,
+                is_signer: false,
+                is_writable: true,
+            },
         ];
 
         let options_hex = "00030100110100000000000000000000000000030d40";
@@ -279,62 +301,6 @@ mod test_msg_codec {
         msg.serialize(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
-
-        // let mut accounts_metas: Vec<AccountMeta> = Vec::with_capacity(accounts.len());
-        // for account in accounts.iter() {
-        //     if account.is_writable {
-        //         accounts_metas.push(AccountMeta::new(account.pubkey, account.is_signer));
-        //     } else {
-        //         accounts_metas.push(AccountMeta::new_readonly(account.pubkey, account.is_signer));
-        //     }
-        // }
-
-        // // let account_infos = accounts_metas.to_account_infos();
-
-        // let lamports = Rc::new(RefCell::new(1_000_000));
-        // let data = Rc::new(RefCell::new(vec![0; 32]));
-        // let owner = Rc::new(Pubkey::default());
-
-        // let account_infos: Vec<AccountInfo<'a>> = accounts_metas.iter().map(|meta| {
-        //     AccountInfo::new(
-        //         &meta.pubkey,
-        //         meta.is_signer,
-        //         meta.is_writable,
-        //         &mut *lamports.borrow_mut(),
-        //         &mut *data.borrow_mut(),
-        //         &owner,
-        //         false,
-        //         Epoch::default(),
-        //     )
-        // }).collect();
-
-        // let cpi_ctx = InitTwoLegSend::construct_context(oft_program_address, &account_infos).unwrap();
-
-        // construct the init_two_leg_send instruction
-        // let init_two_leg_send_ix = oft::cpi::init_two_leg_send(
-        //     cpi_ctx,
-        //     SendParams {
-        //         to: [0; 32],
-        //         options: vec![],
-        //         compose_msg: None,
-        //         native_fee: 0,
-        //         lz_token_fee: 0,
-        //         amount_ld: 0,
-        //         dst_eid: 0,
-        //         min_amount_ld: 0,
-        //     }
-        // ).unwrap();
-
-        // let transfer_ix = spl_token::instruction::transfer_checked(
-        //     &spl_token::ID,
-        //     &token_account.pubkey,
-        //     &mint_pubkey,
-        //     &destination_account.pubkey,
-        //     &Pubkey::try_from("3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a").unwrap(),
-        //     &[],
-        //     amount_to_transfer,
-        //     9,
-        // ).unwrap();
     }
 
     pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {

@@ -25,4 +25,4 @@ oapp = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "3432
 hex = "0.4.3"
 spl-token = { version = "4", features = ["no-entrypoint"]}
 spl-associated-token-account = { version = "2.2", features = ["no-entrypoint"]}
-oft = { path = "../oft", features = ["cpi"] }
+oft = { path = "../oft" }

@@ -2,11 +2,10 @@ use crate::*;
 use anchor_spl::token_interface::{
     self, Burn, Mint, TokenAccount, TokenInterface, TransferChecked,
 };
-use cpi_helper::CpiContext;
 use oapp::endpoint::{instructions::SendParams as EndpointSendParams, MessagingReceipt};
 
 #[event_cpi]
-#[derive(CpiContext, Accounts)]
+#[derive(Accounts)]
 #[instruction(params: SendParams)]
 pub struct Send<'info> {
     pub signer: Signer<'info>,

@@ -10,54 +10,52 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
 
 /**
- * Arguments used to create {@link AddressLookupTableAccount}
+ * Arguments used to create {@link LzReceiveTypesAccounts}
  * @category Accounts
  * @category generated
  */
-export type AddressLookupTableAccountArgs = {
-  key: web3.PublicKey
-  addresses: web3.PublicKey[]
+export type LzReceiveTypesAccountsArgs = {
+  oftStore: web3.PublicKey
+  tokenMint: web3.PublicKey
 }
 
-export const addressLookupTableAccountDiscriminator = [
-  184, 156, 66, 218, 52, 152, 93, 138,
+export const lzReceiveTypesAccountsDiscriminator = [
+  248, 87, 167, 117, 5, 251, 21, 126,
 ]
 /**
- * Holds the data for the {@link AddressLookupTableAccount} Account and provides de/serialization
+ * Holds the data for the {@link LzReceiveTypesAccounts} Account and provides de/serialization
  * functionality for that data
  *
  * @category Accounts
  * @category generated
  */
-export class AddressLookupTableAccount
-  implements AddressLookupTableAccountArgs
-{
+export class LzReceiveTypesAccounts implements LzReceiveTypesAccountsArgs {
   private constructor(
-    readonly key: web3.PublicKey,
-    readonly addresses: web3.PublicKey[]
+    readonly oftStore: web3.PublicKey,
+    readonly tokenMint: web3.PublicKey
   ) {}
 
   /**
-   * Creates a {@link AddressLookupTableAccount} instance from the provided args.
+   * Creates a {@link LzReceiveTypesAccounts} instance from the provided args.
    */
-  static fromArgs(args: AddressLookupTableAccountArgs) {
-    return new AddressLookupTableAccount(args.key, args.addresses)
+  static fromArgs(args: LzReceiveTypesAccountsArgs) {
+    return new LzReceiveTypesAccounts(args.oftStore, args.tokenMint)
   }
 
   /**
-   * Deserializes the {@link AddressLookupTableAccount} from the data of the provided {@link web3.AccountInfo}.
+   * Deserializes the {@link LzReceiveTypesAccounts} from the data of the provided {@link web3.AccountInfo}.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static fromAccountInfo(
     accountInfo: web3.AccountInfo<Buffer>,
     offset = 0
-  ): [AddressLookupTableAccount, number] {
-    return AddressLookupTableAccount.deserialize(accountInfo.data, offset)
+  ): [LzReceiveTypesAccounts, number] {
+    return LzReceiveTypesAccounts.deserialize(accountInfo.data, offset)
   }
 
   /**
    * Retrieves the account info from the provided address and deserializes
-   * the {@link AddressLookupTableAccount} from its data.
+   * the {@link LzReceiveTypesAccounts} from its data.
    *
    * @throws Error if no account info is found at the address or if deserialization fails
    */
@@ -65,17 +63,17 @@ export class AddressLookupTableAccount
     connection: web3.Connection,
     address: web3.PublicKey,
     commitmentOrConfig?: web3.Commitment | web3.GetAccountInfoConfig
-  ): Promise<AddressLookupTableAccount> {
+  ): Promise<LzReceiveTypesAccounts> {
     const accountInfo = await connection.getAccountInfo(
       address,
       commitmentOrConfig
     )
     if (accountInfo == null) {
       throw new Error(
-        `Unable to find AddressLookupTableAccount account at ${address}`
+        `Unable to find LzReceiveTypesAccounts account at ${address}`
       )
     }
-    return AddressLookupTableAccount.fromAccountInfo(accountInfo, 0)[0]
+    return LzReceiveTypesAccounts.fromAccountInfo(accountInfo, 0)[0]
   }
 
   /**
@@ -86,79 +84,77 @@ export class AddressLookupTableAccount
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3'
+      'E2R6qMMzLBjCwXs66MPEg2zKfpt5AMxWNgSULsLYfPS2'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(
       programId,
-      addressLookupTableAccountBeet
+      lzReceiveTypesAccountsBeet
     )
   }
 
   /**
-   * Deserializes the {@link AddressLookupTableAccount} from the provided data Buffer.
+   * Deserializes the {@link LzReceiveTypesAccounts} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static deserialize(
     buf: Buffer,
     offset = 0
-  ): [AddressLookupTableAccount, number] {
-    return addressLookupTableAccountBeet.deserialize(buf, offset)
+  ): [LzReceiveTypesAccounts, number] {
+    return lzReceiveTypesAccountsBeet.deserialize(buf, offset)
   }
 
   /**
-   * Serializes the {@link AddressLookupTableAccount} into a Buffer.
+   * Serializes the {@link LzReceiveTypesAccounts} into a Buffer.
    * @returns a tuple of the created Buffer and the offset up to which the buffer was written to store it.
    */
   serialize(): [Buffer, number] {
-    return addressLookupTableAccountBeet.serialize({
-      accountDiscriminator: addressLookupTableAccountDiscriminator,
+    return lzReceiveTypesAccountsBeet.serialize({
+      accountDiscriminator: lzReceiveTypesAccountsDiscriminator,
       ...this,
     })
   }
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link AddressLookupTableAccount} for the provided args.
-   *
-   * @param args need to be provided since the byte size for this account
-   * depends on them
+   * {@link LzReceiveTypesAccounts}
    */
-  static byteSize(args: AddressLookupTableAccountArgs) {
-    const instance = AddressLookupTableAccount.fromArgs(args)
-    return addressLookupTableAccountBeet.toFixedFromValue({
-      accountDiscriminator: addressLookupTableAccountDiscriminator,
-      ...instance,
-    }).byteSize
+  static get byteSize() {
+    return lzReceiveTypesAccountsBeet.byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
-   * {@link AddressLookupTableAccount} data from rent
+   * {@link LzReceiveTypesAccounts} data from rent
    *
-   * @param args need to be provided since the byte size for this account
-   * depends on them
    * @param connection used to retrieve the rent exemption information
    */
   static async getMinimumBalanceForRentExemption(
-    args: AddressLookupTableAccountArgs,
     connection: web3.Connection,
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      AddressLookupTableAccount.byteSize(args),
+      LzReceiveTypesAccounts.byteSize,
       commitment
     )
   }
 
   /**
-   * Returns a readable version of {@link AddressLookupTableAccount} properties
+   * Determines if the provided {@link Buffer} has the correct byte size to
+   * hold {@link LzReceiveTypesAccounts} data.
+   */
+  static hasCorrectByteSize(buf: Buffer, offset = 0) {
+    return buf.byteLength - offset === LzReceiveTypesAccounts.byteSize
+  }
+
+  /**
+   * Returns a readable version of {@link LzReceiveTypesAccounts} properties
    * and can be used to convert to JSON and/or logging
    */
   pretty() {
     return {
-      key: this.key.toBase58(),
-      addresses: this.addresses,
+      oftStore: this.oftStore.toBase58(),
+      tokenMint: this.tokenMint.toBase58(),
     }
   }
 }
@@ -167,17 +163,17 @@ export class AddressLookupTableAccount
  * @category Accounts
  * @category generated
  */
-export const addressLookupTableAccountBeet = new beet.FixableBeetStruct<
-  AddressLookupTableAccount,
-  AddressLookupTableAccountArgs & {
+export const lzReceiveTypesAccountsBeet = new beet.BeetStruct<
+  LzReceiveTypesAccounts,
+  LzReceiveTypesAccountsArgs & {
     accountDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['key', beetSolana.publicKey],
-    ['addresses', beet.array(beetSolana.publicKey)],
+    ['oftStore', beetSolana.publicKey],
+    ['tokenMint', beetSolana.publicKey],
   ],
-  AddressLookupTableAccount.fromArgs,
-  'AddressLookupTableAccount'
+  LzReceiveTypesAccounts.fromArgs,
+  'LzReceiveTypesAccounts'
 )
