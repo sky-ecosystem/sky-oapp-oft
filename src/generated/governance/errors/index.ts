@@ -104,6 +104,29 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * InvalidInstruction: 'InvalidInstruction'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidInstructionError extends Error {
+  readonly code: number = 0x1774
+  readonly name: string = 'InvalidInstruction'
+  constructor() {
+    super('InvalidInstruction')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidInstructionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1774, () => new InvalidInstructionError())
+createErrorFromNameLookup.set(
+  'InvalidInstruction',
+  () => new InvalidInstructionError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

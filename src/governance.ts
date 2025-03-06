@@ -12,6 +12,7 @@ import * as accounts from './generated/governance/accounts'
 import * as instructions from './generated/governance/instructions'
 import * as types from './generated/governance/types'
 import { GovernancePDADeriver } from './governance-pda-deriver'
+import { bignum } from '@metaplex-foundation/beet'
 
 export { accounts, instructions, types }
 
@@ -207,5 +208,33 @@ export class Governance {
 
         return ix;
     }
-    
+
+    async sendOFT(
+        connection: Connection,
+        payer: PublicKey,
+        tokenSource: PublicKey,
+        tokenDest: PublicKey,
+        tokenMint: PublicKey,
+        tokenProgram: PublicKey,
+        amount: bignum
+    ): Promise<TransactionInstruction> {
+        const [id] = this.idPDA()
+        
+        return instructions.createSendOftInstruction(
+            {
+                admin: payer,
+                governance: id,
+                tokenSource: tokenSource,
+                tokenDest: tokenDest,
+                tokenMint: tokenMint,
+                tokenProgram: tokenProgram,
+                instructionAcc: new PublicKey('Sysvar1nstructions1111111111111111111111111'),
+            } satisfies instructions.SendOftInstructionAccounts,
+            {
+                params: {
+                    amount,
+                },
+            },
+        );
+    }
 }

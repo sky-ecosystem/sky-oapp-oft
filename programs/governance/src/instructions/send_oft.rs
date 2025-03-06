@@ -6,10 +6,9 @@ use solana_program::sysvar::instructions::{
     load_current_index_checked, load_instruction_at_checked,
 };
 
-// todo: update these
 pub const OFT_PROGRAM_ID: Pubkey =
-    solana_program::pubkey!("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8");
-pub const OFT_SEND_PARAMS_DISCRIMINATOR: [u8; 8] = [186, 41, 109, 244, 104, 147, 123, 25];
+    solana_program::pubkey!("E2R6qMMzLBjCwXs66MPEg2zKfpt5AMxWNgSULsLYfPS2");
+pub const OFT_SEND_PARAMS_DISCRIMINATOR: [u8; 8] = [102, 251, 20, 187, 65, 75, 12, 69];
 
 #[derive(Accounts)]
 #[instruction(params: SendOFTParams)]
@@ -47,7 +46,6 @@ impl SendOFT<'_> {
             current_instruction == 0,
             GovernanceError::InvalidInstruction
         );
-
         // 2. Check the 2nd instruction is the OFT send instruction
         let sec_ix = load_instruction_at_checked(1, &ctx.accounts.instruction_acc)?;
         require!(
@@ -65,7 +63,6 @@ impl SendOFT<'_> {
             send_ix.amount_ld == params.amount,
             GovernanceError::InvalidInstruction
         );
-
         // 4. check the accounts of OFT Send instruction
         // the signer of OFT Send instruction is the admin
         require!(
@@ -109,6 +106,5 @@ impl SendOFT<'_> {
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct SendOFTParams {
-    pub id: u8,
     pub amount: u64,
 }
