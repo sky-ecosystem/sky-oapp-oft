@@ -14,12 +14,20 @@ pub struct PeerConfig {
     pub bump: u8,
 }
 
+#[derive(Clone, Default, PartialEq, Eq, AnchorSerialize, AnchorDeserialize, InitSpace)]
+pub enum RateLimiterType {
+    #[default]
+    Net,
+    Gross,
+}
+
 #[derive(Clone, Default, AnchorSerialize, AnchorDeserialize, InitSpace)]
 pub struct RateLimiter {
     pub capacity: u64,
     pub tokens: u64,
     pub refill_per_second: u64,
     pub last_refill_time: u64,
+    pub rate_limiter_type: RateLimiterType,
 }
 
 impl RateLimiter {

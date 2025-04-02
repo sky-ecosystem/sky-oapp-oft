@@ -68,7 +68,9 @@ impl Send<'_> {
             rate_limiter.try_consume(amount_received_ld)?;
         }
         if let Some(rate_limiter) = ctx.accounts.peer.inbound_rate_limiter.as_mut() {
-            rate_limiter.refill(amount_received_ld)?;
+            if rate_limiter.rate_limiter_type == RateLimiterType::Net {
+                rate_limiter.refill(amount_received_ld)?;
+            }
         }
 
         if ctx.accounts.oft_store.oft_type == OFTType::Adapter {
