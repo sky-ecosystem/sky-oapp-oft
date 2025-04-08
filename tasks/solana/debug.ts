@@ -161,6 +161,8 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
             DebugLogger.keyValue('Token Mint', oftStoreInfo.tokenMint)
             DebugLogger.keyValue('Token Escrow', oftStoreInfo.tokenEscrow)
             DebugLogger.keyValue('Endpoint Program', oftStoreInfo.endpointProgram)
+            DebugLogger.keyValue('Pauser', JSON.stringify(oftStoreInfo.pauser))
+            DebugLogger.keyValue('Paused', oftStoreInfo.paused)
             DebugLogger.separator()
         }
 

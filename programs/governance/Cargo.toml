@@ -1,0 +1,31 @@
+[package]
+name = "governance"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "governance"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
+anchor-spl = { version = "0.29.0" }
+solana-program = "1.17.31"
+oapp = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "34321ac15e47e0dafd25d66659e2f3d1b9b6db8f" }
+oft = { path = "../oft", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+hex = "0.4.3"
+spl-token = { version = "4", features = ["no-entrypoint"]}
+spl-associated-token-account = { version = "2.2", features = ["no-entrypoint"]}
+solana-sdk = "1.17.31"
+bincode = "1.3.3"
+base64 = "0.22.1"
