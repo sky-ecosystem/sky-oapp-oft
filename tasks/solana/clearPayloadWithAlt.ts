@@ -27,25 +27,13 @@ interface Args {
 }
 
 task('lz:oapp:solana:clear-with-alt', 'Clear a stored payload on Solana')
-    .addParam('srcEid', 'The source EndpointId', undefined, types.eid)
-    .addParam('nonce', 'The nonce of the payload', undefined, types.bigint)
-    .addParam('sender', 'The source OApp address (hex)', undefined, types.string)
-    .addParam('dstEid', 'The destination EndpointId (Solana chain)', undefined, types.eid)
-    .addParam('receiver', 'The receiver address on the destination Solana chain (bytes58)', undefined, types.string)
-    .addParam('guid', 'The GUID of the message (hex)', undefined, types.string)
-    .addParam('payload', 'The message payload (hex)', undefined, types.string)
+    .addParam('srcTxHash', 'The source transaction hash', undefined, types.string)
     .addParam('computeUnits', 'The CU for the lzReceive instruction', undefined, types.int)
     .addParam('lamports', 'The lamports for the lzReceive instruction', undefined, types.int)
     .addParam('withPriorityFee', 'The priority fee in microLamports', undefined, types.int)
     .setAction(
         async ({
-            srcEid,
-            nonce,
-            sender,
-            dstEid,
-            receiver,
-            guid,
-            payload,
+            srcTxHash,
             computeUnits,
             lamports,
             withPriorityFee,
@@ -54,20 +42,27 @@ task('lz:oapp:solana:clear-with-alt', 'Clear a stored payload on Solana')
                 throw new Error('SOLANA_PRIVATE_KEY is not defined in the environment variables.')
             }
 
-            const { connection, umiWalletKeyPair } = await deriveConnection(dstEid)
+            const response = await fetch(`https://scan-testnet.layerzero-api.com/v1/messages/tx/${srcTxHash}`)
+            const data = await response.json()
+            const message = data.data[0];
+
+            const { connection, umiWalletKeyPair } = await deriveConnection(message.pathway.dstEid)
             const signer = toWeb3JsKeypair(umiWalletKeyPair)
             
             const packet = {
-                nonce: nonce.toString(),
-                srcEid,
-                sender: makeBytes32(sender),
-                dstEid,
-                receiver,
+                nonce: message.pathway.nonce,
+                srcEid: message.pathway.srcEid,
+                sender: makeBytes32(message.pathway.sender.address),
+                dstEid: message.pathway.dstEid,
+                receiver: message.pathway.receiver.address,
                 payload: '', // unused;  just added to satisfy typing
-                guid,
-                message: payload, // referred to as "payload" in scan-api
+                guid: message.guid,
+                message: message.source.tx.payload, // referred to as "payload" in scan-api
                 version: 1, // unused;  just added to satisfy typing
             }
+            console.log({
+                packet
+            })
             const callerParams = Uint8Array.from([computeUnits, lamports]);
 
             const lzReceiveInstruction = await lzReceive(

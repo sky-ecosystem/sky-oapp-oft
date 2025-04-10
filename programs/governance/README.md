@@ -14,6 +14,8 @@ Tested scenarios include:
 3. Transfer Program Upgrade Authority
 4. Upgrade Program
 5. OFT pause/unpause
+6. OFT.setOFTConfig - setDelegate | test_governance_message_set_delegate | [demo](https://explorer.solana.com/tx/2q8YcQ7V1iJWJBfXo8uEhNV16Z3XnVssXzniBhhurgzxF9Hue668sborVRY6hmAqVxXSZQcBuFAPFAcHaUySCauN?cluster=devnet)
+6. OFT.setOFTConfig - setAdmin | test_governance_message_set_admin | [demo](https://explorer.solana.com/tx/5WUAgnhckabp67RQ6BMnc3Q7qNjgEbpqLpsoh6TFY9XVFEHGrwadYqCSqPsp3tVmswDotcL8PQ7c8LDobQHMKKat?cluster=devnet)
 
 The code used to craft the Governance Message for the scenarios above is located in [programs/governance/tests/msg_codec.rs](./tests/msg_codec.rs).
 
@@ -58,6 +60,15 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 
 5. Send the governance message eg using SendRawBytes Foundry script.
 
+## Sending transactions
+
+1. Obtain serialized governance message
+2. Replace value of: `bytes memory messageBytes = hex"";` in scripts/SendRawBytes.s.sol
+3. Run:
+```
+forge script scripts/SendRawBytes.s.sol --rpc-url https://api.avax-test.network/ext/bc/C/rpc --broadcast --force
+```
+
 ## Delivering transactions
 
 Clearing of transactions is manual because it uses ALT for lzReceive.
@@ -65,8 +76,10 @@ Clearing of transactions is manual because it uses ALT for lzReceive.
 Example clear tx:
 
 ```
-pnpm hardhat lz:oapp:solana:clear-with-alt --src-eid 40106 --nonce 32 --sender 0xf941318e00fb58e00701423ba1adc607574bce99 --dst-eid 40168 --receiver 3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a --guid 0xc74ff9d8a8372596bcf054d99afeedd08b64f64c8ea3f14d92f4523ef2579211 --payload 0x000000000000000047656e6572616c507572706f7365476f7665726e616e63650200009ce8cbc3c6fe5a0bdf3ecdc2af991d34d8cc08adddcfa74986b275bf8e9510b06aa602a8f6914e88a1b0e210153ef763ae2b00c2b93d16c124d2c0537a100480000000035d190cf58aa6a0bbb66ffc441791e17f1abeeae5bd7991f5b5f21be5dfd1b6bd00016f776e65720000000000000000000000000000000000000000000000000000000100dd53b0252132362919bc40f483be023cd6967bde983ae2cdc2ddfaad66c06c8d0000000404000000 --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000
+pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x04e86f1202cc38b74502aec1319e4e570e458482c0016c517d2311ff3e8bde7c
 ```
+
+where --src-tx-hash is source transaction hash where the governance message was sent on the source chain.
 
 ## License
 

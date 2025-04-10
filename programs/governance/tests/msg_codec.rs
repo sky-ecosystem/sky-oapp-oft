@@ -3,7 +3,8 @@
 mod test_msg_codec {
     use anchor_lang::prelude::*;
     use base64::Engine;
-    use oft::instructions::SetPauseParams;
+    use oapp::endpoint::{self, instructions::SetDelegateParams};
+    use oft::instructions::{SetOFTConfigParams, SetPauseParams};
     use solana_program::pubkey::Pubkey;
     use solana_program::bpf_loader_upgradeable;
     use solana_sdk::pubkey;
@@ -311,6 +312,123 @@ mod test_msg_codec {
 
         // prepare_governance_message_simulation(&msg);
     }
+
+    #[test]
+    fn test_governance_message_set_delegate<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_oft_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = SetOFTConfigParams::Delegate(pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8"));
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetOFTConfigParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        let accounts = vec![
+            // admin as signer
+            Acc {
+                pubkey: OWNER_PLACEHOLDER,
+                is_signer: true,
+                is_writable: false,
+            },
+            // OFT store account
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: endpoint::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: true,
+            },
+            // oapp registry account
+            Acc {
+                pubkey: pubkey!("67KdaeyMi37h1RicnRb3uHLGCBY1CYURqoF83jgxmjyu"),
+                is_signer: false,
+                is_writable: true,
+            },
+            // event authority account
+            Acc {
+                pubkey: pubkey!("F8E8QGhKmHEx2esh5LpVizzcP4cHYhzXdXTwg9w3YYY2"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: endpoint::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: OFT_PROGRAM_ID,
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_governance_message_set_admin<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_oft_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = SetOFTConfigParams::Admin(pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8"));
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetOFTConfigParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        let accounts = vec![
+            // admin as signer
+            Acc {
+                pubkey: OWNER_PLACEHOLDER,
+                is_signer: true,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: true,
+            }
+        ];
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: OFT_PROGRAM_ID,
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
 
     pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
         let preimage = format!("{}:{}", namespace, name);

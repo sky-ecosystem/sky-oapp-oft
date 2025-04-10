@@ -47,7 +47,13 @@ export default async function () {
   return {
     contracts: [
         {contract: avalancheContract},
-        {contract: solanaContract}
+        {
+          contract: solanaContract,
+          config: {
+            delegate: '3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a',
+            owner: '3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a'
+          }
+        }
     ],
     connections,
   };
