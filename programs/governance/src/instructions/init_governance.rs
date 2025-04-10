@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use crate::*;
 use oapp::endpoint::{instructions::RegisterOAppParams, ID as ENDPOINT_ID};
 

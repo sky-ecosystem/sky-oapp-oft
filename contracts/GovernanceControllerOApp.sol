@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.22;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,16 +10,6 @@ import { GovernanceMessageGenericCodec } from "./GovernanceMessageGenericCodec.s
 
 contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
     /// @notice The known set of governance actions.
-    /// @dev As the governance logic is expanded to more runtimes, it's
-    ///      important to keep them in sync, at least the newer ones should ensure
-    ///      they don't overlap with the existing ones.
-    ///
-    ///      Existing implementations are not strongly required to be updated
-    ///      to be aware of new actions (as they will never need to know the
-    ///      action indices higher than the one corresponding to the current
-    ///      runtime), but it's good practice.
-    ///
-    ///      When adding a new runtime, make sure to at least update in the README.md
     enum GovernanceAction {
         UNDEFINED,
         EVM_CALL,
@@ -35,9 +25,8 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
 
     constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
 
-    /**
-     * @notice Sends an EVM action
-     */
+    // [---- EXTERNAL METHODS ----]
+
     function sendEVMAction(
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         bytes calldata _extraOptions,
@@ -51,39 +40,13 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         bytes calldata _extraOptions,
         bool _payInLzToken
-    ) public view returns (MessagingFee memory fee) {
-        // @dev Builds the options and message to quote in the endpoint.
+    ) external view returns (MessagingFee memory fee) {
         (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
 
-        // @dev Calculates the LayerZero fee for the send() operation.
         return _quote(_message.dstEid, message, options, _payInLzToken);
     }
 
-    function _sendEVMAction(
-        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
-        bytes calldata _extraOptions,
-        MessagingFee calldata _fee,
-        address _refundAddress
-    ) internal virtual returns (MessagingReceipt memory msgReceipt) {
-        // @dev Builds the options and message to quote in the endpoint.
-        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
-
-        // @dev Sends the message to the LayerZero endpoint and returns the LayerZero msg receipt.
-        msgReceipt = _lzSend(_message.dstEid, message, options, _fee, _refundAddress);
-    }
-
-    function _buildMsgAndOptionsEVMAction(
-        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
-        bytes calldata _extraOptions
-    ) internal view virtual returns (bytes memory message, bytes memory options) {
-        // @dev This generated message has the msg.sender encoded into the payload so the remote knows who the caller is.
-        message = GovernanceMessageEVMCodec.encode(_message);
-        options = combineOptions(_message.dstEid, SEND, _extraOptions);
-    }
-
-    /**
-     * @notice Sends a raw bytes action
-     */
+    // @notice This method can be used when compiling and serializing governance message offchain
     function sendRawBytesAction(
         bytes calldata _message,
         bytes calldata _extraOptions,
@@ -97,12 +60,32 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
         bytes calldata _message,
         bytes calldata _extraOptions,
         bool _payInLzToken
-    ) public view returns (MessagingFee memory fee) {
+    ) external view returns (MessagingFee memory fee) {
         uint32 dstEid = GovernanceMessageGenericCodec.dstEid(_message);
         bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
 
-        // @dev Calculates the LayerZero fee for the send() operation.
         return _quote(dstEid, _message, options, _payInLzToken);
+    }
+
+    // [---- INTERNAL METHODS ----]
+
+    function _sendEVMAction(
+        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
+        bytes calldata _extraOptions,
+        MessagingFee calldata _fee,
+        address _refundAddress
+    ) internal virtual returns (MessagingReceipt memory msgReceipt) {
+        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
+
+        msgReceipt = _lzSend(_message.dstEid, message, options, _fee, _refundAddress);
+    }
+
+    function _buildMsgAndOptionsEVMAction(
+        GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
+        bytes calldata _extraOptions
+    ) internal view virtual returns (bytes memory message, bytes memory options) {
+        message = GovernanceMessageEVMCodec.encode(_message);
+        options = combineOptions(_message.dstEid, SEND, _extraOptions);
     }
 
     function _sendRawBytesAction(
@@ -114,7 +97,6 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3 {
         uint32 dstEid = GovernanceMessageGenericCodec.dstEid(_message);
         bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
 
-        // @dev Sends the message to the LayerZero endpoint and returns the LayerZero msg receipt.
         msgReceipt = _lzSend(dstEid, _message, options, _fee, _refundAddress);
     }
 

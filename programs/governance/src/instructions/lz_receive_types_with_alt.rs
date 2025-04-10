@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use crate::msg_codec::{msg_codec, GovernanceMessage};
 use crate::*;
 use oapp::endpoint_cpi::{get_accounts_for_clear, LzAccount};

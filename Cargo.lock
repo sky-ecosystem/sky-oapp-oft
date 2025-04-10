@@ -1680,6 +1680,7 @@ dependencies = [
  "hex",
  "oapp",
  "oft",
+ "solana-helper",
  "solana-program",
  "solana-sdk",
  "spl-associated-token-account",

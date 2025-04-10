@@ -1,3 +1,9 @@
+# Governance
+
+A program that can be used to send arbitrary transactions on connected blockchains. The so-called Omnichain Applications (OApps) deployed on different chains can send Governance Messages to each other. These messages may contain transactions that are used to control programs owned by Governance OApps. 
+
+Messaging protocol used is LayerZero.
+
 ## Delivering transactions
 
 Clearing of transactions is manual because it uses ALT for lzReceive.
@@ -33,6 +39,7 @@ Buffer: Dftwzc6mc1ZUxZQyhM2FpmDttjfNra4mawAQnF4EWZns
 3. Transfer buffer authority to Governance OApp (according to [this](https://github.com/solana-labs/solana/blob/7700cb3128c1f19820de67b81aa45d18f73d2ac0/sdk/program/src/loader_upgradeable_instruction.rs#L84))
 ```
 solana program set-buffer-authority Dftwzc6mc1ZUxZQyhM2FpmDttjfNra4mawAQnF4EWZns --new-buffer-authority 3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a --buffer-authority buffer-keypair.json -u devnet
+```
 
 Example output:
 ```
@@ -47,3 +54,9 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 ```
 
 5. Send the governance message eg using SendRawBytes Foundry script.
+
+## License
+
+License is [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+See [LICENSE.md](./LICENSE.md) and [NOTICE.md](./NOTICE.md).

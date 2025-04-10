@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 mod instructions;
 mod state;
 
@@ -8,10 +9,17 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use oapp::{endpoint_cpi::LzAccount, LzReceiveParams};
 use state::*;
-use error::*;
+use solana_helper::program_id_from_env;
 
-declare_id!("EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3");
+declare_id!(Pubkey::new_from_array(program_id_from_env!(
+    "GOVERNANCE_ID",
+    "EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3"
+)));
 
+#[cfg(feature = "mainnet")]
+pub const SOLANA_CHAIN_ID: u32 = 30168;
+
+#[cfg(feature = "testnet")]
 pub const SOLANA_CHAIN_ID: u32 = 40168;
 
 const LZ_RECEIVE_TYPES_SEED: &[u8] = b"LzReceiveTypes";

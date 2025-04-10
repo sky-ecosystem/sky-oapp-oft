@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 pub mod init_governance;
 pub mod lz_receive;
 pub mod lz_receive_types;

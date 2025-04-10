@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 #[cfg(test)]
 mod test_msg_codec {
     use anchor_lang::prelude::*;
@@ -105,8 +106,6 @@ mod test_msg_codec {
 
     #[test]
     fn test_governance_message_transfer_token() {
-        let governance_oapp_address =
-            Pubkey::try_from("3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a").unwrap();
         let mint_pubkey = Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
         let mint_account = Acc {
             pubkey: mint_pubkey,
@@ -121,7 +120,7 @@ mod test_msg_codec {
 
         let (associated_token_address, _bump_seed) = Pubkey::find_program_address(
             &[
-                governance_oapp_address.as_ref(),
+                GOVERNANCE_OAPP_ADDRESS.as_ref(),
                 spl_token::id().as_ref(),
                 mint_pubkey.as_ref(),
             ],
