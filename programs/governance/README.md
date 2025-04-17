@@ -19,6 +19,10 @@ Tested scenarios include:
 8. OFT.setOFTConfig - setAdmin | test_governance_message_set_admin | [demo](https://explorer.solana.com/tx/5WUAgnhckabp67RQ6BMnc3Q7qNjgEbpqLpsoh6TFY9XVFEHGrwadYqCSqPsp3tVmswDotcL8PQ7c8LDobQHMKKat?cluster=devnet)
 9. OFT.setPeerConfig - setPeerAddress | test_governance_message_set_peer_address | [demo](https://explorer.solana.com/tx/5mBi5r5zcfrcDHxsNrPAHS4HrkP2kS3zgJ6YRe6vGLN18N9GPvMXBD9AfAYbEhWQSTHMLEjLAFR3MNV185xacP7f?cluster=devnet)
 10. Endpoint.initSendLibrary | test_governance_message_init_send_library | [demo](https://explorer.solana.com/tx/SBUGAFrgWcpLJkuaq8W6YfeKakW2zvYe56HmG6pB7EdiozmCTTTaVXWADVUVqUZRNLU1qoP4BeQbdVrPqLXpH8X?cluster=devnet)
+11. Endpoint.setSendLibrary | test_governance_message_set_send_library | [demo](https://explorer.solana.com/tx/4syvFDSawatbkbTqGpAmB4Zohqv1hrgJYpnvPggoZv1kwfvh9EJYMLebbyq3jQcxZ1sbTiEmDEbxeFrHYNgGhtRX?cluster=devnet)
+12. Endpoint.initReceiveLibrary | test_governance_message_init_receive_library | [demo](https://explorer.solana.com/tx/bU8h14VtA1AGfRpCQ9SdTt8omLNuMyWftsZbJZzHRQNLnn9VEpHAhnZ3NMRojkmPsQRZVzUUsreEYXzFDXJS8i7?cluster=devnet)
+13. Endpoint.setReceiveLibrary | test_governance_message_set_receive_library | [demo](https://explorer.solana.com/tx/2gn5KQxXDQw6y6wVEg8nqkjumWj4bhQugYSPkdkJt9TuqUMc78v2TcV6J92x1Gox4XY1DaFDKEVrj1QkTvTAdMVh?cluster=devnet)
+14. OFT.setPeerConfig - setEnforcedOptions | test_governance_message_set_enforced_options | [demo](https://explorer.solana.com/tx/5ZQtDktmHRvjcvM2K9GohqsMLyXxDH8hRLxtYNPfyeceD9UBHC4dHGfirc3wZ92xhm4GMKxrfSLeMaFsTThJ7Sgj?cluster=devnet)
 
 The code used to craft the Governance Message for the scenarios above is located in [programs/governance/tests/msg_codec.rs](./tests/msg_codec.rs).
 

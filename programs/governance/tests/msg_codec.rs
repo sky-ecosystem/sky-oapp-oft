@@ -3,7 +3,7 @@
 mod test_msg_codec {
     use anchor_lang::prelude::*;
     use base64::Engine;
-    use oapp::endpoint::{self, instructions::InitSendLibraryParams, SetConfigParams, MESSAGE_LIB_SEED, OAPP_SEED, SEND_LIBRARY_CONFIG_SEED};
+    use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, SetConfigParams, MESSAGE_LIB_SEED, OAPP_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
     use oft::{instructions::{PeerConfigParam, SetOFTConfigParams, SetPauseParams, SetPeerConfigParams}, PEER_SEED};
     use solana_program::pubkey::Pubkey;
     use solana_program::bpf_loader_upgradeable;
@@ -665,6 +665,359 @@ mod test_msg_codec {
         let msg = GovernanceMessage {
             governance_program_id: governance::ID,
             program_id: endpoint::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_governance_message_init_receive_library<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "init_receive_library");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let governance_oapp_address = get_governance_oapp_pda().0;
+        let governance_oapp_bump = get_governance_oapp_pda().1;
+        println!("Governance OApp address: {:?}", governance_oapp_address);
+        println!("Governance OApp bump: {:?}", governance_oapp_bump);
+
+        let cpi_authority_address = get_cpi_authority();
+        println!("CPI authority address: {:?}", cpi_authority_address);
+
+        let params = InitReceiveLibraryParams {
+            eid: FUJI_EID,
+            receiver: OFT_STORE_ADDRESS,
+        };
+
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize InitReceiveLibraryParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        println!("OFT Program ID: {:?}", oft::id());
+
+        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
+            &[
+                OAPP_SEED,
+                params.receiver.as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let (receive_library_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                RECEIVE_LIBRARY_CONFIG_SEED,
+                &params.receiver.to_bytes(),
+                &params.eid.to_be_bytes()
+            ],
+            &endpoint::id(),
+        );
+
+        let accounts = vec![
+            // The PDA of the OApp or delegate
+            Acc {
+                pubkey: get_cpi_authority(),
+                is_signer: true,
+                is_writable: true,
+            },
+            // OApp registry account
+            Acc {
+                pubkey: oapp_registry,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: receive_library_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: solana_program::system_program::ID,
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: endpoint::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_governance_message_set_send_library<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_send_library");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = SetSendLibraryParams {
+            sender: OFT_STORE_ADDRESS,
+            eid: FUJI_EID,
+            new_lib: pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ"),
+        };
+
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetSendLibraryParams");
+
+        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
+            &[
+                OAPP_SEED,
+                params.sender.as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let (send_library_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                SEND_LIBRARY_CONFIG_SEED,
+                &params.sender.to_bytes(),
+                &params.eid.to_be_bytes()
+            ],
+            &endpoint::id(),
+        );
+
+        let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
+            &[
+                MESSAGE_LIB_SEED,
+                params.new_lib.to_bytes().as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let accounts = vec![
+            // The PDA of the OApp or delegate
+            Acc {
+                pubkey: get_cpi_authority(),
+                is_signer: true,
+                is_writable: false,
+            },
+            // OApp registry account
+            Acc {
+                pubkey: oapp_registry,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: send_library_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            // message lib info
+            Acc {
+                pubkey: message_lib_info,
+                is_signer: false,
+                is_writable: false,
+            },
+            // event authority account
+            Acc {
+                pubkey: pubkey!("F8E8QGhKmHEx2esh5LpVizzcP4cHYhzXdXTwg9w3YYY2"),
+                is_signer: false,
+                is_writable: false,
+            },
+            // endpoint account
+            Acc {
+                pubkey: endpoint::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: endpoint::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_governance_message_set_receive_library<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_receive_library");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = SetReceiveLibraryParams {
+            receiver: OFT_STORE_ADDRESS,
+            eid: FUJI_EID,
+            new_lib: pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ"),
+            grace_period: 0,
+        };
+
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetReceiveLibraryParams");
+
+        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
+            &[
+                OAPP_SEED,
+                params.receiver.as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let (receive_library_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                RECEIVE_LIBRARY_CONFIG_SEED,
+                &params.receiver.to_bytes(),
+                &params.eid.to_be_bytes()
+            ],
+            &endpoint::id(),
+        );
+
+        let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
+            &[
+                MESSAGE_LIB_SEED,
+                params.new_lib.to_bytes().as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let accounts = vec![
+            // The PDA of the OApp or delegate
+            Acc {
+                pubkey: get_cpi_authority(),
+                is_signer: true,
+                is_writable: false,
+            },
+            // OApp registry account
+            Acc {
+                pubkey: oapp_registry,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: receive_library_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            // message lib info
+            Acc {
+                pubkey: message_lib_info,
+                is_signer: false,
+                is_writable: false,
+            },
+            // event authority account
+            Acc {
+                pubkey: pubkey!("F8E8QGhKmHEx2esh5LpVizzcP4cHYhzXdXTwg9w3YYY2"),
+                is_signer: false,
+                is_writable: false,
+            },
+            // endpoint account
+            Acc {
+                pubkey: endpoint::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: endpoint::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+
+    #[test]
+    fn test_governance_message_set_enforced_options<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_peer_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let send_options = hex::decode("00030100110100000000000000000000000000013880").unwrap();
+        let empty_options = hex::decode("0003").unwrap();
+
+        let params = SetPeerConfigParams {
+            remote_eid: FUJI_EID,
+            config: PeerConfigParam::EnforcedOptions {
+                send: send_options,
+                send_and_call: empty_options,
+            },
+        };
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetPeerConfigParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        println!("OFT Program ID: {:?}", oft::id());
+
+        let (peer_address, _bump_seed) = Pubkey::find_program_address(
+            &[
+                PEER_SEED,
+                &OFT_STORE_ADDRESS.to_bytes(),
+                &params.remote_eid.to_be_bytes(),
+            ],
+            &oft::id(),
+        );
+
+        let accounts = vec![
+            // admin as signer
+            Acc {
+                pubkey: get_cpi_authority(),
+                is_signer: true,
+                is_writable: true,
+            },
+            // peer
+            Acc {
+                pubkey: peer_address,
+                is_signer: false,
+                is_writable: true,
+            },
+            // OFT store account
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: false,
+            },
+            // system program
+            Acc {
+                pubkey: solana_program::system_program::ID,
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        println!("Peer address: {:?}", peer_address);
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,
         };
