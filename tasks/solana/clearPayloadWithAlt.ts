@@ -14,13 +14,7 @@ import { GovernanceProgram } from '../../src'
 import * as beet from '@metaplex-foundation/beet'
 
 interface Args {
-    srcEid: EndpointId
-    nonce: bigint
-    sender: string
-    dstEid: EndpointId
-    receiver: string
-    guid: string
-    payload: string
+    srcTxHash: string
     computeUnits: number
     lamports: number
     withPriorityFee: number
@@ -45,6 +39,13 @@ task('lz:oapp:solana:clear-with-alt', 'Clear a stored payload on Solana')
             const response = await fetch(`https://scan-testnet.layerzero-api.com/v1/messages/tx/${srcTxHash}`)
             const data = await response.json()
             const message = data.data[0];
+
+            if (message.destination.status === 'SUCCEEDED') {
+                console.log('--------------------------------')
+                console.log('\nTransaction already delivered: \n')
+                console.log(`https://explorer.solana.com/tx/${message.destination.tx.txHash}?cluster=devnet`)
+                return;
+            }
 
             const { connection, umiWalletKeyPair } = await deriveConnection(message.pathway.dstEid)
             const signer = toWeb3JsKeypair(umiWalletKeyPair)

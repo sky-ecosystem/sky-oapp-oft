@@ -64,6 +64,11 @@ const config: HardhatUserConfig = {
             url: 'https://api.avax-test.network/ext/bc/C/rpc',
             accounts,
         },
+        'bsc-testnet': {
+            eid: EndpointId.BSC_V2_TESTNET,
+            url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+            accounts,
+        },
         hardhat: {
             // Need this for testing because TestHelperOz5.sol is exceeding the compiled contract size limit
             allowUnlimitedContractSize: true,

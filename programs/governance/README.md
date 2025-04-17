@@ -17,6 +17,8 @@ Tested scenarios include:
 6. OFT unpause | test_governance_message_unpause_oft | [demo](https://explorer.solana.com/tx/4koxbrtyEexG9DaHHxjKDGrw4mebPrasaXFfqPqMzKfC9roaQ2bpbGxxn4pXyaVAmPSDsQQgrqyax8CL26T9dJiz?cluster=devnet)
 7. OFT.setOFTConfig - setDelegate | test_governance_message_set_delegate | [demo](https://explorer.solana.com/tx/2q8YcQ7V1iJWJBfXo8uEhNV16Z3XnVssXzniBhhurgzxF9Hue668sborVRY6hmAqVxXSZQcBuFAPFAcHaUySCauN?cluster=devnet)
 8. OFT.setOFTConfig - setAdmin | test_governance_message_set_admin | [demo](https://explorer.solana.com/tx/5WUAgnhckabp67RQ6BMnc3Q7qNjgEbpqLpsoh6TFY9XVFEHGrwadYqCSqPsp3tVmswDotcL8PQ7c8LDobQHMKKat?cluster=devnet)
+9. OFT.setPeerConfig - setPeerAddress | test_governance_message_set_peer_address | [demo](https://explorer.solana.com/tx/5mBi5r5zcfrcDHxsNrPAHS4HrkP2kS3zgJ6YRe6vGLN18N9GPvMXBD9AfAYbEhWQSTHMLEjLAFR3MNV185xacP7f?cluster=devnet)
+10. Endpoint.initSendLibrary | test_governance_message_init_send_library | [demo](https://explorer.solana.com/tx/SBUGAFrgWcpLJkuaq8W6YfeKakW2zvYe56HmG6pB7EdiozmCTTTaVXWADVUVqUZRNLU1qoP4BeQbdVrPqLXpH8X?cluster=devnet)
 
 The code used to craft the Governance Message for the scenarios above is located in [programs/governance/tests/msg_codec.rs](./tests/msg_codec.rs).
 
@@ -77,7 +79,7 @@ Clearing of transactions is manual because it uses ALT for lzReceive.
 Example clear tx:
 
 ```
-pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x04e86f1202cc38b74502aec1319e4e570e458482c0016c517d2311ff3e8bde7c
+pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x17d992d34e821bd4b962c22910127624ef62e02f49f7013e453369f258c29c70
 ```
 
 where --src-tx-hash is source transaction hash where the governance message was sent on the source chain.

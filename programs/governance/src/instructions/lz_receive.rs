@@ -17,7 +17,7 @@
 use crate::msg_codec::{msg_codec, GovernanceMessage};
 use crate::state::Governance;
 use crate::state::Remote;
-use crate::{GOVERNANCE_SEED, OWNER_PLACEHOLDER, PAYER_PLACEHOLDER, REMOTE_SEED};
+use crate::{CPI_AUTHORITY_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER, REMOTE_SEED, CPI_AUTHORITY_PLACEHOLDER};
 use anchor_lang::prelude::*;
 use oapp::{
     endpoint::{
@@ -43,6 +43,13 @@ pub struct LzReceive<'info> {
     )]
     pub remote: Account<'info, Remote>,
 
+    #[account(
+        mut,
+        seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes()],
+        bump = governance.bump
+    )]
+    pub cpi_authority: AccountInfo<'info>,
+
     #[account(executable)]
     pub program: UncheckedAccount<'info>,
 
@@ -54,9 +61,15 @@ impl<'info> LzReceive<'info> {
         ctx: &mut Context<'_, '_, '_, 'info, Self>,
         params: &LzReceiveParams,
     ) -> Result<()> {
-        let seeds: &[&[u8]] = &[
+        let governance_seed: &[&[u8]] = &[
             GOVERNANCE_SEED,
             &ctx.accounts.governance.id.to_be_bytes(),
+            &[ctx.accounts.governance.bump],
+        ];
+
+        let cpi_authority_seed: &[&[u8]] = &[   
+            CPI_AUTHORITY_SEED,
+            &ctx.accounts.governance.key().to_bytes(),
             &[ctx.accounts.governance.bump],
         ];
 
@@ -66,7 +79,7 @@ impl<'info> LzReceive<'info> {
             ENDPOINT_ID,
             ctx.accounts.governance.key(),
             accounts_for_clear,
-            seeds,
+            governance_seed,
             ClearParams {
                 receiver: ctx.accounts.governance.key(),
                 src_eid: params.src_eid,
@@ -82,8 +95,8 @@ impl<'info> LzReceive<'info> {
 
         // Replace placeholder accounts
         instruction.accounts.iter_mut().for_each(|acc| {
-            if acc.pubkey == OWNER_PLACEHOLDER {
-                acc.pubkey = ctx.accounts.governance.key();
+            if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
+                acc.pubkey = ctx.accounts.cpi_authority.key();
             } else if acc.pubkey == PAYER_PLACEHOLDER {
                 acc.pubkey = ctx.accounts.payer.key();
             }
@@ -92,7 +105,9 @@ impl<'info> LzReceive<'info> {
         let mut all_account_infos = ctx.accounts.to_account_infos();
         all_account_infos.extend_from_slice(&ctx.remaining_accounts);
 
-        solana_program::program::invoke_signed(&instruction, &all_account_infos, &[seeds])?;
+        solana_program::program::invoke_signed(&instruction, &all_account_infos, &[
+            cpi_authority_seed,
+        ])?;
 
         Ok(())
     }

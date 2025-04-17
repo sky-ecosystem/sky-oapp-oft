@@ -685,7 +685,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4114279215a005bc675e386011e594e1d9b800918cea18fcadadcce864a2046b"
 dependencies = [
  "borsh-derive 0.10.3",
- "hashbrown 0.13.2",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -1492,6 +1492,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "835a3dc7d1ec9e75e2b5fb4ba75396837112d2060b03f7d43bc1897c7f7211da"
 
 [[package]]
+name = "fixed-hash"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "835c052cb0c08c1acf6ffd71c022172e18723949c8282f2b9f27efbc51e64534"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "flate2"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1685,6 +1694,7 @@ dependencies = [
  "solana-sdk",
  "spl-associated-token-account",
  "spl-token",
+ "uln",
 ]
 
 [[package]]
@@ -1729,6 +1739,9 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+dependencies = [
+ "ahash 0.7.8",
+]
 
 [[package]]
 name = "hashbrown"
@@ -2316,6 +2329,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "messagelib-helper"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+dependencies = [
+ "anchor-lang",
+ "endpoint",
+ "messagelib-interface",
+ "utils",
+]
+
+[[package]]
 name = "messagelib-interface"
 version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
@@ -2775,6 +2799,16 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
+name = "primitive-types"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b34d9fd68ae0b74a41b21c03c2f62847aa0ffea044eee893b4c140b37e244e2"
+dependencies = [
+ "fixed-hash",
+ "uint",
+]
 
 [[package]]
 name = "proc-macro-crate"
@@ -4518,6 +4552,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4919,6 +4959,32 @@ name = "typenum"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
+
+[[package]]
+name = "uint"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76f64bba2c53b04fcab63c01a7d7427eadc821e3bc48c34dc9ba29c501164b52"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "hex",
+ "static_assertions",
+]
+
+[[package]]
+name = "uln"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "messagelib-helper",
+ "primitive-types",
+ "solana-helper",
+ "utils",
+ "worker-interface",
+]
 
 [[package]]
 name = "uln-client"
@@ -5390,6 +5456,14 @@ checksum = "524e57b2c537c0f9b1e69f1965311ec12182b4122e45035b1508cd24d2adadb1"
 dependencies = [
  "cfg-if",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "worker-interface"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+dependencies = [
+ "anchor-lang",
 ]
 
 [[package]]

@@ -23,6 +23,7 @@ anchor-spl = { version = "0.29.0" }
 solana-program = "1.17.31"
 solana-helper = "0.1.0"
 oapp = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "34321ac15e47e0dafd25d66659e2f3d1b9b6db8f" }
+uln = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "34321ac15e47e0dafd25d66659e2f3d1b9b6db8f" }
 oft = { path = "../oft", features = ["no-entrypoint"] }
 
 [dev-dependencies]

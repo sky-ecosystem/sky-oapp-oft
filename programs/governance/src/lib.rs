@@ -22,12 +22,13 @@ pub const SOLANA_CHAIN_ID: u32 = 30168;
 #[cfg(feature = "testnet")]
 pub const SOLANA_CHAIN_ID: u32 = 40168;
 
-const LZ_RECEIVE_TYPES_SEED: &[u8] = b"LzReceiveTypes";
-const LZ_RECEIVE_ALT_SEED: &[u8] = b"LzReceiveAlt";
-const GOVERNANCE_SEED: &[u8] = b"Governance";
-const REMOTE_SEED: &[u8] = b"Remote";
+pub const LZ_RECEIVE_TYPES_SEED: &[u8] = b"LzReceiveTypes";
+pub const LZ_RECEIVE_ALT_SEED: &[u8] = b"LzReceiveAlt";
+pub const GOVERNANCE_SEED: &[u8] = b"Governance";
+pub const REMOTE_SEED: &[u8] = b"Remote";
+pub const CPI_AUTHORITY_SEED: &[u8] = b"CpiAuthority";
 
-pub const OWNER_PLACEHOLDER: Pubkey = sentinel_pubkey(b"owner");
+pub const CPI_AUTHORITY_PLACEHOLDER: Pubkey = sentinel_pubkey(b"cpi_authority");
 pub const PAYER_PLACEHOLDER: Pubkey = sentinel_pubkey(b"payer");
 
 #[program]

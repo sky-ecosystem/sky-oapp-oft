@@ -35,6 +35,7 @@ impl LzReceiveTypes<'_> {
             &params.src_eid.to_be_bytes(),
         ];
         let (remote, _) = Pubkey::find_program_address(&seeds, ctx.program_id);
+        let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &[ctx.accounts.governance.bump]], ctx.program_id).unwrap();
 
         let governance_message: GovernanceMessage = msg_codec::decode_governance(&params.message)?;
 
@@ -57,6 +58,12 @@ impl LzReceiveTypes<'_> {
                 pubkey: remote,
                 is_signer: false,
                 is_writable: false,
+            },
+            // cpi authority
+            LzAccount {
+                pubkey: cpi_authority,
+                is_signer: false,
+                is_writable: true,
             },
             // program
             LzAccount {
@@ -90,13 +97,13 @@ impl LzReceiveTypes<'_> {
                 .accounts
                 .iter()
                 .filter(|acc| {
-                    acc.pubkey != OWNER_PLACEHOLDER
+                    acc.pubkey != CPI_AUTHORITY_PLACEHOLDER
                         && acc.pubkey != PAYER_PLACEHOLDER
                         && acc.pubkey != governance_message.program_id
                 })
                 .map(|acc| LzAccount {
                     pubkey: acc.pubkey,
-                    is_signer: acc.is_signer,
+                    is_signer: false,
                     is_writable: acc.is_writable,
                 }),
         );
