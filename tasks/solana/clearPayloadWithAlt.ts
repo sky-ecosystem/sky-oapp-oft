@@ -38,7 +38,11 @@ task('lz:oapp:solana:clear-with-alt', 'Clear a stored payload on Solana')
 
             const response = await fetch(`https://scan-testnet.layerzero-api.com/v1/messages/tx/${srcTxHash}`)
             const data = await response.json()
-            const message = data.data[0];
+            const message = data.data?.[0];
+
+            if (!message) {
+                throw new Error('No message found yet.')
+            }
 
             if (message.destination.status === 'SUCCEEDED') {
                 console.log('--------------------------------')

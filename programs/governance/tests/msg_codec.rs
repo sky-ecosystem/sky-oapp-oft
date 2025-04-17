@@ -758,6 +758,134 @@ mod test_msg_codec {
     }
 
     #[test]
+    fn test_governance_message_set_receive_config<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let config = UlnConfig {
+            confirmations: 1,
+            required_dvn_count: 1,
+            optional_dvn_count: 0,
+            optional_dvn_threshold: 0,
+            required_dvns: vec![
+                pubkey!("4VDjp6XQaxoZf5RGwiPU9NR1EXSZn2TP4ATMmiSzLfhb")
+            ],
+            optional_dvns: vec![],
+        };
+
+        let mut config_bytes = Vec::new();
+        config.serialize(&mut config_bytes).unwrap();
+
+        let params = SetConfigParams {
+            oapp: OFT_STORE_ADDRESS,
+            eid: FUJI_EID,
+            config_type: ULN_CONFIG_TYPE_RECEIVE_ULN,
+            config: config_bytes,
+        };
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetConfigParams");
+
+        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
+            &[
+                OAPP_SEED,
+                params.oapp.as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
+            &[
+                MESSAGE_LIB_SEED,
+                MSG_LIB_KEY.to_bytes().as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let accounts = vec![
+            // The PDA of the OApp or delegate
+            Acc {
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
+                is_signer: true,
+                is_writable: true,
+            },
+            // OApp registry account
+            Acc {
+                pubkey: oapp_registry,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: message_lib_info,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: MSG_LIB_KEY,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: uln::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: MSG_LIB_KEY,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("CDaRAdFzi5XsDu6SZBFjFbF4NRPDepKErTuCsFhWJNRp"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("54QYFFNarijQju9uVL4yC7tZ6pBfvHFwi58eBdCDNY7U"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("AnF6jGBQykDchX1EjmQePJwJBCh9DSbZjYi14Hdx5BRx"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("77jrDmstEN2XymYS2TeQxV9nB3wun7xxHP4hdhRcw5rg"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("7n1YeBMVEUCJ4DscKAcpVQd6KXU7VpcEcc15ZuMcL4U3"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: uln::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: endpoint::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
     fn test_governance_message_init_send_library<'a>() {
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "init_send_library");
