@@ -1,6 +1,6 @@
 import { BN } from '@coral-xyz/anchor'
 import { toWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
-import { AccountMeta, AddressLookupTableAccount, Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
+import { AccountMeta, AddressLookupTableAccount, Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction, AddressLookupTableProgram } from '@solana/web3.js'
 import bs58 from 'bs58'
 import { task } from 'hardhat/config'
 import { makeBytes32 } from '@layerzerolabs/devtools'
@@ -47,6 +47,12 @@ task('lz:oapp:solana:clear-with-alt', 'Clear a stored payload on Solana')
                 return;
             }
 
+            if (message.verification.sealer.status === 'WAITING') {
+                console.log('--------------------------------')
+                console.log('\nStill waiting for sealer. Please retry later. \n')
+                return;
+            }
+
             const { connection, umiWalletKeyPair } = await deriveConnection(message.pathway.dstEid)
             const signer = toWeb3JsKeypair(umiWalletKeyPair)
             
@@ -82,6 +88,8 @@ task('lz:oapp:solana:clear-with-alt', 'Clear a stored payload on Solana')
 
         const governance = new Governance(new PublicKey(process.env.GOVERNANCE_PROGRAM_ID), 0)
         const lookupTableAddress = await governance.getLzReceiveAltUnderlyingAddress(connection)
+        console.log('ALT address: ', lookupTableAddress.toBase58())
+        // await extendLookupTable(connection, signer, lookupTableAddress, []);
 
         const lookupTableAccount = (
             await connection.getAddressLookupTable(new PublicKey(lookupTableAddress))
@@ -150,6 +158,20 @@ async function getLzReceiveAccountsFromLzReceiveTypesWithAlt(connection: Connect
 
     const accounts = fixedBeet.read(buffer, 0)
 
+    console.log('--------------- ACCOUNTS ---------------')
+    console.log('Total accounts: ', accounts.length);
+    console.log('Accounts in ALT: ', accounts.filter((acc) => acc.isAltIndex).length);
+    console.log('Accounts not in ALT: ', accounts.filter((acc) => !acc.isAltIndex).length);
+    // Print all accounts not in ALT
+    console.log('Accounts not in ALT:');
+    accounts
+        .filter((acc) => !acc.isAltIndex)
+        .forEach((acc, index) => {
+            const pubkey = new PublicKey(acc.indexOrPubkey);
+            console.log(`  ${index}: ${pubkey.toBase58()} (writable: ${acc.isWritable}, signer: ${acc.isSigner})`);
+        });
+    console.log('--------------------------------------')
+
     const lzReceiveAccountsFromLzReceiveTypesWithAlt: AccountMeta[] = accounts.map((acc) => {
         const key = acc.isAltIndex ? altAddresses[acc.indexOrPubkey[0]] : new PublicKey(acc.indexOrPubkey)
         const account = {
@@ -168,3 +190,23 @@ async function getLzReceiveAccountsFromLzReceiveTypesWithAlt(connection: Connect
     
     return lzReceiveAccountsFromLzReceiveTypesWithAlt
 }
+
+async function extendLookupTable(connection: Connection, signer: Keypair, lookupTableAddress: PublicKey, addresses: PublicKey[]) {
+    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+        payer: signer.publicKey,
+        authority: signer.publicKey,
+        lookupTable: lookupTableAddress,
+        addresses: addresses,
+    });
+
+    const blockhash = await connection.getLatestBlockhash();
+    const message = new TransactionMessage({
+        payerKey: signer.publicKey,
+        recentBlockhash: blockhash.blockhash,
+        instructions: [extendInstruction],
+    }).compileToV0Message();
+    const tx = new VersionedTransaction(message);
+    tx.sign([signer]);
+    const signature = await connection.sendTransaction(tx);
+    console.log('extend instruction', signature)
+};

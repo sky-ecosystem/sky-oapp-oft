@@ -17,9 +17,12 @@ mod test_msg_codec {
     
     const OFT_STORE_ADDRESS: Pubkey = pubkey!("6wDD73dAoR1DC8TgKuQGqCp5mBfQmTrfipPotyxUnrBk");
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
+    const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const BNB_TESTNET_EID: u32 = 40102;
     const FUJI_EID: u32 = 40106;
-    const CONFIG_TYPE_SEND_ULN: u32 = 1;
+    const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
+    const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
+    const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
 
     #[test]
     fn test_governance_module() {
@@ -505,7 +508,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_set_oapp_config<'a>() {
+    fn test_governance_message_set_send_config<'a>() {
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_config");
         // Add the discriminator
@@ -526,19 +529,15 @@ mod test_msg_codec {
         config.serialize(&mut config_bytes).unwrap();
 
         let params = SetConfigParams {
-            oapp: get_governance_oapp_pda().0,
+            oapp: OFT_STORE_ADDRESS,
             eid: FUJI_EID,
-            config_type: CONFIG_TYPE_SEND_ULN,
+            config_type: ULN_CONFIG_TYPE_SEND_ULN,
             config: config_bytes,
         };
 
         // Serialize the SendParams struct using Borsh
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
-            .expect("Failed to serialize SetPeerConfigParams");
-
-        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
-
-        println!("OFT Program ID: {:?}", oft::id());
+            .expect("Failed to serialize SetConfigParams");
 
         let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
             &[
@@ -548,12 +547,10 @@ mod test_msg_codec {
             &endpoint::id(),
         );
 
-        let message_lib_key = pubkey!("7a4WjyR8VZ7yZz5XJAKm39BUGn5iT9CKcv2pmG9tdXVH");
-
         let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
             &[
                 MESSAGE_LIB_SEED,
-                message_lib_key.to_bytes().as_ref()
+                MSG_LIB_KEY.to_bytes().as_ref()
             ],
             &endpoint::id(),
         );
@@ -573,6 +570,51 @@ mod test_msg_codec {
             },
             Acc {
                 pubkey: message_lib_info,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: MSG_LIB_KEY,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: uln::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: MSG_LIB_KEY,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("CDaRAdFzi5XsDu6SZBFjFbF4NRPDepKErTuCsFhWJNRp"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("54QYFFNarijQju9uVL4yC7tZ6pBfvHFwi58eBdCDNY7U"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("AnF6jGBQykDchX1EjmQePJwJBCh9DSbZjYi14Hdx5BRx"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("77jrDmstEN2XymYS2TeQxV9nB3wun7xxHP4hdhRcw5rg"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("7n1YeBMVEUCJ4DscKAcpVQd6KXU7VpcEcc15ZuMcL4U3"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: uln::id(),
                 is_signer: false,
                 is_writable: false,
             },
@@ -771,7 +813,7 @@ mod test_msg_codec {
         let params = SetSendLibraryParams {
             sender: OFT_STORE_ADDRESS,
             eid: FUJI_EID,
-            new_lib: pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ"),
+            new_lib: MSG_LIB_KEY,
         };
 
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
@@ -865,7 +907,7 @@ mod test_msg_codec {
         let params = SetReceiveLibraryParams {
             receiver: OFT_STORE_ADDRESS,
             eid: FUJI_EID,
-            new_lib: pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ"),
+            new_lib: MSG_LIB_KEY,
             grace_period: 0,
         };
 
@@ -949,7 +991,6 @@ mod test_msg_codec {
 
         prepare_governance_message_simulation(&msg);
     }
-
 
     #[test]
     fn test_governance_message_set_enforced_options<'a>() {
