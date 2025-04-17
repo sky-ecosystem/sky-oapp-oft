@@ -23,7 +23,8 @@ Tested scenarios include:
 12. Endpoint.initReceiveLibrary | test_governance_message_init_receive_library | [demo](https://explorer.solana.com/tx/bU8h14VtA1AGfRpCQ9SdTt8omLNuMyWftsZbJZzHRQNLnn9VEpHAhnZ3NMRojkmPsQRZVzUUsreEYXzFDXJS8i7?cluster=devnet)
 13. Endpoint.setReceiveLibrary | test_governance_message_set_receive_library | [demo](https://explorer.solana.com/tx/2gn5KQxXDQw6y6wVEg8nqkjumWj4bhQugYSPkdkJt9TuqUMc78v2TcV6J92x1Gox4XY1DaFDKEVrj1QkTvTAdMVh?cluster=devnet)
 14. OFT.setPeerConfig - setEnforcedOptions | test_governance_message_set_enforced_options | [demo](https://explorer.solana.com/tx/5ZQtDktmHRvjcvM2K9GohqsMLyXxDH8hRLxtYNPfyeceD9UBHC4dHGfirc3wZ92xhm4GMKxrfSLeMaFsTThJ7Sgj?cluster=devnet)
-15. Endpoint.setConfig - setSendConfig | test_msg_codec::test_governance_message_set_send_config | [demo](https://explorer.solana.com/tx/5eeTsEU75UnM8VAjf9PxXLHUKiM1qkJD1rKBWAdTYVW4A4oCFobMSdr9QY47wr7N9fWv7F52J55RhvfSt6vkKGj6?cluster=devnet
+15. Endpoint.setConfig - setSendConfig | test_msg_codec::test_governance_message_set_send_config | [demo](https://explorer.solana.com/tx/5eeTsEU75UnM8VAjf9PxXLHUKiM1qkJD1rKBWAdTYVW4A4oCFobMSdr9QY47wr7N9fWv7F52J55RhvfSt6vkKGj6?cluster=devnet)
+16. Endpoint.setConfig - setExecutorConfig | test_msg_codec::test_governance_message_set_executor_config | [demo](https://explorer.solana.com/tx/qminCQth3s7kvdC3P3BBLgr6qNckFnbuDv7EaUrhzUJX1HRAR7isLBAHSydQTavzNnBsSyZGexE7Ph3wh2XsBnd?cluster=devnet)
 
 The code used to craft the Governance Message for the scenarios above is located in [programs/governance/tests/msg_codec.rs](./tests/msg_codec.rs).
 
