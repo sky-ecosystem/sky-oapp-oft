@@ -36,7 +36,7 @@ const action: ActionType<TaskArguments> = async (
         dstEid,
         to: makeBytes32(bs58.decode(to)),
         amountLD: amountLD.toString(),
-        minAmountLD: amountLD.mul(9_000).div(10_000).toString(),
+        minAmountLD: amountLD.toString(),
         extraOptions: '0x',
         composeMsg: '0x',
         oftCmd: '0x',

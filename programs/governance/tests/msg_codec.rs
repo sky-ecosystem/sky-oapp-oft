@@ -3,7 +3,7 @@
 mod test_msg_codec {
     use anchor_lang::prelude::*;
     use base64::Engine;
-    use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, SetConfigParams, MESSAGE_LIB_SEED, OAPP_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
+    use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
     use oft::{instructions::{PeerConfigParam, SetOFTConfigParams, SetPauseParams, SetPeerConfigParams}, PEER_SEED};
     use solana_program::pubkey::Pubkey;
     use solana_program::bpf_loader_upgradeable;
@@ -14,12 +14,20 @@ mod test_msg_codec {
         msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, CPI_AUTHORITY_PLACEHOLDER, PAYER_PLACEHOLDER
     };
     use uln::state::{ExecutorConfig, UlnConfig};
+
+    #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
+    pub struct InitNonceParams {
+        pub local_oapp: Pubkey, // the PDA of the OApp
+        pub remote_eid: u32,
+        pub remote_oapp: [u8; 32],
+    }
     
     const OFT_STORE_ADDRESS: Pubkey = pubkey!("6wDD73dAoR1DC8TgKuQGqCp5mBfQmTrfipPotyxUnrBk");
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const BNB_TESTNET_EID: u32 = 40102;
     const FUJI_EID: u32 = 40106;
+    const FUJI_PEER_ADDRESS: &str = "0x89e5fD9975e67A27dbbd2af085f4a5627AC14eD9";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
@@ -33,7 +41,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_hello_world() {
+    fn test_hello_world() {
         // hello world program id
         let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
         let accounts = vec![
@@ -72,6 +80,9 @@ mod test_msg_codec {
 
         let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
         assert_eq!(msg, msg2);
+
+        prepare_governance_message_simulation(&msg);
+
     }
 
     #[test]
@@ -442,8 +453,8 @@ mod test_msg_codec {
         instruction_data.extend_from_slice(&discriminator);
 
         let params = SetPeerConfigParams {
-            remote_eid: 7771,
-            config: PeerConfigParam::PeerAddress(evm_address_to_bytes32("0x89e5fD9975e67A27dbbd2af085f4a5627AC14eD9")),
+            remote_eid: FUJI_EID,
+            config: PeerConfigParam::PeerAddress(evm_address_to_bytes32(FUJI_PEER_ADDRESS)),
         };
 
         // Serialize the SendParams struct using Borsh
@@ -1028,6 +1039,99 @@ mod test_msg_codec {
             },
             Acc {
                 pubkey: receive_library_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: solana_program::system_program::ID,
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            governance_program_id: governance::ID,
+            program_id: endpoint::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_governance_message_init_nonce<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "init_nonce");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = InitNonceParams {
+            local_oapp: OFT_STORE_ADDRESS,
+            remote_eid: FUJI_EID,
+            remote_oapp: evm_address_to_bytes32(FUJI_PEER_ADDRESS),
+        };
+
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize InitSendLibraryParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        println!("OFT Program ID: {:?}", oft::id());
+
+        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
+            &[
+                OAPP_SEED,
+                params.local_oapp.as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let (nonce, _bump_seed) = Pubkey::find_program_address(
+            &[
+                NONCE_SEED,
+                &params.local_oapp.to_bytes(),
+                &params.remote_eid.to_be_bytes(),
+                &params.remote_oapp[..]
+            ],
+            &endpoint::id(),
+        );
+
+        let (pending_inbound_nonce, _bump_seed) = Pubkey::find_program_address(
+            &[
+                PENDING_NONCE_SEED,
+                &params.local_oapp.to_bytes(),
+                &params.remote_eid.to_be_bytes(),
+                &params.remote_oapp[..]
+            ],
+            &endpoint::id(),
+        );
+
+        let accounts = vec![
+            // delegate
+            Acc {
+                pubkey: get_cpi_authority(),
+                is_signer: true,
+                is_writable: true,
+            },
+            // OApp registry account
+            Acc {
+                pubkey: oapp_registry,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: nonce,
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pending_inbound_nonce,
                 is_signer: false,
                 is_writable: true,
             },

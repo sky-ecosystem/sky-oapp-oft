@@ -9,7 +9,7 @@ Blockchain messaging protocol used is LayerZero.
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_governance_message_hello_world | [demo](https://explorer.solana.com/tx/4cBpcd2hmHax8iBVSxUEC92BX2dS2f1fLVBx8gpikeiSUYeSUAQo47Ad1X62VFQGRF8Ldk3upDJKT5X7EBnBxjyM?cluster=devnet)
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/DCZXYtKMcsAbrDcqZVdEUH1j31auef9hxeyZEwC6BdM28KffG9bVmHf9RVpTYxUQhUaoWBn3VfQYDCw552FoCfi?cluster=devnet)
 2. SPL token transfer | test_governance_message_transfer_token | [demo](https://explorer.solana.com/tx/nLRtTDRQd6vJX5axWWh2JjpTUjNHfLQv34pTB37zRFHkeFEG7fe6ZwYhxStcDzQJ7Y3GvPyJPQ78gqRRLHTfmoT?cluster=devnet)
 3. Transfer Program Upgrade Authority | test_governance_message_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/46NooMsMmBASL335wFuk4rd7uJdAHi75UA1Ap5ba3NSqPb7xrf7y7qe2G2Txntvrak2bXRDyihphXqgQBKW54GRY?cluster=devnet)
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet)
@@ -26,6 +26,7 @@ Tested scenarios include:
 15. Endpoint.setConfig - setSendConfig | test_msg_codec::test_governance_message_set_send_config | [demo](https://explorer.solana.com/tx/5eeTsEU75UnM8VAjf9PxXLHUKiM1qkJD1rKBWAdTYVW4A4oCFobMSdr9QY47wr7N9fWv7F52J55RhvfSt6vkKGj6?cluster=devnet)
 16. Endpoint.setConfig - setExecutorConfig | test_msg_codec::test_governance_message_set_executor_config | [demo](https://explorer.solana.com/tx/qminCQth3s7kvdC3P3BBLgr6qNckFnbuDv7EaUrhzUJX1HRAR7isLBAHSydQTavzNnBsSyZGexE7Ph3wh2XsBnd?cluster=devnet)
 17. Endpoint.setConfig - setReceiveConfig | test_msg_codec::test_governance_message_set_receive_config | [demo](https://explorer.solana.com/tx/2T3aoUewbrU5Xwf9kF1ZQPXzYXx1wWoCce1PAHigUcHFqUm8LCEFjA7CS8Zvq7n6jT2mR2Wbm9mF2mZtRz3Tf8E8?cluster=devnet)
+18. Endpoint.initNonce | test_msg_codec::test_governance_message_init_nonce | [demo](https://explorer.solana.com/tx/5ncNRyEwPUVwPb8mi5beLayDKXcwo38vauBVbCiTGmvs83g3hMQPnqcqCwJD6vW8memMgixVg2Ku4n8uRChzuYYx?cluster=devnet)
 
 The code used to craft the Governance Message for the scenarios above is located in [programs/governance/tests/msg_codec.rs](./tests/msg_codec.rs).
 
