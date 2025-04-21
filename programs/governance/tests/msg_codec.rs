@@ -121,8 +121,8 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_transfer_token() {
-        let mint_pubkey = Pubkey::try_from("AtGakZsHVY1BkinHEFMEJxZYhwA9KnuLD8QRmGjSAZEC").unwrap();
+    fn test_spl_token_transfer() {
+        let mint_pubkey = pubkey!("HC8D1rWMtAifPRhUYD7PwKHMtMVLtwCjarfNVvcN3SGK");
         let mint_account = Acc {
             pubkey: mint_pubkey,
             is_signer: false,
@@ -136,12 +136,15 @@ mod test_msg_codec {
 
         let (associated_token_address, _bump_seed) = Pubkey::find_program_address(
             &[
-                get_governance_oapp_pda().0.as_ref(),
+                get_cpi_authority().as_ref(),
                 spl_token::id().as_ref(),
                 mint_pubkey.as_ref(),
             ],
             &spl_associated_token_account::id(),
         );
+
+        println!("CPI authority: {:?}", get_cpi_authority());
+        println!("Associated token address: {:?}", associated_token_address);
 
         let token_account = Acc {
             pubkey: associated_token_address,
@@ -150,7 +153,7 @@ mod test_msg_codec {
         };
 
         let destination_account = Acc {
-            pubkey: Pubkey::try_from("3Qq7GD6V3mK1do7Ch7JMr9LdUu4Lv3EZ4qJcggw1eyR6").unwrap(),
+            pubkey: Pubkey::try_from("4aLLvFDsgPsz7WXWgAEVPXJ4Kpczbb2z8uPW4Aca2r1b").unwrap(),
             is_signer: false,
             is_writable: true,
         };
@@ -184,6 +187,8 @@ mod test_msg_codec {
         msg.serialize(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
     }
 
     #[test]
@@ -213,7 +218,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_transfer_upgrade_authority<'a>() {
+    fn test_transfer_upgrade_authority<'a>() {
         let instruction = bpf_loader_upgradeable::set_upgrade_authority(&oft::id(), &CPI_AUTHORITY_PLACEHOLDER, Some(&pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8")));
 
         let msg = GovernanceMessage {
@@ -232,7 +237,7 @@ mod test_msg_codec {
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
-        // prepare_governance_message_simulation(&msg);
+        prepare_governance_message_simulation(&msg);
     }
 
     #[test]
