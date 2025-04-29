@@ -30,12 +30,15 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausab
 
     /// @dev The underlying ERC20 token.
     IERC20 internal immutable innerToken;
+    mapping(address => bool) public pausers;
 
     uint256 public feeBalance;
 
     event FeeWithdrawn(address indexed to, uint256 amountLD);
+    event PauserStatusChange(address pauserAddress, bool newStatus);
 
     error NoFeesToWithdraw();
+    error NotPauser();
 
     /**
      * @notice Initializes the MintBurnOFTAdapter contract.
@@ -86,7 +89,14 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausab
         _setRateLimitAccountingType(_rateLimitAccountingType);
     }
 
-    function pause() external onlyOwner {
+    function setPauser(address _pauser, bool _status) public onlyOwner {
+        pausers[_pauser] = _status;
+
+        emit PauserStatusChange(_pauser, _status);
+    }
+
+    function pause() external {
+        if (!pausers[msg.sender]) revert NotPauser();
         _pause();
     }
 

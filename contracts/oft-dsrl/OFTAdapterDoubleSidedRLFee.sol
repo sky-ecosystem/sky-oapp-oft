@@ -27,12 +27,14 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
     using SafeERC20 for IERC20;
 
     IERC20 internal immutable innerToken;
-
     uint256 public feeBalance;
+    mapping(address => bool) public pausers;
 
     event FeeWithdrawn(address indexed to, uint256 amountLD);
+    event PauserStatusChange(address pauserAddress, bool newStatus);
 
     error NoFeesToWithdraw();
+    error NotPauser();
 
      /**
      * @dev Constructor for the OFTAdapter contract.
@@ -80,7 +82,14 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
         _setRateLimitAccountingType(_rateLimitAccountingType);
     }
 
-    function pause() external onlyOwner {
+    function setPauser(address _pauser, bool _status) public onlyOwner {
+        pausers[_pauser] = _status;
+
+        emit PauserStatusChange(_pauser, _status);
+    }
+
+    function pause() external {
+        if (!pausers[msg.sender]) revert NotPauser();
         _pause();
     }
 
