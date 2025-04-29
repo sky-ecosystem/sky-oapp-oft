@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Fee } from "@layerzerolabs/oft-evm/contracts/Fee.sol";
 import { OFTCore } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
 
@@ -22,7 +23,7 @@ import { DoubleSidedRateLimiter } from "./DoubleSidedRateLimiter.sol";
  * IF the 'innerToken' applies something like a transfer fee, the default will NOT work...
  * a pre/post balance check will need to be done to calculate the amountSentLD/amountReceivedLD.
  */
-abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
+abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausable {
     using SafeERC20 for IERC20;
 
     IERC20 internal immutable innerToken;
@@ -77,6 +78,14 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
      */
     function setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) external onlyOwner {
         _setRateLimitAccountingType(_rateLimitAccountingType);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /**
@@ -149,7 +158,7 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
         uint256 _amountLD,
         uint256 _minAmountLD,
         uint32 _dstEid
-    ) internal virtual override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
+    ) internal virtual override whenNotPaused returns (uint256 amountSentLD, uint256 amountReceivedLD) {
         (amountSentLD, amountReceivedLD) = _debitView(_amountLD, _minAmountLD, _dstEid);
         _checkAndUpdateRateLimit(_dstEid, amountSentLD, RateLimitDirection.Outbound);
 
@@ -177,7 +186,7 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
         address _to,
         uint256 _amountLD,
         uint32 _srcEid
-    ) internal virtual override returns (uint256 amountReceivedLD) {
+    ) internal virtual override whenNotPaused returns (uint256 amountReceivedLD) {
         // Check and update the rate limit based on the source endpoint ID (srcEid) and the amount in local decimals from the message.
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);
         

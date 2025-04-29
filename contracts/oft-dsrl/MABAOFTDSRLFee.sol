@@ -4,6 +4,7 @@ pragma solidity ^0.8.22;
 // External imports
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { OFTCore } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
 import { Fee } from "@layerzerolabs/oft-evm/contracts/Fee.sol";
 
@@ -24,7 +25,7 @@ import { IMintableBurnableVoidReturn } from "./interfaces/IMintableBurnableVoidR
  *
  * @dev Inherits from OFTCore and provides implementations for _debit and _credit functions using a mintable and burnable token.
  */
-abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
+abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausable {
     using SafeERC20 for IERC20;
 
     /// @dev The underlying ERC20 token.
@@ -83,6 +84,14 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
      */
     function setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) external onlyOwner {
         _setRateLimitAccountingType(_rateLimitAccountingType);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /**
@@ -159,7 +168,7 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
         uint256 _amountLD,
         uint256 _minAmountLD,
         uint32 _dstEid
-    ) internal virtual override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
+    ) internal virtual override whenNotPaused returns (uint256 amountSentLD, uint256 amountReceivedLD) {
         (amountSentLD, amountReceivedLD) = _debitView(_amountLD, _minAmountLD, _dstEid);
         _checkAndUpdateRateLimit(_dstEid, amountSentLD, RateLimitDirection.Outbound);
 
@@ -190,7 +199,7 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
         address _to,
         uint256 _amountLD,
         uint32 _srcEid
-    ) internal virtual override returns (uint256 amountReceivedLD) {
+    ) internal virtual override whenNotPaused returns (uint256 amountReceivedLD) {
         if (_to == address(0x0)) _to = address(0xdead); // _mint(...) does not support address(0x0)
 
         // Check and update the rate limit based on the source endpoint ID (srcEid) and the amount in local decimals from the message.
