@@ -25,6 +25,7 @@ import { MintAndBurnOFTAdapter } from "../../contracts/MintAndBurnOFTAdapter.sol
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 // DevTools imports
 import { TestHelperOz5WithRevertAssertions } from "./helpers/TestHelperOz5WithRevertAssertions.sol";
@@ -977,5 +978,115 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bToken.balanceOf(address(bOFT)), 0);
         assertEq(aOFT.feeBalance(), tokenFee);
         assertEq(bOFT.feeBalance(), 0);
+    }
+
+    function test_setPauser() public {
+        assertFalse(aOFT.pausers(userA));
+        
+        vm.prank(userB);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, userB));
+        aOFT.setPauser(userA, true);
+        
+        aOFT.setPauser(userA, true);
+        assertTrue(aOFT.pausers(userA));
+        
+        aOFT.setPauser(userA, false);
+        assertFalse(aOFT.pausers(userA));
+        
+        vm.expectEmit(true, true, true, true);
+        emit MABAOFTDSRLFee.PauserStatusChange(userA, true);
+        aOFT.setPauser(userA, true);
+    }
+
+    function test_pause() public {
+        vm.prank(userB);
+        vm.expectRevert(MABAOFTDSRLFee.NotPauser.selector);
+        aOFT.pause();
+        
+        aOFT.setPauser(userA, true);
+        
+        vm.prank(userA);
+        aOFT.pause();
+        
+        // Verify contract is paused by attempting a transfer
+        uint256 tokensToSend = 1 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            tokensToSend,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+        
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), tokensToSend);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+        vm.stopPrank();
+    }
+
+    function test_unpause() public {
+        aOFT.setPauser(userA, true);
+        vm.prank(userA);
+        aOFT.pause();
+        
+        vm.prank(userB);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, userB));
+        aOFT.unpause();
+        
+        vm.prank(userA);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, userA));
+        aOFT.unpause();
+        
+        // Owner can unpause
+        aOFT.unpause();
+        
+        // Verify contract is unpaused by performing a transfer
+        uint256 tokensToSend = 1 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            tokensToSend,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+        
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+        vm.stopPrank();
+        
+        // Verify the transfer was successful
+        assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend);
+    }
+
+    function test_multiple_pausers() public {
+        aOFT.setPauser(userA, true);
+        aOFT.setPauser(userB, true);
+        
+        assertTrue(aOFT.pausers(userA));
+        assertTrue(aOFT.pausers(userB));
+        
+        vm.prank(userB);
+        aOFT.pause();
+        
+        aOFT.unpause();
+        
+        vm.prank(userA);
+        aOFT.pause();
+        
+        aOFT.setPauser(userA, false);
+        aOFT.setPauser(userB, false);
+        
+        assertFalse(aOFT.pausers(userA));
+        assertFalse(aOFT.pausers(userB));
     }
 }

@@ -82,17 +82,30 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
         _setRateLimitAccountingType(_rateLimitAccountingType);
     }
 
+    /**
+     * @notice Sets the pauser status for a given address.
+     * @param _pauser The address to set the pauser status for.
+     * @param _status The new pauser status.
+     */
     function setPauser(address _pauser, bool _status) public onlyOwner {
         pausers[_pauser] = _status;
 
         emit PauserStatusChange(_pauser, _status);
     }
 
+    /**
+     * @notice Pauses the contract if the caller is a pauser.
+     * @dev Only pausers can pause the contract.
+     */
     function pause() external {
         if (!pausers[msg.sender]) revert NotPauser();
         _pause();
     }
 
+    /**
+     * @notice Unpauses the contract.
+     * @dev Only the owner can unpause the contract.
+     */
     function unpause() external onlyOwner {
         _unpause();
     }
