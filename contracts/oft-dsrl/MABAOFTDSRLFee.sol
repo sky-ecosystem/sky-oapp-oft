@@ -4,6 +4,7 @@ pragma solidity ^0.8.22;
 // External imports
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { OFTCore } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
 import { Fee } from "@layerzerolabs/oft-evm/contracts/Fee.sol";
 
@@ -24,17 +25,20 @@ import { IMintableBurnableVoidReturn } from "./interfaces/IMintableBurnableVoidR
  *
  * @dev Inherits from OFTCore and provides implementations for _debit and _credit functions using a mintable and burnable token.
  */
-abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
+abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausable {
     using SafeERC20 for IERC20;
 
     /// @dev The underlying ERC20 token.
     IERC20 internal immutable innerToken;
+    mapping(address => bool) public pausers;
 
     uint256 public feeBalance;
 
     event FeeWithdrawn(address indexed to, uint256 amountLD);
+    event PauserStatusChange(address pauserAddress, bool newStatus);
 
     error NoFeesToWithdraw();
+    error NotPauser();
 
     /**
      * @notice Initializes the MintBurnOFTAdapter contract.
@@ -83,6 +87,34 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
      */
     function setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) external onlyOwner {
         _setRateLimitAccountingType(_rateLimitAccountingType);
+    }
+
+    /**
+     * @notice Sets the pauser status for a given address.
+     * @param _pauser The address to set the pauser status for.
+     * @param _status The new pauser status.
+     */
+    function setPauser(address _pauser, bool _status) public onlyOwner {
+        pausers[_pauser] = _status;
+
+        emit PauserStatusChange(_pauser, _status);
+    }
+
+    /**
+     * @notice Pauses the contract if the caller is a pauser.
+     * @dev Only pausers can pause the contract.
+     */
+    function pause() external {
+        if (!pausers[msg.sender]) revert NotPauser();
+        _pause();
+    }
+
+    /**
+     * @notice Unpauses the contract.
+     * @dev Only the owner can unpause the contract.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     /**
@@ -159,7 +191,7 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
         uint256 _amountLD,
         uint256 _minAmountLD,
         uint32 _dstEid
-    ) internal virtual override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
+    ) internal virtual override whenNotPaused returns (uint256 amountSentLD, uint256 amountReceivedLD) {
         (amountSentLD, amountReceivedLD) = _debitView(_amountLD, _minAmountLD, _dstEid);
         _checkAndUpdateRateLimit(_dstEid, amountSentLD, RateLimitDirection.Outbound);
 
@@ -190,7 +222,7 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee {
         address _to,
         uint256 _amountLD,
         uint32 _srcEid
-    ) internal virtual override returns (uint256 amountReceivedLD) {
+    ) internal virtual override whenNotPaused returns (uint256 amountReceivedLD) {
         if (_to == address(0x0)) _to = address(0xdead); // _mint(...) does not support address(0x0)
 
         // Check and update the rate limit based on the source endpoint ID (srcEid) and the amount in local decimals from the message.
