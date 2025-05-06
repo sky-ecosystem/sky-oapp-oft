@@ -12,6 +12,7 @@ use std::io;
 /// | MODULE          |                               32 | Governance module identifier            |
 /// | ACTION          |                                1 | Governance action identifier            |
 /// | CHAIN           |                                4 | Chain identifier                        |
+/// | ORIGIN_CALLER   |                               32 | Origin caller address as bytes32        |
 /// |-----------------+----------------------------------+-----------------------------------------|
 /// | program_id      |                               32 | Program ID of the program to be invoked |
 /// | accounts_length |                                2 | Number of accounts                      |
@@ -21,7 +22,7 @@ use std::io;
 ///
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GovernanceMessage {
-    pub governance_program_id: Pubkey,
+    pub origin_caller: [u8; 32],
     pub program_id: Pubkey,
     pub accounts: Vec<Acc>,
     pub data: Vec<u8>,
@@ -35,7 +36,7 @@ impl GovernanceMessage {
         0x63, 0x65,
     ];
 
-    fn read_body<R: io::Read>(reader: &mut R, governance_program_id: Pubkey) -> io::Result<Self> {
+    fn read_body<R: io::Read>(reader: &mut R, origin_caller: [u8; 32]) -> io::Result<Self> {
         let program_id = msg_codec::read_pubkey(reader)?;
         let accounts_len = msg_codec::read_u16(reader)?;
         let mut accounts = Vec::with_capacity(accounts_len as usize);
@@ -56,7 +57,7 @@ impl GovernanceMessage {
         reader.read_exact(&mut data)?;
 
         Ok(Self {
-            governance_program_id,
+            origin_caller,
             program_id,
             accounts,
             data,
@@ -100,12 +101,11 @@ pub enum GovernanceAction {
 impl From<GovernanceMessage> for Instruction {
     fn from(val: GovernanceMessage) -> Self {
         let GovernanceMessage {
-            governance_program_id,
+            origin_caller: _,
             program_id,
             accounts,
             data,
         } = val;
-        assert_eq!(governance_program_id, crate::ID);
         let accounts: Vec<AccountMeta> = accounts.into_iter().map(|a| a.into()).collect();
         Instruction {
             program_id,
@@ -122,9 +122,11 @@ impl From<Instruction> for GovernanceMessage {
             accounts,
             data,
         } = instruction;
+
         let accounts: Vec<Acc> = accounts.into_iter().map(|a| a.into()).collect();
+
         GovernanceMessage {
-            governance_program_id: crate::ID,
+            origin_caller: [0; 32],
             program_id,
             accounts,
             data,
@@ -208,6 +210,12 @@ pub mod msg_codec {
         Ok(Pubkey::new_from_array(buf))
     }
 
+    pub fn read_bytes32<R: Read>(reader: &mut R) -> io::Result<[u8; 32]> {
+        let mut buf = [0u8; 32];
+        reader.read_exact(&mut buf)?;
+        Ok(buf)
+    }
+
     pub fn write_u8<W: Write>(writer: &mut W, value: u8) -> io::Result<()> {
         writer.write_all(&[value])
     }
@@ -222,6 +230,10 @@ pub mod msg_codec {
 
     pub fn write_pubkey<W: Write>(writer: &mut W, pubkey: &Pubkey) -> io::Result<()> {
         writer.write_all(&pubkey.to_bytes())
+    }
+
+    pub fn write_bytes32<W: Write>(writer: &mut W, bytes: &[u8; 32]) -> io::Result<()> {
+        writer.write_all(bytes)
     }
 
     pub fn decode_governance(message: &[u8]) -> Result<GovernanceMessage> {
@@ -262,15 +274,16 @@ impl msg_codec::MessageCodec for GovernanceMessage {
             ));
         }
 
-        let governance_program_id = msg_codec::read_pubkey(reader)?;
-        Self::read_body(reader, governance_program_id)
+        let origin_caller = msg_codec::read_bytes32(reader)?;
+        
+        Self::read_body(reader, origin_caller)
     }
 
     fn encode<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(&Self::MODULE)?;
         msg_codec::write_u8(writer, GovernanceAction::SolanaCall as u8)?; // SolanaCall
         msg_codec::write_u32(writer, SOLANA_CHAIN_ID)?; // Solana chain
-        msg_codec::write_pubkey(writer, &self.governance_program_id)?;
+        msg_codec::write_bytes32(writer, &self.origin_caller)?;
         self.write_body(writer)
     }
 
@@ -278,7 +291,7 @@ impl msg_codec::MessageCodec for GovernanceMessage {
         32 // MODULE
         + 1 // action
         + 4 // chain
-        + 32 // governance_program_id
+        + 32 // origin_caller
         + 32 // program_id
         + 2 // accounts_length
         + self.accounts.len() * (32 + 1 + 1) // accounts (pubkey + is_signer + is_writable)
