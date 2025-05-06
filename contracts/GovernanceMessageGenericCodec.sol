@@ -9,6 +9,10 @@ library GovernanceMessageGenericCodec {
     uint8 private constant DST_EID_OFFSET = ACTION_OFFSET + 1;
     uint8 private constant ORIGIN_CALLER_OFFSET = DST_EID_OFFSET + 4;
 
+    function action(bytes calldata _msg) internal pure returns (uint8) {
+        return uint8(bytes1(_msg[ACTION_OFFSET:ACTION_OFFSET+1]));
+    }
+
     function dstEid(bytes calldata _msg) internal pure returns (uint32) {
         return uint32(bytes4(_msg[DST_EID_OFFSET:DST_EID_OFFSET+4]));
     }

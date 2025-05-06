@@ -82,6 +82,10 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         MessagingFee calldata _fee,
         address _refundAddress
     ) internal virtual returns (MessagingReceipt memory msgReceipt) {
+        if (_message.action != uint8(GovernanceAction.EVM_CALL)) {
+            revert InvalidAction(_message.action);
+        }
+
         if (AddressCast.toAddress(_message.originCaller) != address(msg.sender)) {
             revert UnauthorizedOriginCaller();
         }
