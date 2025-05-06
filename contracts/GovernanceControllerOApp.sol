@@ -39,7 +39,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
-    ) external payable onlyOwner returns (MessagingReceipt memory receipt) {
+    ) external payable returns (MessagingReceipt memory receipt) {
         return _sendEVMAction(_message, _extraOptions, _fee, _refundAddress);
     }
 
@@ -59,7 +59,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
-    ) external payable onlyOwner returns (MessagingReceipt memory receipt) {
+    ) external payable returns (MessagingReceipt memory receipt) {
         return _sendRawBytesAction(_message, _extraOptions, _fee, _refundAddress);
     }
 
