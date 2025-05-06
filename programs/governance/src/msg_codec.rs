@@ -240,6 +240,21 @@ pub mod msg_codec {
         GovernanceMessage::decode(&mut message.as_ref())
             .map_err(|_| error!(GovernanceError::InvalidGovernanceMessage))
     }
+
+    pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
+        // Skip module (32 bytes), action (1 byte), and chain (4 bytes) to get to origin_caller
+        if message.len() < 32 + 1 + 4 + 32 {
+            return Err(error!(GovernanceError::InvalidGovernanceMessage));
+        }
+        
+        // Extract origin_caller directly from the slice at offset 37 (32 + 1 + 4)
+        let origin_caller_start = 32 + 1 + 4;
+        let origin_caller_end = origin_caller_start + 32;
+        let mut origin_caller = [0u8; 32];
+        origin_caller.copy_from_slice(&message[origin_caller_start..origin_caller_end]);
+        
+        Ok(origin_caller)
+    }
 }
 
 // Update GovernanceMessage implementation

@@ -14,6 +14,7 @@ mod test_msg_codec {
         msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, CPI_AUTHORITY_PLACEHOLDER, PAYER_PLACEHOLDER
     };
     use uln::state::{ExecutorConfig, UlnConfig};
+    use governance::msg_codec::msg_codec::decode_origin_caller;
 
     #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
     pub struct InitNonceParams {
@@ -27,6 +28,7 @@ mod test_msg_codec {
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const FUJI_PEER_ADDRESS: &str = "0x89e5fD9975e67A27dbbd2af085f4a5627AC14eD9";
+    const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
@@ -66,7 +68,7 @@ mod test_msg_codec {
         // Anchor example hello world "Initialize" instruction data that logs "Greetings"
         let data = hex::decode("afaf6d1f0d989bed").unwrap();
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id,
             accounts,
             data,
@@ -81,15 +83,15 @@ mod test_msg_codec {
         assert_eq!(msg, msg2);
 
         prepare_governance_message_simulation(&msg);
-
     }
 
     #[test]
     fn test_governance_message_parse() {
+        let origin_caller_hex = "9876543210000000000000000000000000000000000000000000000001234567";
         let hex_string = format!(
             "000000000000000047656e6572616c507572706f7365476f7665726e616e636502{:08x}{}00000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405",
             40168u32,
-            "0000000000000000000000000000000000000000000000000000000000000000", // origin_caller
+            origin_caller_hex,
         );
         let h = hex::decode(hex_string).unwrap();
 
@@ -108,14 +110,18 @@ mod test_msg_codec {
             },
         ];
         let data = vec![1, 2, 3, 4, 5];
+        let origin_caller = hex::decode(origin_caller_hex).unwrap().try_into().unwrap();
         let expected = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller,
             program_id: Pubkey::try_from("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap(),
             accounts,
             data,
         };
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
+        let mut serialized = Vec::new();
+        actual.serialize(&mut serialized).unwrap();
+        assert_eq!(decode_origin_caller(&serialized).unwrap(), origin_caller);
     }
 
     #[test]

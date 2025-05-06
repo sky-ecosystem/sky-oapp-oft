@@ -60,7 +60,7 @@ impl LzReceiveTypesWithAlt<'_> {
             &params.src_eid.to_be_bytes(),
         ];
         let (remote, _) = Pubkey::find_program_address(&seeds, ctx.program_id);
-        let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &[ctx.accounts.governance.bump]], ctx.program_id).unwrap();
+        let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &msg_codec::decode_origin_caller(&params.message).unwrap(), &[ctx.accounts.governance.bump]], ctx.program_id).unwrap();
 
         let governance_message: GovernanceMessage = msg_codec::decode_governance(&params.message)?;
 

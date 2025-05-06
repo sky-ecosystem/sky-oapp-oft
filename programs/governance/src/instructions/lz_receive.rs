@@ -45,7 +45,7 @@ pub struct LzReceive<'info> {
 
     #[account(
         mut,
-        seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes()],
+        seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes(), &msg_codec::decode_origin_caller(&params.message).unwrap()],
         bump = governance.bump
     )]
     pub cpi_authority: AccountInfo<'info>,
@@ -70,6 +70,7 @@ impl<'info> LzReceive<'info> {
         let cpi_authority_seed: &[&[u8]] = &[   
             CPI_AUTHORITY_SEED,
             &ctx.accounts.governance.key().to_bytes(),
+            &msg_codec::decode_origin_caller(&params.message).unwrap(),
             &[ctx.accounts.governance.bump],
         ];
 

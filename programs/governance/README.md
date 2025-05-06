@@ -9,7 +9,7 @@ Blockchain messaging protocol used is LayerZero.
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/DCZXYtKMcsAbrDcqZVdEUH1j31auef9hxeyZEwC6BdM28KffG9bVmHf9RVpTYxUQhUaoWBn3VfQYDCw552FoCfi?cluster=devnet)
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/3hSuC5xFad7MJZRQHHXWtdPhWsLubjokd4c7Q5qJ6TSMEG4Tqmwz4SewRfEsu1daNYBYBDjgLYBm4v2gjRzAgkaw?cluster=devnet)
 2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2Mvxmium7NXGWasQEjjsm4SHywYEGbXZUFeApUNAXZ4FHkfh9boyBbRqhrF3ZLAu8AShG3ycPQEGjDP46WiJZbNH?cluster=devnet)
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet)
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet)
@@ -87,7 +87,7 @@ Clearing of transactions is manual because it uses ALT for lzReceive.
 Example clear tx:
 
 ```
-pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x17d992d34e821bd4b962c22910127624ef62e02f49f7013e453369f258c29c70
+pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x92d27c12d6c4cc44eb4ebe7342cff58121954a1336850c29ca9defe10bb61b30
 ```
 
 where --src-tx-hash is source transaction hash where the governance message was sent on the source chain.
