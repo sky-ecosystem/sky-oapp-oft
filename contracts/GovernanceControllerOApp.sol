@@ -68,10 +68,6 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata _extraOptions,
         bool _payInLzToken
     ) external view returns (MessagingFee memory fee) {
-        if (GovernanceMessageGenericCodec.originCaller(_message) != address(msg.sender)) {
-            revert UnauthorizedOriginCaller();
-        }
-
         uint32 dstEid = GovernanceMessageGenericCodec.dstEid(_message);
         bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
 
@@ -86,6 +82,10 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         MessagingFee calldata _fee,
         address _refundAddress
     ) internal virtual returns (MessagingReceipt memory msgReceipt) {
+        if (AddressCast.toAddress(_message.originCaller) != address(msg.sender)) {
+            revert UnauthorizedOriginCaller();
+        }
+
         (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
 
         msgReceipt = _lzSend(_message.dstEid, message, options, _fee, _refundAddress);
@@ -95,10 +95,6 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         bytes calldata _extraOptions
     ) internal view virtual returns (bytes memory message, bytes memory options) {
-        if (AddressCast.toAddress(_message.originCaller) != address(msg.sender)) {
-            revert UnauthorizedOriginCaller();
-        }
-
         message = GovernanceMessageEVMCodec.encode(_message);
         options = combineOptions(_message.dstEid, SEND, _extraOptions);
     }
