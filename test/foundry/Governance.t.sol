@@ -41,8 +41,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5 {
         aGov = GovernanceControllerOApp(payable(sender[0]));
         bGov = GovernanceControllerOApp(payable(sender[1]));
 
-        aRelay = new MockGovernanceRelay(aGov, addressToBytes32(address(this)));
-        bRelay = new MockGovernanceRelay(bGov, addressToBytes32(address(this)));
+        aRelay = new MockGovernanceRelay(aGov, addressToBytes32(address(this)), bEid);
+        bRelay = new MockGovernanceRelay(bGov, addressToBytes32(address(this)), aEid);
 
         aControlledContract = new MockControlledContract(address(aRelay));
         bControlledContract = new MockControlledContract(address(bRelay));

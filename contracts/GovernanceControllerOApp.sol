@@ -9,7 +9,7 @@ import { AddressCast } from "@layerzerolabs/lz-evm-protocol-v2/contracts/libs/Ad
 
 import { GovernanceMessageEVMCodec } from "./GovernanceMessageEVMCodec.sol";
 import { GovernanceMessageGenericCodec } from "./GovernanceMessageGenericCodec.sol";
-import { IGovernanceController } from "./IGovernanceController.sol";
+import { IGovernanceController, GovernanceOrigin } from "./IGovernanceController.sol";
 
 contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceController {
     /// @notice The known set of governance actions.
@@ -25,7 +25,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     uint16 public constant SEND = 1;
 
     // a temporary variable to store the origin caller and expose it to governed contract
-    bytes32 public originCaller;
+    GovernanceOrigin public messageOrigin;
 
     error InvalidAction(uint8 action);
     error UnauthorizedOriginCaller();
@@ -120,7 +120,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     }
 
     function _lzReceive(
-        Origin calldata /*_origin*/,
+        Origin calldata origin,
         bytes32 /*_guid*/,
         bytes calldata payload,
         address /*_executor*/,
@@ -133,7 +133,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         }
 
         // @dev This is a temporary variable to store the origin caller and expose it to the governed contract.
-        originCaller = message.originCaller;
+        messageOrigin = GovernanceOrigin({ eid: origin.srcEid, caller: message.originCaller });
 
         (bool success, bytes memory returnData) = message.governedContract.call(message.callData);
         if (!success) {
@@ -141,6 +141,6 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         }
 
         // @dev set back to zero
-        originCaller = bytes32(0);
+        messageOrigin = GovernanceOrigin({ eid: 0, caller: bytes32(0) });
     }
 }

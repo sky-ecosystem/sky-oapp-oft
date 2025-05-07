@@ -5,15 +5,17 @@ import { IGovernanceController } from "../../../contracts/IGovernanceController.
 
 contract MockGovernanceRelay {
     bytes32 public immutable allowedOriginCaller;
+    uint32 public immutable allowedEid;
     IGovernanceController public immutable messenger;
 
     error DelegateCallFailed();
     error UnauthorizedMessenger();
     error UnauthorizedOriginCaller();
     
-    constructor(IGovernanceController _messenger, bytes32 _allowedOriginCaller) {
+    constructor(IGovernanceController _messenger, bytes32 _allowedOriginCaller, uint32 _allowedEid) {
         messenger = _messenger;
         allowedOriginCaller = _allowedOriginCaller;
+        allowedEid = _allowedEid;
     }
 
     modifier onlyAuthorized() {
@@ -21,7 +23,8 @@ contract MockGovernanceRelay {
             revert UnauthorizedMessenger();
         }
 
-        if (messenger.originCaller() != allowedOriginCaller) {
+        (uint32 originEid, bytes32 originCaller) = messenger.messageOrigin();
+        if (originEid != allowedEid || originCaller != allowedOriginCaller) {
             revert UnauthorizedOriginCaller();
         }
         _;
