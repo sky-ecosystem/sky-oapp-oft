@@ -23,7 +23,7 @@ mod test_msg_codec {
         pub remote_oapp: [u8; 32],
     }
     
-    const OFT_STORE_ADDRESS: Pubkey = pubkey!("6wDD73dAoR1DC8TgKuQGqCp5mBfQmTrfipPotyxUnrBk");
+    const OFT_STORE_ADDRESS: Pubkey = pubkey!("AePeMdWyhjm4rWijym5fmhiW3NnaiPV1rALTs2NVaG4i");
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
@@ -455,7 +455,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_set_peer_address<'a>() {
+    fn test_set_peer_address<'a>() {
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_peer_config");
         // Add the discriminator
@@ -473,6 +473,7 @@ mod test_msg_codec {
         println!("Instruction data (hex): {}", hex::encode(&instruction_data));
 
         println!("OFT Program ID: {:?}", oft::id());
+        println!("Governance Program ID: {:?}", governance::id());
 
         let (peer_address, _bump_seed) = Pubkey::find_program_address(
             &[
@@ -486,7 +487,7 @@ mod test_msg_codec {
         let accounts = vec![
             // admin as signer
             Acc {
-                pubkey: get_cpi_authority(),
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
                 is_signer: true,
                 is_writable: true,
             },
@@ -513,7 +514,7 @@ mod test_msg_codec {
         println!("Peer address: {:?}", peer_address);
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,

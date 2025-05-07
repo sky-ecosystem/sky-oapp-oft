@@ -50,8 +50,8 @@ export default async function () {
         {
           contract: solanaContract,
           config: {
-            delegate: '5V46GZ8RwRC7wt65dugUoKytNdZp3C9SZXk9A8NGx8tZ',
-            owner: '5V46GZ8RwRC7wt65dugUoKytNdZp3C9SZXk9A8NGx8tZ'
+            delegate: 'EcZWx9kAwApNdd1Kb6omKifkr3ZehHBVqqoRPpmxNjv',
+            owner: 'EcZWx9kAwApNdd1Kb6omKifkr3ZehHBVqqoRPpmxNjv'
           }
         }
     ],

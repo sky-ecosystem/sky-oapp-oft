@@ -107,8 +107,8 @@ devDependencies:
     specifier: ~6.0.11
     version: 6.0.11(@ethersproject/abi@5.8.0)(@ethersproject/bytes@5.8.0)(@ethersproject/contracts@5.8.0)(@ethersproject/hash@5.8.0)(@layerzerolabs/devtools-evm-hardhat@2.0.9)(@layerzerolabs/devtools-evm@1.0.6)(@layerzerolabs/devtools@0.4.10)(@layerzerolabs/io-devtools@0.1.16)(@layerzerolabs/lz-definitions@3.0.82)(@layerzerolabs/protocol-devtools-evm@3.0.7)(@layerzerolabs/protocol-devtools@1.1.6)(@layerzerolabs/ua-devtools-evm@5.0.7)(@layerzerolabs/ua-devtools@3.0.6)(ethers@5.8.0)(hardhat-deploy@0.12.4)(hardhat@2.22.19)
   '@layerzerolabs/ua-devtools-solana':
-    specifier: ~4.1.2
-    version: 4.1.2(@layerzerolabs/devtools-solana@1.0.8)(@layerzerolabs/devtools@0.4.10)(@layerzerolabs/io-devtools@0.1.16)(@layerzerolabs/lz-definitions@3.0.82)(@layerzerolabs/lz-solana-sdk-v2@3.0.0)(@layerzerolabs/lz-v2-utilities@3.0.82)(@layerzerolabs/oft-v2-solana-sdk@3.0.82)(@layerzerolabs/protocol-devtools-solana@4.0.9)(@layerzerolabs/protocol-devtools@1.1.6)(@layerzerolabs/ua-devtools@3.0.6)(@solana/web3.js@1.98.0)(fp-ts@2.16.9)(zod@3.24.2)
+    specifier: ~4.1.3
+    version: 4.1.3(@layerzerolabs/devtools-solana@1.0.8)(@layerzerolabs/devtools@0.4.10)(@layerzerolabs/io-devtools@0.1.16)(@layerzerolabs/lz-definitions@3.0.82)(@layerzerolabs/lz-solana-sdk-v2@3.0.0)(@layerzerolabs/lz-v2-utilities@3.0.82)(@layerzerolabs/oft-v2-solana-sdk@3.0.82)(@layerzerolabs/protocol-devtools-solana@4.0.9)(@layerzerolabs/protocol-devtools@1.1.6)(@layerzerolabs/ua-devtools@3.0.6)(@solana/web3.js@1.98.0)(fp-ts@2.16.9)(zod@3.24.2)
   '@metaplex-foundation/beet':
     specifier: ^0.7.2
     version: 0.7.2
@@ -2791,8 +2791,8 @@ packages:
       zod: 3.24.2
     dev: true
 
-  /@layerzerolabs/ua-devtools-solana@4.1.2(@layerzerolabs/devtools-solana@1.0.8)(@layerzerolabs/devtools@0.4.10)(@layerzerolabs/io-devtools@0.1.16)(@layerzerolabs/lz-definitions@3.0.82)(@layerzerolabs/lz-solana-sdk-v2@3.0.0)(@layerzerolabs/lz-v2-utilities@3.0.82)(@layerzerolabs/oft-v2-solana-sdk@3.0.82)(@layerzerolabs/protocol-devtools-solana@4.0.9)(@layerzerolabs/protocol-devtools@1.1.6)(@layerzerolabs/ua-devtools@3.0.6)(@solana/web3.js@1.98.0)(fp-ts@2.16.9)(zod@3.24.2):
-    resolution: {integrity: sha512-R3UvErblDHkrkoz/VzkpWdq4yV3NVzQPAOoJMYTdKPSpaVkganZM7LQwkTcTJ4EocsWWMxkXauOrvl+lduDFTg==}
+  /@layerzerolabs/ua-devtools-solana@4.1.3(@layerzerolabs/devtools-solana@1.0.8)(@layerzerolabs/devtools@0.4.10)(@layerzerolabs/io-devtools@0.1.16)(@layerzerolabs/lz-definitions@3.0.82)(@layerzerolabs/lz-solana-sdk-v2@3.0.0)(@layerzerolabs/lz-v2-utilities@3.0.82)(@layerzerolabs/oft-v2-solana-sdk@3.0.82)(@layerzerolabs/protocol-devtools-solana@4.0.9)(@layerzerolabs/protocol-devtools@1.1.6)(@layerzerolabs/ua-devtools@3.0.6)(@solana/web3.js@1.98.0)(fp-ts@2.16.9)(zod@3.24.2):
+    resolution: {integrity: sha512-M9etveRhQE8I5ddJaes/degWuxla6WmD/dahWsUz10hJMKgOsuQ67THfD67W9weR1jmFgpibYFx3yD4uiY+KLw==}
     peerDependencies:
       '@layerzerolabs/devtools': ~0.4.8
       '@layerzerolabs/devtools-solana': ~1.0.8
