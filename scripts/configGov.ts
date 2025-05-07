@@ -29,7 +29,7 @@ const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governa
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
 const remotePeers: { [key in EndpointId]?: string } = {
-    [EndpointId.AVALANCHE_V2_TESTNET]: '0xeB0b84339f30AB8b9c8cEB6DB87EdD048a29bDc3',
+    [EndpointId.AVALANCHE_V2_TESTNET]: '0xBc817352af3298bB9fFE385aB6466334c6B4c5CF',
 }
 
 ;(async () => {
@@ -47,7 +47,7 @@ const remotePeers: { [key in EndpointId]?: string } = {
         await initUlnConfig(connection, signer, signer, remote)
         await setOAppExecutor(connection, signer, remote)
     }
-    await setLzReceiveAlt(connection, signer, new PublicKey('3uBhgRWPTPLfvfqxi4M9eVZC8nS1kDG9XPkdHKgG69nw'))
+    // await setLzReceiveAlt(connection, signer, new PublicKey('3uBhgRWPTPLfvfqxi4M9eVZC8nS1kDG9XPkdHKgG69nw'))
 })()
 
 async function initGovernance(connection: Connection, payer: Keypair, admin: Keypair): Promise<void> {
@@ -102,7 +102,7 @@ async function setPeers(
         return Promise.resolve()
     }
     console.log('setPeer: changing peer')
-    sendAndConfirm(connection, [admin], [ix])
+    await sendAndConfirm(connection, [admin], [ix])
 }
 
 async function initUlnConfig(

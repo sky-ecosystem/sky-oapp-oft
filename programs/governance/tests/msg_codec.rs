@@ -27,7 +27,7 @@ mod test_msg_codec {
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
-    const FUJI_PEER_ADDRESS: &str = "0x89e5fD9975e67A27dbbd2af085f4a5627AC14eD9";
+    const FUJI_PEER_ADDRESS: &str = "0xBc817352af3298bB9fFE385aB6466334c6B4c5CF";
     const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
@@ -181,7 +181,7 @@ mod test_msg_codec {
         .pack();
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: spl_token::id(),
             accounts: accounts.clone(),
             data: instruction_data,
@@ -1496,7 +1496,7 @@ mod test_msg_codec {
     }
 
     fn get_cpi_authority() -> Pubkey {
-        let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &[get_governance_oapp_pda().1]], &governance::id()).unwrap();
+        let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER), &[get_governance_oapp_pda().1]], &governance::id()).unwrap();
 
         cpi_authority
     }
