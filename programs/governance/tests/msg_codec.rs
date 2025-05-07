@@ -991,7 +991,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_init_receive_library<'a>() {
+    fn test_init_receive_library<'a>() {
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "init_receive_library");
         // Add the discriminator
@@ -1037,7 +1037,7 @@ mod test_msg_codec {
         let accounts = vec![
             // The PDA of the OApp or delegate
             Acc {
-                pubkey: get_cpi_authority(),
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
                 is_signer: true,
                 is_writable: true,
             },
@@ -1060,7 +1060,7 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1262,7 +1262,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_set_receive_library<'a>() {
+    fn test_set_receive_library<'a>() {
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_receive_library");
         // Add the discriminator
@@ -1306,7 +1306,7 @@ mod test_msg_codec {
         let accounts = vec![
             // The PDA of the OApp or delegate
             Acc {
-                pubkey: get_cpi_authority(),
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
                 is_signer: true,
                 is_writable: false,
             },
@@ -1342,7 +1342,7 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1493,7 +1493,7 @@ mod test_msg_codec {
             Some(&PAYER),
         );
     
-        println!("{}", base64::engine::general_purpose::STANDARD.encode(tx.message_data()));
+        println!("\n{}", base64::engine::general_purpose::STANDARD.encode(tx.message_data()));
     }
 
     fn get_cpi_authority() -> Pubkey {
