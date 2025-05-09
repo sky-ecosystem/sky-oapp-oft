@@ -198,12 +198,11 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausab
         if (amountSentLD > amountReceivedLD) {
             // @dev increment the total fees that can be withdrawn
             feeBalance += (amountSentLD - amountReceivedLD);
+
+            innerToken.safeTransferFrom(_from, address(this), amountSentLD);
         }
 
-        innerToken.safeTransferFrom(_from, address(this), amountSentLD);
-
-        // Burns tokens from the adapter's balance.
-        IMintableBurnableVoidReturn(address(innerToken)).burn(address(this), amountReceivedLD);
+        IMintableBurnableVoidReturn(address(innerToken)).burn(amountSentLD > amountReceivedLD ? address(this) : _from, amountReceivedLD);
     }
 
     /**

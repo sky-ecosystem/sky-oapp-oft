@@ -296,8 +296,13 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bToken.balanceOf(userB), initialBalance);
 
         vm.startPrank(userA);
+
         aToken.approve(address(aOFT), tokensToSend);
+        
+        vm.expectEmit();
+        emit IERC20.Transfer(userA, address(0), tokensToSend);
         aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+
         vm.stopPrank();
 
         verifyPackets(bEid, addressToBytes32(address(bOFT)));
@@ -966,8 +971,15 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bToken.balanceOf(userB), initialBalance);
 
         vm.startPrank(userA);
+
         aToken.approve(address(aOFT), tokensToSend);
+
+        vm.expectEmit();
+        emit IERC20.Transfer(userA, address(aOFT), tokensToSend);
+        vm.expectEmit();
+        emit IERC20.Transfer(address(aOFT), address(0), tokensToSend - tokenFee);
         aOFT.send{ value: protocolFee.nativeFee }(sendParam, protocolFee, payable(address(this)));
+
         vm.stopPrank();
 
         verifyPackets(bEid, addressToBytes32(address(bOFT)));

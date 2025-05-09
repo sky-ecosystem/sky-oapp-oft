@@ -65,7 +65,7 @@ contract Vat {
     uint256 public live;  // Active Flag
 
     // --- Init ---
-    constructor() public {
+    constructor() {
         wards[msg.sender] = 1;
         live = 1;
     }
