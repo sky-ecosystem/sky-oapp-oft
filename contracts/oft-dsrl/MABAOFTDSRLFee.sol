@@ -222,7 +222,7 @@ abstract contract MABAOFTDSRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausab
         uint256 _amountLD,
         uint32 _srcEid
     ) internal virtual override whenNotPaused returns (uint256 amountReceivedLD) {
-        if (_to == address(0x0)) _to = address(0xdead); // _mint(...) does not support address(0x0)
+        if (_to == address(0x0) || _to == address(innerToken)) _to = address(0xdead); // mint fn has restrictions
 
         // Check and update the rate limit based on the source endpoint ID (srcEid) and the amount in local decimals from the message.
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);

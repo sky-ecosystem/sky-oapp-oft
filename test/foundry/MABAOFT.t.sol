@@ -1101,4 +1101,37 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertFalse(aOFT.pausers(userA));
         assertFalse(aOFT.pausers(userB));
     }
+
+    function test_send_oft_to_inner_token_address() public {
+        uint256 tokensToSend = 1 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(address(bToken)),
+            tokensToSend,
+            tokensToSend,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+
+        assertEq(aToken.balanceOf(userA), initialBalance);
+        assertEq(bToken.balanceOf(address(0xdead)), 0);
+
+        vm.startPrank(userA);
+
+        aToken.approve(address(aOFT), tokensToSend);
+        
+        vm.expectEmit();
+        emit IERC20.Transfer(userA, address(0), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+
+        vm.stopPrank();
+
+        verifyPackets(bEid, addressToBytes32(address(bOFT)));
+
+        assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend);
+        assertEq(bToken.balanceOf(address(0xdead)), tokensToSend);
+    }
 }
