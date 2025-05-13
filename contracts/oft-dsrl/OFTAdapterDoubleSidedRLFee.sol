@@ -5,7 +5,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Fee } from "@layerzerolabs/oft-evm/contracts/Fee.sol";
-import { OFTCore } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
+import { OFTAdapter } from "@layerzerolabs/oft-evm/contracts/OFTAdapter.sol";
 
 import { DoubleSidedRateLimiter } from "./DoubleSidedRateLimiter.sol";
 
@@ -23,10 +23,9 @@ import { DoubleSidedRateLimiter } from "./DoubleSidedRateLimiter.sol";
  * IF the 'innerToken' applies something like a transfer fee, the default will NOT work...
  * a pre/post balance check will need to be done to calculate the amountSentLD/amountReceivedLD.
  */
-abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter, Fee, Pausable {
+abstract contract OFTAdapterDoubleSidedRLFee is OFTAdapter, DoubleSidedRateLimiter, Fee, Pausable {
     using SafeERC20 for IERC20;
 
-    IERC20 internal immutable innerToken;
     uint256 public feeBalance;
     mapping(address => bool) public pausers;
 
@@ -46,9 +45,7 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
         address _token,
         address _lzEndpoint,
         address _delegate
-    ) OFTCore(IERC20Metadata(_token).decimals(), _lzEndpoint, _delegate) {
-        innerToken = IERC20(_token);
-    }
+    ) OFTAdapter(_token, _lzEndpoint, _delegate) {}
 
     /**
      * @notice Sets the cross-chain tx rate limits for specific endpoints based on provided configurations.
@@ -108,27 +105,6 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTCore, DoubleSidedRateLimiter,
      */
     function unpause() external onlyOwner {
         _unpause();
-    }
-
-    /**
-     * @dev Retrieves the address of the underlying ERC20 implementation.
-     * @return The address of the adapted ERC-20 token.
-     *
-     * @dev In the case of OFTAdapter, address(this) and erc20 are NOT the same contract.
-     */
-    function token() public view returns (address) {
-        return address(innerToken);
-    }
-
-    /**
-     * @notice Indicates whether the OFT contract requires approval of the 'token()' to send.
-     * @return requiresApproval Needs approval of the underlying token implementation.
-     *
-     * @dev In the case of default OFTAdapter, approval is required.
-     * @dev In non-default OFTAdapter contracts with something like mint and burn privileges, it would NOT need approval.
-     */
-    function approvalRequired() external pure virtual returns (bool) {
-        return true;
     }
 
     // @dev Fees accumulate inside of the contract to save gas, and then can be withdrawn by the owner.
