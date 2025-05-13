@@ -177,7 +177,6 @@ abstract contract DoubleSidedRateLimiter {
             uint256 decay = (_limit * timeSinceLastUpdate) / _window;
             currentAmountInFlight = _amountInFlight > decay ? _amountInFlight - decay : 0;
             availableCapacity = _limit > currentAmountInFlight ? _limit - currentAmountInFlight : 0;
-            return (currentAmountInFlight, availableCapacity);
         }
     }
 
