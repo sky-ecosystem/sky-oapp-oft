@@ -11,7 +11,7 @@ import { IOAppOptionsType3, EnforcedOptionParam } from "@layerzerolabs/oapp-evm/
 import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
 // OFT imports
-import { OFTAdapterDoubleSidedRLFee } from "../../contracts/oft-dsrl/OFTAdapterDoubleSidedRLFee.sol";
+import { OFTAdapterDSRLFee } from "../../contracts/oft-dsrl/OFTAdapterDSRLFee.sol";
 import { DoubleSidedRateLimiter } from "../../contracts/oft-dsrl/DoubleSidedRateLimiter.sol";
 import { IOFT, SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { MessagingFee, MessagingReceipt, Origin } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
@@ -21,7 +21,7 @@ import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/I
 import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
 import { DoubleEndedQueue } from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import { OFTAdapter } from "../../contracts/OFTAdapter.sol";
-import { OFTDSRLFeeBase } from "../../contracts/oft-dsrl/OFTDSRLFeeBase.sol";
+import { OFTAdapterDSRLFeeBase } from "../../contracts/oft-dsrl/OFTAdapterDSRLFeeBase.sol";
 
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -44,9 +44,9 @@ contract OFTAdapterTest is TestHelperOz5WithRevertAssertions {
     IERC20 bToken;
     IERC20 cToken;
 
-    OFTAdapterDoubleSidedRLFee aOFT;
-    OFTAdapterDoubleSidedRLFee bOFT;
-    OFTAdapterDoubleSidedRLFee cOFT;
+    OFTAdapterDSRLFee aOFT;
+    OFTAdapterDSRLFee bOFT;
+    OFTAdapterDSRLFee cOFT;
 
     address public userA = address(0x1);
     address public userB = address(0x2);
@@ -86,19 +86,19 @@ contract OFTAdapterTest is TestHelperOz5WithRevertAssertions {
         setUpEndpoints(3, LibraryType.UltraLightNode);
         setUpTokens();
         
-        aOFT = OFTAdapterDoubleSidedRLFee(
+        aOFT = OFTAdapterDSRLFee(
             _deployOApp(type(OFTAdapter).creationCode, abi.encode(address(aToken), address(endpoints[aEid]), address(this)))
         );
         aOFT.setRateLimits(aOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
         aOFT.setRateLimits(aInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
 
-        bOFT = OFTAdapterDoubleSidedRLFee(
+        bOFT = OFTAdapterDSRLFee(
             _deployOApp(type(OFTAdapter).creationCode, abi.encode(address(bToken), address(endpoints[bEid]), address(this)))
         );
         bOFT.setRateLimits(bOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
         bOFT.setRateLimits(bInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
 
-        cOFT = OFTAdapterDoubleSidedRLFee(
+        cOFT = OFTAdapterDSRLFee(
             _deployOApp(type(OFTAdapter).creationCode, abi.encode(address(cToken), address(endpoints[cEid]), address(this)))
         );
         cOFT.setRateLimits(cOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
@@ -1018,13 +1018,13 @@ contract OFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertFalse(aOFT.pausers(userA));
         
         vm.expectEmit(true, true, true, true);
-        emit OFTDSRLFeeBase.PauserStatusChange(userA, true);
+        emit OFTAdapterDSRLFeeBase.PauserStatusChange(userA, true);
         aOFT.setPauser(userA, true);
     }
 
     function test_pause() public {
         vm.prank(userB);
-        vm.expectRevert(OFTDSRLFeeBase.NotPauser.selector);
+        vm.expectRevert(OFTAdapterDSRLFeeBase.NotPauser.selector);
         aOFT.pause();
         
         aOFT.setPauser(userA, true);
@@ -1168,5 +1168,67 @@ contract OFTAdapterTest is TestHelperOz5WithRevertAssertions {
 
         assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend);
         assertEq(bToken.balanceOf(address(0xdead)), tokensToSend);
+    }
+
+    function test_rate_limit_send_with_fee() public {
+        uint16 feeBps = 100;
+        aOFT.setDefaultFeeBps(feeBps);
+
+        uint256 tokensToSend = 1 ether;
+        uint256 tokenFee = tokensToSend * feeBps / 10000;
+        uint256 minAmountToCreditLD = tokensToSend - tokenFee;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            minAmountToCreditLD,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory protocolFee = aOFT.quoteSend(sendParam, false);
+
+        (uint256 currentSendAmountInFlight, uint256 amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (uint256 currentReceiveAmountInFlight, uint256 amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        (currentSendAmountInFlight, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        vm.startPrank(userA);
+
+        aToken.approve(address(aOFT), tokensToSend);
+
+        aOFT.send{ value: protocolFee.nativeFee }(sendParam, protocolFee, payable(address(this)));
+
+        vm.stopPrank();
+
+        verifyPackets(bEid, addressToBytes32(address(bOFT)));
+
+        (currentSendAmountInFlight, amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentSendAmountInFlight, minAmountToCreditLD);
+        assertEq(amountCanBeSent, 10 ether - minAmountToCreditLD);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        (currentSendAmountInFlight, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentReceiveAmountInFlight, minAmountToCreditLD);
+        assertEq(amountCanBeReceived, 10 ether - minAmountToCreditLD);
     }
 }

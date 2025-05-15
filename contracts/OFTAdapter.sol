@@ -5,16 +5,16 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { OFTAdapterDoubleSidedRLFee } from "./oft-dsrl/OFTAdapterDoubleSidedRLFee.sol";
+import { OFTAdapterDSRLFee } from "./oft-dsrl/OFTAdapterDSRLFee.sol";
 
-contract OFTAdapter is OFTAdapterDoubleSidedRLFee {
+contract OFTAdapter is OFTAdapterDSRLFee {
     using SafeERC20 for IERC20;
 
     constructor(
         address _token,
         address _lzEndpoint,
         address _delegate
-    ) OFTAdapterDoubleSidedRLFee(_token, _lzEndpoint, _delegate) Ownable(_delegate) {}
+    ) OFTAdapterDSRLFee(_token, _lzEndpoint, _delegate) Ownable(_delegate) {}
 
     event LockedTokensMigrated(address indexed to, uint256 amountLD);
 

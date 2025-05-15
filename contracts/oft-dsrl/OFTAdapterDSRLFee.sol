@@ -4,10 +4,10 @@ pragma solidity ^0.8.22;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { OFTDSRLFeeBase } from "./OFTDSRLFeeBase.sol";
+import { OFTAdapterDSRLFeeBase } from "./OFTAdapterDSRLFeeBase.sol";
 
 /**
- * @title OFTAdapterDoubleSidedRLFee Contract
+ * @title OFTAdapterDSRLFee Contract
  * @dev OFTAdapter is a contract that adapts an ERC-20 token to the OFT functionality.
  * @dev This contract extends the DoubleSidedRateLimiter contract to provide double-sided rate limiting functionality.
  * @dev It allows for the configuration of rate limits for both outbound and inbound directions.
@@ -20,14 +20,14 @@ import { OFTDSRLFeeBase } from "./OFTDSRLFeeBase.sol";
  * IF the 'innerToken' applies something like a transfer fee, the default will NOT work...
  * a pre/post balance check will need to be done to calculate the amountSentLD/amountReceivedLD.
  */
-abstract contract OFTAdapterDoubleSidedRLFee is OFTDSRLFeeBase {
+abstract contract OFTAdapterDSRLFee is OFTAdapterDSRLFeeBase {
     using SafeERC20 for IERC20;
 
     constructor(
         address _token,
         address _lzEndpoint,
         address _delegate
-    ) OFTDSRLFeeBase(_token, _lzEndpoint, _delegate) {}
+    ) OFTAdapterDSRLFeeBase(_token, _lzEndpoint, _delegate) {}
 
     /**
      * @dev Locks tokens from the sender's specified balance in this contract.
@@ -50,7 +50,10 @@ abstract contract OFTAdapterDoubleSidedRLFee is OFTDSRLFeeBase {
         uint32 _dstEid
     ) internal virtual override whenNotPaused returns (uint256 amountSentLD, uint256 amountReceivedLD) {
         (amountSentLD, amountReceivedLD) = _debitView(_amountLD, _minAmountLD, _dstEid);
-        _checkAndUpdateRateLimit(_dstEid, amountSentLD, RateLimitDirection.Outbound);
+
+        // @dev we are using amountReceivedLD because we care about the amount of tokens leaving the chain
+        // @dev fee doesn't leave the chain, so we don't care about it here
+        _checkAndUpdateRateLimit(_dstEid, amountReceivedLD, RateLimitDirection.Outbound);
 
         if (amountSentLD > amountReceivedLD) {
             // @dev increment the total fees that can be withdrawn

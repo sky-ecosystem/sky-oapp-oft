@@ -20,7 +20,7 @@ import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/I
 import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
 import { DoubleEndedQueue } from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import { MintAndBurnOFTAdapter } from "../../contracts/MintAndBurnOFTAdapter.sol";
-import { OFTDSRLFeeBase } from "../../contracts/oft-dsrl/OFTDSRLFeeBase.sol";
+import { OFTAdapterDSRLFeeBase } from "../../contracts/oft-dsrl/OFTAdapterDSRLFeeBase.sol";
 
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -1007,13 +1007,13 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertFalse(aOFT.pausers(userA));
         
         vm.expectEmit(true, true, true, true);
-        emit OFTDSRLFeeBase.PauserStatusChange(userA, true);
+        emit OFTAdapterDSRLFeeBase.PauserStatusChange(userA, true);
         aOFT.setPauser(userA, true);
     }
 
     function test_pause() public {
         vm.prank(userB);
-        vm.expectRevert(OFTDSRLFeeBase.NotPauser.selector);
+        vm.expectRevert(OFTAdapterDSRLFeeBase.NotPauser.selector);
         aOFT.pause();
         
         aOFT.setPauser(userA, true);
@@ -1134,5 +1134,67 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
 
         assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend);
         assertEq(bToken.balanceOf(address(0xdead)), tokensToSend);
+    }
+
+    function test_rate_limit_send_with_fee() public {
+        uint16 feeBps = 100;
+        aOFT.setDefaultFeeBps(feeBps);
+
+        uint256 tokensToSend = 1 ether;
+        uint256 tokenFee = tokensToSend * feeBps / 10000;
+        uint256 minAmountToCreditLD = tokensToSend - tokenFee;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            minAmountToCreditLD,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory protocolFee = aOFT.quoteSend(sendParam, false);
+
+        (uint256 currentSendAmountInFlight, uint256 amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (uint256 currentReceiveAmountInFlight, uint256 amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        (currentSendAmountInFlight, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        vm.startPrank(userA);
+
+        aToken.approve(address(aOFT), tokensToSend);
+
+        aOFT.send{ value: protocolFee.nativeFee }(sendParam, protocolFee, payable(address(this)));
+
+        vm.stopPrank();
+
+        verifyPackets(bEid, addressToBytes32(address(bOFT)));
+
+        (currentSendAmountInFlight, amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentSendAmountInFlight, minAmountToCreditLD);
+        assertEq(amountCanBeSent, 10 ether - minAmountToCreditLD);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        (currentSendAmountInFlight, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentReceiveAmountInFlight, minAmountToCreditLD);
+        assertEq(amountCanBeReceived, 10 ether - minAmountToCreditLD);
     }
 }

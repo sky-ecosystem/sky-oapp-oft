@@ -10,11 +10,11 @@ import { OFTCore } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
 import { DoubleSidedRateLimiter } from "./DoubleSidedRateLimiter.sol";
 
 /**
- * @title OFTDSRLFeeBase
- * @dev Base contract for Omnichain Fungible Token with Double Sided Rate Limiter and Fee
+ * @title OFTAdapterDSRLFeeBase
+ * @dev Base contract for Omnichain Fungible Token Adapter with Double Sided Rate Limiter and Fee
  * @dev It extracts common fee, rate limiting, pauser logic, and debitView implementation.
  */
-abstract contract OFTDSRLFeeBase is OFTCore, DoubleSidedRateLimiter, Fee, Pausable {
+abstract contract OFTAdapterDSRLFeeBase is OFTCore, DoubleSidedRateLimiter, Fee, Pausable {
     using SafeERC20 for IERC20;
 
     uint256 public feeBalance;

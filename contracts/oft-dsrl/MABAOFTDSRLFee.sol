@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { OFTDSRLFeeBase } from "./OFTDSRLFeeBase.sol";
+import { OFTAdapterDSRLFeeBase } from "./OFTAdapterDSRLFeeBase.sol";
 import { IMintableBurnableVoidReturn } from "./interfaces/IMintableBurnableVoidReturn.sol";
 
 /**
@@ -19,7 +19,7 @@ import { IMintableBurnableVoidReturn } from "./interfaces/IMintableBurnableVoidR
  * @dev It allows for the configuration of rate limits for both outbound and inbound directions.
  * @dev It also allows for the setting of the rate limit accounting type to be net or gross.
  */
-abstract contract MABAOFTDSRLFee is OFTDSRLFeeBase {
+abstract contract MABAOFTDSRLFee is OFTAdapterDSRLFeeBase {
     using SafeERC20 for IERC20;
 
     /**
@@ -33,7 +33,7 @@ abstract contract MABAOFTDSRLFee is OFTDSRLFeeBase {
         address _token,
         address _lzEndpoint,
         address _delegate
-    ) OFTDSRLFeeBase(_token, _lzEndpoint, _delegate) {}
+    ) OFTAdapterDSRLFeeBase(_token, _lzEndpoint, _delegate) {}
 
     /**
      * @notice Burns tokens from the sender's balance to prepare for sending.
@@ -57,7 +57,10 @@ abstract contract MABAOFTDSRLFee is OFTDSRLFeeBase {
         uint32 _dstEid
     ) internal virtual override whenNotPaused returns (uint256 amountSentLD, uint256 amountReceivedLD) {
         (amountSentLD, amountReceivedLD) = _debitView(_amountLD, _minAmountLD, _dstEid);
-        _checkAndUpdateRateLimit(_dstEid, amountSentLD, RateLimitDirection.Outbound);
+
+        // @dev we are using amountReceivedLD because we care about the amount of tokens leaving the chain
+        // @dev fee doesn't leave the chain, so we don't care about it here
+        _checkAndUpdateRateLimit(_dstEid, amountReceivedLD, RateLimitDirection.Outbound);
 
         if (amountSentLD > amountReceivedLD) {
             // @dev increment the total fees that can be withdrawn
