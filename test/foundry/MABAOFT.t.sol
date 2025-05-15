@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.22;
 
 // Mock imports
 import { OFTComposerMock } from "@layerzerolabs/oft-evm/test/mocks/OFTComposerMock.sol";
@@ -20,6 +20,7 @@ import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/I
 import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
 import { DoubleEndedQueue } from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import { MintAndBurnOFTAdapter } from "../../contracts/MintAndBurnOFTAdapter.sol";
+import { OFTDSRLFeeBase } from "../../contracts/oft-dsrl/OFTDSRLFeeBase.sol";
 
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -1006,13 +1007,13 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertFalse(aOFT.pausers(userA));
         
         vm.expectEmit(true, true, true, true);
-        emit MABAOFTDSRLFee.PauserStatusChange(userA, true);
+        emit OFTDSRLFeeBase.PauserStatusChange(userA, true);
         aOFT.setPauser(userA, true);
     }
 
     function test_pause() public {
         vm.prank(userB);
-        vm.expectRevert(MABAOFTDSRLFee.NotPauser.selector);
+        vm.expectRevert(OFTDSRLFeeBase.NotPauser.selector);
         aOFT.pause();
         
         aOFT.setPauser(userA, true);
