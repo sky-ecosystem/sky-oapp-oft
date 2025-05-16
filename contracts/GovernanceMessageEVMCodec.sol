@@ -32,7 +32,6 @@ library GovernanceMessageEVMCodec {
         bytes callData;
     }
 
-    // Custom errors
     error InvalidMessageLength();
     error InvalidModule();
     error InvalidCallDataLength();
@@ -62,8 +61,8 @@ library GovernanceMessageEVMCodec {
         message.action = uint8(_msg[ACTION_OFFSET]);
         message.dstEid = uint32(bytes4(_msg[DST_EID_OFFSET:ORIGIN_CALLER_OFFSET]));
         message.originCaller = bytes32(_msg[ORIGIN_CALLER_OFFSET:GOVERNED_CONTRACT_OFFSET]);
-        message.governedContract = address(uint160(bytes20(_msg[GOVERNED_CONTRACT_OFFSET:CALLDATA_OFFSET])));
-        uint16 callDataLength = uint16(bytes2(_msg[CALLDATA_LENGTH_OFFSET:CALLDATA_OFFSET + 2]));
+        message.governedContract = address(uint160(bytes20(_msg[GOVERNED_CONTRACT_OFFSET:CALLDATA_LENGTH_OFFSET])));
+        uint16 callDataLength = uint16(bytes2(_msg[CALLDATA_LENGTH_OFFSET:CALLDATA_OFFSET]));
 
         if (_msg.length != CALLDATA_OFFSET + callDataLength) revert InvalidCallDataLength();
         
