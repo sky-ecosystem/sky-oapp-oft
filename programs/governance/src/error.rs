@@ -5,12 +5,12 @@ use anchor_lang::prelude::error_code;
 pub enum GovernanceError {
     #[msg("InvalidGovernanceChain")]
     InvalidGovernanceChain,
-    #[msg("InvalidGovernanceEmitter")]
-    InvalidGovernanceEmitter,
-    #[msg("InvalidGovernanceProgram")]
-    InvalidGovernanceProgram,
     #[msg("InvalidGovernanceMessage")]
     InvalidGovernanceMessage,
+    #[msg("InvalidGovernanceModule")]
+    InvalidGovernanceModule,
+    #[msg("InvalidGovernanceAction")]
+    InvalidGovernanceAction,
     #[msg("InvalidInstruction")]
     InvalidInstruction,
 }

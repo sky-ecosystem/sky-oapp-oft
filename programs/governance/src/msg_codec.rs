@@ -182,7 +182,6 @@ pub mod msg_codec {
     pub trait MessageCodec: Sized {
         fn decode<R: Read>(reader: &mut R) -> io::Result<Self>;
         fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()>;
-        fn encoded_size(&self) -> usize;
     }
 
     // Helper functions for common types
@@ -264,28 +263,27 @@ impl msg_codec::MessageCodec for GovernanceMessage {
         let mut module = [0u8; 32];
         reader.read_exact(&mut module)?;
         if module != Self::MODULE {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid GovernanceMessage module",
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                GovernanceError::InvalidGovernanceModule.to_string(),
             ));
         }
 
         // Read action
         let action: u8 = msg_codec::read_u8(reader)?;
         if action != GovernanceAction::SolanaCall as u8 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid GovernanceAction",
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                GovernanceError::InvalidGovernanceAction.to_string(),
             ));
         }
 
         // Read chain
         let chain = msg_codec::read_u32(reader)?;
         if chain != SOLANA_CHAIN_ID {
-            // Solana
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Invalid GovernanceMessage chain",
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                GovernanceError::InvalidGovernanceChain.to_string(),
             ));
         }
 
@@ -301,21 +299,8 @@ impl msg_codec::MessageCodec for GovernanceMessage {
         msg_codec::write_bytes32(writer, &self.origin_caller)?;
         self.write_body(writer)
     }
-
-    fn encoded_size(&self) -> usize {
-        32 // MODULE
-        + 1 // action
-        + 4 // chain
-        + 32 // origin_caller
-        + 32 // program_id
-        + 2 // accounts_length
-        + self.accounts.len() * (32 + 1 + 1) // accounts (pubkey + is_signer + is_writable)
-        + 2 // data_length
-        + self.data.len() // data
-    }
 }
 
-// Update AnchorSerialize/Deserialize implementations
 impl AnchorSerialize for GovernanceMessage {
     fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
         msg_codec::MessageCodec::encode(self, writer)

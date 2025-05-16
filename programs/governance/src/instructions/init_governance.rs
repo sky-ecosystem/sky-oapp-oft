@@ -39,7 +39,6 @@ impl InitGovernance<'_> {
         ctx.accounts.governance.id = params.id;
         ctx.accounts.governance.admin = params.admin;
         ctx.accounts.governance.bump = ctx.bumps.governance;
-        ctx.accounts.governance.endpoint_program = params.endpoint;
 
         ctx.accounts.lz_receive_types_accounts.governance = ctx.accounts.governance.key();
 

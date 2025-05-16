@@ -33,7 +33,7 @@ pub struct LzReceive<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    #[account(mut, seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()], bump = governance.bump)]
+    #[account(seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()], bump = governance.bump)]
     pub governance: Account<'info, Governance>,
 
     #[account(
@@ -44,7 +44,6 @@ pub struct LzReceive<'info> {
     pub remote: Account<'info, Remote>,
 
     #[account(
-        mut,
         seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes(), &msg_codec::decode_origin_caller(&params.message).unwrap()],
         bump = governance.bump
     )]
@@ -52,8 +51,6 @@ pub struct LzReceive<'info> {
 
     #[account(executable)]
     pub program: UncheckedAccount<'info>,
-
-    pub system_program: Program<'info, System>,
 }
 
 impl<'info> LzReceive<'info> {
@@ -103,10 +100,7 @@ impl<'info> LzReceive<'info> {
             }
         });
 
-        let mut all_account_infos = ctx.accounts.to_account_infos();
-        all_account_infos.extend_from_slice(&ctx.remaining_accounts);
-
-        solana_program::program::invoke_signed(&instruction, &all_account_infos, &[
+        solana_program::program::invoke_signed(&instruction, &ctx.remaining_accounts[Clear::MIN_ACCOUNTS_LEN..], &[
             cpi_authority_seed,
         ])?;
 

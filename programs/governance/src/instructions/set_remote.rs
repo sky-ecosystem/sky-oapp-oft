@@ -30,7 +30,6 @@ impl SetRemote<'_> {
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct SetRemoteParams {
-    pub id: u8,
     pub dst_eid: u32,
     pub remote: [u8; 32],
 }
