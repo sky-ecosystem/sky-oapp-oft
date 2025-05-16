@@ -976,9 +976,9 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         aToken.approve(address(aOFT), tokensToSend);
 
         vm.expectEmit();
-        emit IERC20.Transfer(userA, address(aOFT), tokensToSend);
+        emit IERC20.Transfer(userA, address(aOFT), tokenFee);
         vm.expectEmit();
-        emit IERC20.Transfer(address(aOFT), address(0), tokensToSend - tokenFee);
+        emit IERC20.Transfer(userA, address(0), tokensToSend - tokenFee);
         aOFT.send{ value: protocolFee.nativeFee }(sendParam, protocolFee, payable(address(this)));
 
         vm.stopPrank();

@@ -62,14 +62,16 @@ abstract contract MABAOFTDSRLFee is OFTAdapterDSRLFeeBase {
         // @dev fee doesn't leave the chain, so we don't care about it here
         _checkAndUpdateRateLimit(_dstEid, amountReceivedLD, RateLimitDirection.Outbound);
 
-        if (amountSentLD > amountReceivedLD) {
-            // @dev increment the total fees that can be withdrawn
-            feeBalance += (amountSentLD - amountReceivedLD);
+        uint256 fee = amountSentLD - amountReceivedLD;
 
-            innerToken.safeTransferFrom(_from, address(this), amountSentLD);
+        if (fee > 0) {
+            // @dev increment the total fees that can be withdrawn
+            feeBalance += fee;
+
+            innerToken.safeTransferFrom(_from, address(this), fee);
         }
 
-        IMintableBurnableVoidReturn(address(innerToken)).burn(amountSentLD > amountReceivedLD ? address(this) : _from, amountReceivedLD);
+        IMintableBurnableVoidReturn(address(innerToken)).burn(_from, amountReceivedLD);
     }
 
     /**
