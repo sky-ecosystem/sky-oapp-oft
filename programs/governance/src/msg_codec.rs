@@ -3,7 +3,7 @@ use crate::{error::GovernanceError, SOLANA_CHAIN_ID};
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
-use std::io;
+use std::io::{self, Read, Write};
 
 /// General purpose governance message to call arbitrary instructions on a governed program.
 /// The wire format for this message is:
@@ -36,15 +36,67 @@ impl GovernanceMessage {
         0x63, 0x65,
     ];
 
+    pub fn from_bytes(message: &[u8]) -> Result<Self> {
+        Self::decode(&mut message.as_ref())
+            .map_err(|_| error!(GovernanceError::InvalidGovernanceMessage))
+    }
+
+    /// Decode a full governance message (module header + body).
+    pub fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
+        // Read module
+        let mut module = [0u8; 32];
+        reader.read_exact(&mut module)?;
+        if module != Self::MODULE {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                GovernanceError::InvalidGovernanceModule.to_string(),
+            ));
+        }
+
+        // Read action
+        let action: u8 = Self::read_u8(reader)?;
+        if action != GovernanceAction::SolanaCall as u8 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                GovernanceError::InvalidGovernanceAction.to_string(),
+            ));
+        }
+
+        // Read chain
+        let chain = Self::read_u32(reader)?;
+        if chain != SOLANA_CHAIN_ID {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                GovernanceError::InvalidGovernanceChain.to_string(),
+            ));
+        }
+
+        // Read origin caller
+        let origin_caller = Self::read_bytes32(reader)?;
+
+        // Read the rest of the body
+        Self::read_body(reader, origin_caller)
+    }
+
+    /// Encode a full governance message (module header + body).
+    pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(&Self::MODULE)?;
+        Self::write_u8(writer, GovernanceAction::SolanaCall as u8)?;
+        Self::write_u32(writer, SOLANA_CHAIN_ID)?;
+        Self::write_bytes32(writer, &self.origin_caller)?;
+        self.write_body(writer)
+    }
+
+    /// Reads ONLY the body of the message, not the module header.
     fn read_body<R: io::Read>(reader: &mut R, origin_caller: [u8; 32]) -> io::Result<Self> {
-        let program_id = msg_codec::read_pubkey(reader)?;
-        let accounts_len = msg_codec::read_u16(reader)?;
+        let program_id = Self::read_pubkey(reader)?;
+        let accounts_len = Self::read_u16(reader)?;
         let mut accounts = Vec::with_capacity(accounts_len as usize);
 
         for _ in 0..accounts_len {
-            let pubkey = msg_codec::read_pubkey(reader)?;
-            let is_signer = msg_codec::read_u8(reader)? != 0;
-            let is_writable = msg_codec::read_u8(reader)? != 0;
+            let pubkey = Self::read_pubkey(reader)?;
+            let is_signer = Self::read_u8(reader)? != 0;
+            let is_writable = Self::read_u8(reader)? != 0;
             accounts.push(Acc {
                 pubkey,
                 is_signer,
@@ -52,7 +104,7 @@ impl GovernanceMessage {
             });
         }
 
-        let data_len = msg_codec::read_u16(reader)?;
+        let data_len = Self::read_u16(reader)?;
         let mut data = vec![0u8; data_len as usize];
         reader.read_exact(&mut data)?;
 
@@ -64,19 +116,83 @@ impl GovernanceMessage {
         })
     }
 
+    /// Writes ONLY the body of the message, not the module header.
     fn write_body<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        msg_codec::write_pubkey(writer, &self.program_id)?;
-        msg_codec::write_u16(writer, self.accounts.len() as u16)?;
+        Self::write_pubkey(writer, &self.program_id)?;
+        Self::write_u16(writer, self.accounts.len() as u16)?;
 
         for acc in &self.accounts {
-            msg_codec::write_pubkey(writer, &acc.pubkey)?;
-            msg_codec::write_u8(writer, acc.is_signer as u8)?;
-            msg_codec::write_u8(writer, acc.is_writable as u8)?;
+            Self::write_pubkey(writer, &acc.pubkey)?;
+            Self::write_u8(writer, acc.is_signer as u8)?;
+            Self::write_u8(writer, acc.is_writable as u8)?;
         }
 
-        msg_codec::write_u16(writer, self.data.len() as u16)?;
+        Self::write_u16(writer, self.data.len() as u16)?;
         writer.write_all(&self.data)?;
         Ok(())
+    }
+
+    /// Decodes ONLY the origin caller from the message.
+    pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
+        if message.len() < 32 + 1 + 4 + 32 {
+            return Err(error!(GovernanceError::InvalidGovernanceMessage));
+        }
+        let origin_caller_start = 32 + 1 + 4;
+        let origin_caller_end = origin_caller_start + 32;
+        let mut origin_caller = [0u8; 32];
+        origin_caller.copy_from_slice(&message[origin_caller_start..origin_caller_end]);
+        Ok(origin_caller)
+    }
+
+    // Helper methods for reading/writing primitive types
+    fn read_u8<R: Read>(reader: &mut R) -> io::Result<u8> {
+        let mut buf = [0u8; 1];
+        reader.read_exact(&mut buf)?;
+        Ok(buf[0])
+    }
+
+    fn read_u16<R: Read>(reader: &mut R) -> io::Result<u16> {
+        let mut buf = [0u8; 2];
+        reader.read_exact(&mut buf)?;
+        Ok(u16::from_be_bytes(buf))
+    }
+
+    fn read_u32<R: Read>(reader: &mut R) -> io::Result<u32> {
+        let mut buf = [0u8; 4];
+        reader.read_exact(&mut buf)?;
+        Ok(u32::from_be_bytes(buf))
+    }
+
+    fn read_pubkey<R: Read>(reader: &mut R) -> io::Result<Pubkey> {
+        let mut buf = [0u8; 32];
+        reader.read_exact(&mut buf)?;
+        Ok(Pubkey::new_from_array(buf))
+    }
+
+    fn read_bytes32<R: Read>(reader: &mut R) -> io::Result<[u8; 32]> {
+        let mut buf = [0u8; 32];
+        reader.read_exact(&mut buf)?;
+        Ok(buf)
+    }
+
+    fn write_u8<W: Write>(writer: &mut W, value: u8) -> io::Result<()> {
+        writer.write_all(&[value])
+    }
+
+    fn write_u16<W: Write>(writer: &mut W, value: u16) -> io::Result<()> {
+        writer.write_all(&value.to_be_bytes())
+    }
+
+    fn write_u32<W: Write>(writer: &mut W, value: u32) -> io::Result<()> {
+        writer.write_all(&value.to_be_bytes())
+    }
+
+    fn write_pubkey<W: Write>(writer: &mut W, pubkey: &Pubkey) -> io::Result<()> {
+        writer.write_all(&pubkey.to_bytes())
+    }
+
+    fn write_bytes32<W: Write>(writer: &mut W, bytes: &[u8; 32]) -> io::Result<()> {
+        writer.write_all(bytes)
     }
 }
 
@@ -174,141 +290,15 @@ impl From<AccountMeta> for Acc {
     }
 }
 
-// You'll need to add this module somewhere in your codebase
-pub mod msg_codec {
-    use super::*;
-    use std::io::{self, Read, Write};
-
-    pub trait MessageCodec: Sized {
-        fn decode<R: Read>(reader: &mut R) -> io::Result<Self>;
-        fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()>;
-    }
-
-    // Helper functions for common types
-    pub fn read_u8<R: Read>(reader: &mut R) -> io::Result<u8> {
-        let mut buf = [0u8; 1];
-        reader.read_exact(&mut buf)?;
-        Ok(buf[0])
-    }
-
-    pub fn read_u16<R: Read>(reader: &mut R) -> io::Result<u16> {
-        let mut buf = [0u8; 2];
-        reader.read_exact(&mut buf)?;
-        Ok(u16::from_be_bytes(buf))
-    }
-
-    pub fn read_u32<R: Read>(reader: &mut R) -> io::Result<u32> {
-        let mut buf = [0u8; 4];
-        reader.read_exact(&mut buf)?;
-        Ok(u32::from_be_bytes(buf))
-    }
-
-    pub fn read_pubkey<R: Read>(reader: &mut R) -> io::Result<Pubkey> {
-        let mut buf = [0u8; 32];
-        reader.read_exact(&mut buf)?;
-        Ok(Pubkey::new_from_array(buf))
-    }
-
-    pub fn read_bytes32<R: Read>(reader: &mut R) -> io::Result<[u8; 32]> {
-        let mut buf = [0u8; 32];
-        reader.read_exact(&mut buf)?;
-        Ok(buf)
-    }
-
-    pub fn write_u8<W: Write>(writer: &mut W, value: u8) -> io::Result<()> {
-        writer.write_all(&[value])
-    }
-
-    pub fn write_u16<W: Write>(writer: &mut W, value: u16) -> io::Result<()> {
-        writer.write_all(&value.to_be_bytes())
-    }
-
-    pub fn write_u32<W: Write>(writer: &mut W, value: u32) -> io::Result<()> {
-        writer.write_all(&value.to_be_bytes())
-    }
-
-    pub fn write_pubkey<W: Write>(writer: &mut W, pubkey: &Pubkey) -> io::Result<()> {
-        writer.write_all(&pubkey.to_bytes())
-    }
-
-    pub fn write_bytes32<W: Write>(writer: &mut W, bytes: &[u8; 32]) -> io::Result<()> {
-        writer.write_all(bytes)
-    }
-
-    pub fn decode_governance(message: &[u8]) -> Result<GovernanceMessage> {
-        GovernanceMessage::decode(&mut message.as_ref())
-            .map_err(|_| error!(GovernanceError::InvalidGovernanceMessage))
-    }
-
-    pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
-        // Skip module (32 bytes), action (1 byte), and chain (4 bytes) to get to origin_caller
-        if message.len() < 32 + 1 + 4 + 32 {
-            return Err(error!(GovernanceError::InvalidGovernanceMessage));
-        }
-        
-        // Extract origin_caller directly from the slice at offset 37 (32 + 1 + 4)
-        let origin_caller_start = 32 + 1 + 4;
-        let origin_caller_end = origin_caller_start + 32;
-        let mut origin_caller = [0u8; 32];
-        origin_caller.copy_from_slice(&message[origin_caller_start..origin_caller_end]);
-        
-        Ok(origin_caller)
-    }
-}
-
-// Update GovernanceMessage implementation
-impl msg_codec::MessageCodec for GovernanceMessage {
-    fn decode<R: io::Read>(reader: &mut R) -> io::Result<Self> {
-        // Read module
-        let mut module = [0u8; 32];
-        reader.read_exact(&mut module)?;
-        if module != Self::MODULE {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                GovernanceError::InvalidGovernanceModule.to_string(),
-            ));
-        }
-
-        // Read action
-        let action: u8 = msg_codec::read_u8(reader)?;
-        if action != GovernanceAction::SolanaCall as u8 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                GovernanceError::InvalidGovernanceAction.to_string(),
-            ));
-        }
-
-        // Read chain
-        let chain = msg_codec::read_u32(reader)?;
-        if chain != SOLANA_CHAIN_ID {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                GovernanceError::InvalidGovernanceChain.to_string(),
-            ));
-        }
-
-        let origin_caller = msg_codec::read_bytes32(reader)?;
-        
-        Self::read_body(reader, origin_caller)
-    }
-
-    fn encode<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(&Self::MODULE)?;
-        msg_codec::write_u8(writer, GovernanceAction::SolanaCall as u8)?; // SolanaCall
-        msg_codec::write_u32(writer, SOLANA_CHAIN_ID)?; // Solana chain
-        msg_codec::write_bytes32(writer, &self.origin_caller)?;
-        self.write_body(writer)
-    }
-}
-
+// Update Anchor traits to use inherent methods
 impl AnchorSerialize for GovernanceMessage {
     fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        msg_codec::MessageCodec::encode(self, writer)
+        self.encode(writer)
     }
 }
 
 impl AnchorDeserialize for GovernanceMessage {
     fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
-        msg_codec::MessageCodec::decode(reader)
+        Self::decode(reader)
     }
 }

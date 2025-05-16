@@ -14,7 +14,6 @@ mod test_msg_codec {
         msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, CPI_AUTHORITY_PLACEHOLDER, PAYER_PLACEHOLDER
     };
     use uln::state::{ExecutorConfig, UlnConfig};
-    use governance::msg_codec::msg_codec::decode_origin_caller;
 
     #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
     pub struct InitNonceParams {
@@ -121,7 +120,7 @@ mod test_msg_codec {
         assert_eq!(actual, expected);
         let mut serialized = Vec::new();
         actual.serialize(&mut serialized).unwrap();
-        assert_eq!(decode_origin_caller(&serialized).unwrap(), origin_caller);
+        assert_eq!(GovernanceMessage::decode_origin_caller(&serialized).unwrap(), origin_caller);
     }
 
     #[test]

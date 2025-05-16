@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::msg_codec::{msg_codec, GovernanceMessage};
+use crate::msg_codec::GovernanceMessage;
 use crate::*;
 use oapp::endpoint_cpi::{get_accounts_for_clear, LzAccount};
 use oapp::{endpoint::ID as ENDPOINT_ID, LzReceiveParams};
@@ -37,7 +37,7 @@ impl LzReceiveTypes<'_> {
         let (remote, _) = Pubkey::find_program_address(&seeds, ctx.program_id);
         let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &[ctx.accounts.governance.bump]], ctx.program_id).unwrap();
 
-        let governance_message: GovernanceMessage = msg_codec::decode_governance(&params.message)?;
+        let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
 
         // accounts 0..4
         let mut accounts = vec![

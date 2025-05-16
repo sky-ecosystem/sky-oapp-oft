@@ -14,7 +14,7 @@
 //! - [`OWNER`]: the program will replace this account with the governance PDA
 //! - [`PAYER`]: the program will replace this account with the payer account
 
-use crate::msg_codec::{msg_codec, GovernanceMessage};
+use crate::msg_codec::GovernanceMessage;
 use crate::state::Governance;
 use crate::state::Remote;
 use crate::{CPI_AUTHORITY_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER, REMOTE_SEED, CPI_AUTHORITY_PLACEHOLDER};
@@ -44,7 +44,7 @@ pub struct LzReceive<'info> {
     pub remote: Account<'info, Remote>,
 
     #[account(
-        seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes(), &msg_codec::decode_origin_caller(&params.message).unwrap()],
+        seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()],
         bump = governance.bump
     )]
     pub cpi_authority: AccountInfo<'info>,
@@ -67,7 +67,7 @@ impl<'info> LzReceive<'info> {
         let cpi_authority_seed: &[&[u8]] = &[   
             CPI_AUTHORITY_SEED,
             &ctx.accounts.governance.key().to_bytes(),
-            &msg_codec::decode_origin_caller(&params.message).unwrap(),
+            &GovernanceMessage::decode_origin_caller(&params.message).unwrap(),
             &[ctx.accounts.governance.bump],
         ];
 
@@ -88,7 +88,7 @@ impl<'info> LzReceive<'info> {
             },
         )?;
         // Decode governance message from LZ message
-        let gov_msg: GovernanceMessage = msg_codec::decode_governance(&params.message)?;
+        let gov_msg: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
         let mut instruction: Instruction = gov_msg.into();
 
         // Replace placeholder accounts
