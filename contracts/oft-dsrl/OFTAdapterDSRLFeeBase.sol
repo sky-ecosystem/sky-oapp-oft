@@ -59,6 +59,10 @@ abstract contract OFTAdapterDSRLFeeBase is OFTCore, DoubleSidedRateLimiter, Fee,
      * It allows configuration of rate limits either for outbound or inbound directions.
      * This method is designed to be called by contract admins for updating the system's rate limiting behavior.
      * 
+     * @notice WARNING: Changing rate limits without first calling resetRateLimits() MIGHT result in unexpected behavior.
+     * DYOR on Rate Limits across every VM to ensure compatibility.
+     * Especially consider inflight decay rates when reducing limits.
+     * 
      * @param _rateLimitConfigs An array of `RateLimitConfig` structs that specify the new rate limit settings.
      * Each struct includes an endpoint ID, the limit value, and the window duration.
      * @param _direction The direction (inbound or outbound) specifies whether the endpoint ID passed should be considered a srcEid or dstEid.
