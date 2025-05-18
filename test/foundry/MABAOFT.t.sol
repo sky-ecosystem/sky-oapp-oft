@@ -206,8 +206,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         vm.stopPrank();
 
         // Verify and execute those packets all at once to test if the inbound rate limit applies.
-        verifyPackets(bEid, addressToBytes32(address(bOFT)));
-        // verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
 
         assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend * 2);
         assertEq(bToken.balanceOf(userB), initialBalance + tokensToSend * 2);
