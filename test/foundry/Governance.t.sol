@@ -6,16 +6,16 @@ import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/I
 import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
-import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import "forge-std/console.sol";
 
 import { GovernanceControllerOApp } from "../../contracts/GovernanceControllerOApp.sol";
 import { GovernanceMessageEVMCodec } from "../../contracts/GovernanceMessageEVMCodec.sol";
-import { MockControlledContract } from "./mocks/MockControlledContract.sol";
-import { MockGovernanceRelay } from "./mocks/MockGovernanceRelay.sol";
-import { MockSpell } from "./mocks/MockSpell.sol";
+import { MockControlledContract } from "../mocks/MockControlledContract.sol";
+import { MockGovernanceRelay } from "../mocks/MockGovernanceRelay.sol";
+import { MockSpell } from "../mocks/MockSpell.sol";
+import { TestHelperOz5WithRevertAssertions } from "./helpers/TestHelperOz5WithRevertAssertions.sol";
 
-contract GovernanceControllerOAppTest is TestHelperOz5 {
+contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     using OptionsBuilder for bytes;
 
     uint16 aEid = 1;
@@ -77,5 +77,22 @@ contract GovernanceControllerOAppTest is TestHelperOz5 {
 
         // Asserting that the data variable has updated in the receiving OApp.
         assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
+    }
+
+    function test_send_with_governed_contract_revert() public {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceControllerOApp.GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(bRelay),
+            callData: abi.encodeWithSelector(bRelay.revertTest.selector)
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(MockGovernanceRelay.TestRevert.selector), "");
     }
 }

@@ -5,9 +5,10 @@ import "forge-std/console.sol";
 
 import { ERC20Mock } from "@layerzerolabs/oft-evm/test/mocks/ERC20Mock.sol";
 import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+
 import { GovernanceMessageEVMCodec } from "../../contracts/GovernanceMessageEVMCodec.sol";
 import { GovernanceControllerOApp } from "../../contracts/GovernanceControllerOApp.sol";
-import { MockCodec } from "./mocks/MockCodec.sol";
+import { MockCodec } from "../mocks/MockCodec.sol";
 
 contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     MockCodec mockCodec = new MockCodec();

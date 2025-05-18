@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.22;
 
-import { IGovernanceController } from "../../../contracts/IGovernanceController.sol";
+import { IGovernanceController } from "../../contracts/IGovernanceController.sol";
 
 contract MockGovernanceRelay {
     bytes32 public immutable allowedOriginCaller;
@@ -9,6 +9,7 @@ contract MockGovernanceRelay {
     IGovernanceController public immutable messenger;
 
     error DelegateCallFailed();
+    error TestRevert();
     error UnauthorizedMessenger();
     error UnauthorizedOriginCaller();
     
@@ -39,5 +40,9 @@ contract MockGovernanceRelay {
                 revert(add(32, result), mload(result))
             }
         }
+    }
+
+    function revertTest() external pure {
+        revert TestRevert();
     }
 }
