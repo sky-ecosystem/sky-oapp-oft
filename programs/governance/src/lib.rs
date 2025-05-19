@@ -73,6 +73,13 @@ pub mod governance {
     ) -> Result<()> {
         SetLzReceiveAlt::apply(&mut ctx, &params)
     }
+
+    pub fn set_oapp_config(
+        mut ctx: Context<SetOAppConfig>,
+        params: SetOAppConfigParams,
+    ) -> Result<()> {
+        SetOAppConfig::apply(&mut ctx, &params)
+    }
 }
 
 const fn sentinel_pubkey(input: &[u8]) -> Pubkey {

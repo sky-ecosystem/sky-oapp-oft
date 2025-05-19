@@ -13,4 +13,6 @@ pub enum GovernanceError {
     InvalidGovernanceAction,
     #[msg("InvalidInstruction")]
     InvalidInstruction,
+    #[msg("Unauthorized")]
+    Unauthorized,
 }

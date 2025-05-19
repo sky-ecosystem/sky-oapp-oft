@@ -6,6 +6,7 @@ pub struct Governance {
     pub id: u8,
     pub admin: Pubkey,
     pub bump: u8,
+    pub endpoint_program: Pubkey,
 }
 
 impl Governance {
