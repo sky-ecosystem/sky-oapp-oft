@@ -44,26 +44,7 @@ mod test_msg_codec {
     fn test_hello_world() {
         // hello world program id
         let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
-        let accounts = vec![
-            // owner placeholder
-            Acc {
-                pubkey: CPI_AUTHORITY_PLACEHOLDER,
-                is_signer: true,
-                is_writable: true,
-            },
-            // payer placeholder
-            Acc {
-                pubkey: PAYER_PLACEHOLDER,
-                is_signer: false,
-                is_writable: true,
-            },
-            // hello world program id
-            Acc {
-                pubkey: program_id,
-                is_signer: false,
-                is_writable: false,
-            },
-        ];
+        let accounts = vec![];
         // Anchor example hello world "Initialize" instruction data that logs "Greetings"
         let data = hex::decode("afaf6d1f0d989bed").unwrap();
         let msg = GovernanceMessage {
@@ -146,6 +127,7 @@ mod test_msg_codec {
             &spl_associated_token_account::id(),
         );
 
+        println!("CPI authority placeholder: {:?}", CPI_AUTHORITY_PLACEHOLDER);
         println!("CPI authority: {:?}", get_cpi_authority());
         println!("Associated token address: {:?}", associated_token_address);
 

@@ -23,18 +23,27 @@ pnpm hardhat lz:deploy
 
 Take the deployed EVM address and put it as `GOVERNANCE_CONTROLLER_ADDRESS` in .env. Also update `scripts/configGov.ts` - `remotePeers` and in `programs/governance/tests/msg_codec.rs` update: `FUJI_PEER_ADDRESS`.
 
+Verify EVM contract, eg. using:
+```
+npx @layerzerolabs/verify-contract@latest -d deployments -n avalanche-testnet
+```
+
+Note: if you get error about conflicting NPM dependency, then `cd ..` and change flag: `-d <YOUR_PROJECT_DIR>/deployments`. 
+
 Now run:
 ```
 pnpm config:governance
 ```
+
+Take the: "governancePDA hex" from log of the above command and call `setPeer` on the EVM contract with its value and endpoint id. Eg. `setPeer, dstEid = 40168, peer = 0xa2a4c256938d341b8b41812a0348da0f489ec1bca07fdc7979717fdfb4aa8498`.
 
 ## Scenarios
 
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/pnngC97fNMdpUuLi63at8UR1uRGubdcCZiLMsoyt3sU2DKsPbpPwfwWhEQd2gyY5dsZCLQUyjFLACDqUo4ZYURN?cluster=devnet)
-2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2foZ2JDtm5P4BcGMvvngFKTBfugfa1BCbx9LZCRmHE9tDdEkMzS3ZJDJgLW6rVZxGmNBA9V9fpFL5Rg48ekfR3EE?cluster=devnet)
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/twPgPhKjkpB6czgoUL6gRnBbvHQhZhrzWwm3yhFHDCbxqURdreDW4H6jCerheX8U8Qjp9DK74dJmmtBmMwYNLZY?cluster=devnet)
+2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/679FYRoPgEYgHy7nckjgY83EB7Npq6UYYqdxec8vMDPt29gqUYaggaauk1HsCBJDHMDmQXPPzrbEpsjHanrd1K4j?cluster=devnet)
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet)
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet)
 5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet)
@@ -111,7 +120,7 @@ Clearing of transactions is manual because it uses ALT for lzReceive.
 Example clear tx:
 
 ```
-pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x92d27c12d6c4cc44eb4ebe7342cff58121954a1336850c29ca9defe10bb61b30
+pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x862abd513f43cd8ff6bba12bcc4289e3501edfed7ec1b36cd79cd5724efe799c
 ```
 
 where --src-tx-hash is source transaction hash where the governance message was sent on the source chain.

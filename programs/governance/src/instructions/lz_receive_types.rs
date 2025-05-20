@@ -35,18 +35,19 @@ impl LzReceiveTypes<'_> {
             &params.src_eid.to_be_bytes(),
         ];
         let (remote, _) = Pubkey::find_program_address(&seeds, ctx.program_id);
-        let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &[ctx.accounts.governance.bump]], ctx.program_id).unwrap();
+        let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
+        let (cpi_authority_config, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_CONFIG_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
 
         let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
 
-        // accounts 0..4
+        // accounts 0..6 (first 7 accounts)
         let mut accounts = vec![
             // payer
             LzAccount {
                 pubkey: Pubkey::default(),
                 is_signer: true,
                 is_writable: true,
-            }, // 0
+            },
             // governance
             LzAccount {
                 pubkey: governance,
@@ -65,6 +66,12 @@ impl LzReceiveTypes<'_> {
                 is_signer: false,
                 is_writable: true,
             },
+            // cpi authority config
+            LzAccount {
+                pubkey: cpi_authority_config,
+                is_signer: false,
+                is_writable: true,
+            },
             // program
             LzAccount {
                 pubkey: governance_message.program_id,
@@ -79,8 +86,8 @@ impl LzReceiveTypes<'_> {
             },
         ];
 
-        // accounts 5..12
-        // append the accounts for the clear ix
+        // accounts 7..14 (8 accounts, last one #15)
+        // Endpoint Clear instruction accounts
         let accounts_for_clear = get_accounts_for_clear(
             ENDPOINT_ID,
             &governance,
@@ -90,19 +97,20 @@ impl LzReceiveTypes<'_> {
         );
         accounts.extend(accounts_for_clear);
 
-        // accounts 13..
-        // Add gov msg accounts individually
+        // accounts 15..
+        // Governance message instruction accounts
         accounts.extend(
             governance_message
                 .accounts
                 .iter()
-                .filter(|acc| {
-                    acc.pubkey != CPI_AUTHORITY_PLACEHOLDER
-                        && acc.pubkey != PAYER_PLACEHOLDER
-                        && acc.pubkey != governance_message.program_id
-                })
                 .map(|acc| LzAccount {
-                    pubkey: acc.pubkey,
+                    pubkey: if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
+                        cpi_authority
+                    } else if acc.pubkey == PAYER_PLACEHOLDER {
+                        Pubkey::default()
+                    } else {
+                        acc.pubkey
+                    },
                     is_signer: false,
                     is_writable: acc.is_writable,
                 }),
