@@ -12,8 +12,7 @@ import { IMintableBurnableVoidReturn } from "./interfaces/IMintableBurnableVoidR
  * Full name: Mint And Burn OFT Adapter With Fee And Double Sided Rate Limiter
  * @notice A variant of the standard OFT Adapter that uses an existing ERC20's mint and burn mechanisms for cross-chain transfers.
  * @dev This contract needs mint permissions on the token.
- * @dev When the fee is enabled: This contract burns the tokens from its own balance after transferring from the sender.
- * @dev When the fee is disabled: This contract burns the tokens from the sender's balance.
+ * @dev This contract burns the tokens from the sender's balance.
  *
  * @dev This contract extends the DoubleSidedRateLimiter contract to provide double-sided rate limiting functionality.
  * @dev It allows for the configuration of rate limits for both outbound and inbound directions.
