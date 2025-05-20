@@ -14,10 +14,12 @@
 //! - [`OWNER`]: the program will replace this account with the governance PDA
 //! - [`PAYER`]: the program will replace this account with the payer account
 
+use crate::error::GovernanceError;
 use crate::msg_codec::GovernanceMessage;
+use crate::state::CpiAuthorityConfig;
 use crate::state::Governance;
 use crate::state::Remote;
-use crate::{CPI_AUTHORITY_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER, REMOTE_SEED, CPI_AUTHORITY_PLACEHOLDER};
+use crate::{CPI_AUTHORITY_SEED, CPI_AUTHORITY_CONFIG_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER, REMOTE_SEED, CPI_AUTHORITY_PLACEHOLDER, id};
 use anchor_lang::prelude::*;
 use oapp::{
     endpoint::{
@@ -45,12 +47,23 @@ pub struct LzReceive<'info> {
 
     #[account(
         seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()],
-        bump = governance.bump
+        bump
     )]
     pub cpi_authority: AccountInfo<'info>,
 
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = CpiAuthorityConfig::SIZE,
+        seeds = [CPI_AUTHORITY_CONFIG_SEED, &governance.key().to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()],
+        bump
+    )]
+    pub cpi_authority_config: Account<'info, CpiAuthorityConfig>,
+
     #[account(executable)]
     pub program: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> LzReceive<'info> {
@@ -58,6 +71,20 @@ impl<'info> LzReceive<'info> {
         ctx: &mut Context<'_, '_, '_, 'info, Self>,
         params: &LzReceiveParams,
     ) -> Result<()> {
+        if ctx.accounts.cpi_authority_config.cpi_authority_bump == 0 {
+            let (_authority, cpi_bump) = Pubkey::find_program_address(
+                &[CPI_AUTHORITY_SEED, &ctx.accounts.governance.key().to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], &id()
+            );
+
+            if _authority != ctx.accounts.cpi_authority.key() {
+                return Err(GovernanceError::CpiAuthorityMismatch.into());
+            }
+    
+            ctx.accounts.cpi_authority_config.cpi_authority_bump = cpi_bump;
+        } else if ctx.accounts.cpi_authority_config.cpi_authority_bump != ctx.bumps.cpi_authority {
+            return Err(GovernanceError::CpiAuthorityBumpMismatch.into());
+        }
+
         let governance_seed: &[&[u8]] = &[
             GOVERNANCE_SEED,
             &ctx.accounts.governance.id.to_be_bytes(),

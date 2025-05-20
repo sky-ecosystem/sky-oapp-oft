@@ -8,94 +8,81 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  SetLzReceiveAltParams,
-  setLzReceiveAltParamsBeet,
-} from '../types/SetLzReceiveAltParams'
+  SetOAppConfigParams,
+  setOAppConfigParamsBeet,
+} from '../types/SetOAppConfigParams'
 
 /**
  * @category Instructions
- * @category SetLzReceiveAlt
+ * @category SetOappConfig
  * @category generated
  */
-export type SetLzReceiveAltInstructionArgs = {
-  params: SetLzReceiveAltParams
+export type SetOappConfigInstructionArgs = {
+  params: SetOAppConfigParams
 }
 /**
  * @category Instructions
- * @category SetLzReceiveAlt
+ * @category SetOappConfig
  * @category generated
  */
-export const setLzReceiveAltStruct = new beet.BeetArgsStruct<
-  SetLzReceiveAltInstructionArgs & {
+export const setOappConfigStruct = new beet.FixableBeetArgsStruct<
+  SetOappConfigInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['params', setLzReceiveAltParamsBeet],
+    ['params', setOAppConfigParamsBeet],
   ],
-  'SetLzReceiveAltInstructionArgs'
+  'SetOappConfigInstructionArgs'
 )
 /**
- * Accounts required by the _setLzReceiveAlt_ instruction
+ * Accounts required by the _setOappConfig_ instruction
  *
- * @property [_writable_, **signer**] admin
- * @property [_writable_] lzReceiveAlt
- * @property [] governance
+ * @property [**signer**] admin
+ * @property [_writable_] governance
  * @category Instructions
- * @category SetLzReceiveAlt
+ * @category SetOappConfig
  * @category generated
  */
-export type SetLzReceiveAltInstructionAccounts = {
+export type SetOappConfigInstructionAccounts = {
   admin: web3.PublicKey
-  lzReceiveAlt: web3.PublicKey
   governance: web3.PublicKey
-  systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const setLzReceiveAltInstructionDiscriminator = [
-  73, 82, 199, 238, 174, 158, 241, 146,
+export const setOappConfigInstructionDiscriminator = [
+  215, 26, 93, 122, 225, 13, 57, 214,
 ]
 
 /**
- * Creates a _SetLzReceiveAlt_ instruction.
+ * Creates a _SetOappConfig_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SetLzReceiveAlt
+ * @category SetOappConfig
  * @category generated
  */
-export function createSetLzReceiveAltInstruction(
-  accounts: SetLzReceiveAltInstructionAccounts,
-  args: SetLzReceiveAltInstructionArgs,
+export function createSetOappConfigInstruction(
+  accounts: SetOappConfigInstructionAccounts,
+  args: SetOappConfigInstructionArgs,
   programId = new web3.PublicKey('undefined')
 ) {
-  const [data] = setLzReceiveAltStruct.serialize({
-    instructionDiscriminator: setLzReceiveAltInstructionDiscriminator,
+  const [data] = setOappConfigStruct.serialize({
+    instructionDiscriminator: setOappConfigInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.admin,
-      isWritable: true,
+      isWritable: false,
       isSigner: true,
     },
     {
-      pubkey: accounts.lzReceiveAlt,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
       pubkey: accounts.governance,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
   ]

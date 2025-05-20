@@ -12,13 +12,59 @@ const createErrorFromCodeLookup: Map<number, () => ErrorWithCode> = new Map()
 const createErrorFromNameLookup: Map<string, () => ErrorWithCode> = new Map()
 
 /**
+ * CpiAuthorityBumpMismatch: 'CpiAuthorityBumpMismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CpiAuthorityBumpMismatchError extends Error {
+  readonly code: number = 0x1770
+  readonly name: string = 'CpiAuthorityBumpMismatch'
+  constructor() {
+    super('CpiAuthorityBumpMismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, CpiAuthorityBumpMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1770, () => new CpiAuthorityBumpMismatchError())
+createErrorFromNameLookup.set(
+  'CpiAuthorityBumpMismatch',
+  () => new CpiAuthorityBumpMismatchError()
+)
+
+/**
+ * CpiAuthorityMismatch: 'CpiAuthorityMismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CpiAuthorityMismatchError extends Error {
+  readonly code: number = 0x1771
+  readonly name: string = 'CpiAuthorityMismatch'
+  constructor() {
+    super('CpiAuthorityMismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, CpiAuthorityMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1771, () => new CpiAuthorityMismatchError())
+createErrorFromNameLookup.set(
+  'CpiAuthorityMismatch',
+  () => new CpiAuthorityMismatchError()
+)
+
+/**
  * InvalidGovernanceChain: 'InvalidGovernanceChain'
  *
  * @category Errors
  * @category generated
  */
 export class InvalidGovernanceChainError extends Error {
-  readonly code: number = 0x1770
+  readonly code: number = 0x1772
   readonly name: string = 'InvalidGovernanceChain'
   constructor() {
     super('InvalidGovernanceChain')
@@ -28,56 +74,10 @@ export class InvalidGovernanceChainError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1770, () => new InvalidGovernanceChainError())
+createErrorFromCodeLookup.set(0x1772, () => new InvalidGovernanceChainError())
 createErrorFromNameLookup.set(
   'InvalidGovernanceChain',
   () => new InvalidGovernanceChainError()
-)
-
-/**
- * InvalidGovernanceEmitter: 'InvalidGovernanceEmitter'
- *
- * @category Errors
- * @category generated
- */
-export class InvalidGovernanceEmitterError extends Error {
-  readonly code: number = 0x1771
-  readonly name: string = 'InvalidGovernanceEmitter'
-  constructor() {
-    super('InvalidGovernanceEmitter')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, InvalidGovernanceEmitterError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(0x1771, () => new InvalidGovernanceEmitterError())
-createErrorFromNameLookup.set(
-  'InvalidGovernanceEmitter',
-  () => new InvalidGovernanceEmitterError()
-)
-
-/**
- * InvalidGovernanceProgram: 'InvalidGovernanceProgram'
- *
- * @category Errors
- * @category generated
- */
-export class InvalidGovernanceProgramError extends Error {
-  readonly code: number = 0x1772
-  readonly name: string = 'InvalidGovernanceProgram'
-  constructor() {
-    super('InvalidGovernanceProgram')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, InvalidGovernanceProgramError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(0x1772, () => new InvalidGovernanceProgramError())
-createErrorFromNameLookup.set(
-  'InvalidGovernanceProgram',
-  () => new InvalidGovernanceProgramError()
 )
 
 /**
@@ -104,13 +104,59 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * InvalidGovernanceModule: 'InvalidGovernanceModule'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidGovernanceModuleError extends Error {
+  readonly code: number = 0x1774
+  readonly name: string = 'InvalidGovernanceModule'
+  constructor() {
+    super('InvalidGovernanceModule')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidGovernanceModuleError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1774, () => new InvalidGovernanceModuleError())
+createErrorFromNameLookup.set(
+  'InvalidGovernanceModule',
+  () => new InvalidGovernanceModuleError()
+)
+
+/**
+ * InvalidGovernanceAction: 'InvalidGovernanceAction'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidGovernanceActionError extends Error {
+  readonly code: number = 0x1775
+  readonly name: string = 'InvalidGovernanceAction'
+  constructor() {
+    super('InvalidGovernanceAction')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidGovernanceActionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1775, () => new InvalidGovernanceActionError())
+createErrorFromNameLookup.set(
+  'InvalidGovernanceAction',
+  () => new InvalidGovernanceActionError()
+)
+
+/**
  * InvalidInstruction: 'InvalidInstruction'
  *
  * @category Errors
  * @category generated
  */
 export class InvalidInstructionError extends Error {
-  readonly code: number = 0x1774
+  readonly code: number = 0x1776
   readonly name: string = 'InvalidInstruction'
   constructor() {
     super('InvalidInstruction')
@@ -120,11 +166,31 @@ export class InvalidInstructionError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x1774, () => new InvalidInstructionError())
+createErrorFromCodeLookup.set(0x1776, () => new InvalidInstructionError())
 createErrorFromNameLookup.set(
   'InvalidInstruction',
   () => new InvalidInstructionError()
 )
+
+/**
+ * Unauthorized: 'Unauthorized'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class UnauthorizedError extends Error {
+  readonly code: number = 0x1777
+  readonly name: string = 'Unauthorized'
+  constructor() {
+    super('Unauthorized')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, UnauthorizedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1777, () => new UnauthorizedError())
+createErrorFromNameLookup.set('Unauthorized', () => new UnauthorizedError())
 
 /**
  * Attempts to resolve a custom program error from the provided error code.

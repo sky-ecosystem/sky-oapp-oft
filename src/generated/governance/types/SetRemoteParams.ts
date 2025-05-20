@@ -7,7 +7,6 @@
 
 import * as beet from '@metaplex-foundation/beet'
 export type SetRemoteParams = {
-  id: number
   dstEid: number
   remote: number[] /* size: 32 */
 }
@@ -18,7 +17,6 @@ export type SetRemoteParams = {
  */
 export const setRemoteParamsBeet = new beet.BeetArgsStruct<SetRemoteParams>(
   [
-    ['id', beet.u8],
     ['dstEid', beet.u32],
     ['remote', beet.uniformFixedSizeArray(beet.u8, 32)],
   ],

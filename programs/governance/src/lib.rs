@@ -27,6 +27,7 @@ pub const LZ_RECEIVE_ALT_SEED: &[u8] = b"LzReceiveAlt";
 pub const GOVERNANCE_SEED: &[u8] = b"Governance";
 pub const REMOTE_SEED: &[u8] = b"Remote";
 pub const CPI_AUTHORITY_SEED: &[u8] = b"CpiAuthority";
+pub const CPI_AUTHORITY_CONFIG_SEED: &[u8] = b"CpiAuthConfig";
 
 pub const CPI_AUTHORITY_PLACEHOLDER: Pubkey = sentinel_pubkey(b"cpi_authority");
 pub const PAYER_PLACEHOLDER: Pubkey = sentinel_pubkey(b"payer");

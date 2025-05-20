@@ -1,3 +1,10 @@
+// Get the environment configuration from .env file
+//
+// To make use of automatic environment setup:
+// - Duplicate .env.example file and name it .env
+// - Fill in the environment variables
+import 'dotenv/config'
+
 import { Connection, Keypair, PublicKey, Signer, TransactionInstruction, SimulatedTransactionResponse, SendTransactionError, ComputeBudgetProgram } from '@solana/web3.js'
 import bs58 from 'bs58';
 import {
@@ -29,7 +36,7 @@ const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governa
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
 const remotePeers: { [key in EndpointId]?: string } = {
-    [EndpointId.AVALANCHE_V2_TESTNET]: '0xBc817352af3298bB9fFE385aB6466334c6B4c5CF',
+    [EndpointId.AVALANCHE_V2_TESTNET]: '0x391D534b9EEe0e4afA2Aa339155340527936B633',
 }
 
 ;(async () => {
@@ -76,7 +83,7 @@ async function initGovernance(connection: Connection, payer: Keypair, admin: Key
         // already initialized
         return Promise.resolve()
     }
-    sendAndConfirm(connection, [admin], [ix])
+    await sendAndConfirm(connection, [admin], [ix])
 }
 
 async function setPeers(
@@ -87,7 +94,7 @@ async function setPeers(
 ): Promise<void> {
     const ix = governanceProgram.setRemote(admin.publicKey, remotePeer, remote)
     const [remotePDA] = governanceProgram.governanceDeriver.remote(remote)
-    console.log(remotePDA.toBase58());
+    console.log('remotePDA', remotePDA.toBase58());
     let current = ''
     try {
         const info = await GovernanceProgram.accounts.Remote.fromAccountAddress(connection, remotePDA, {
@@ -98,10 +105,10 @@ async function setPeers(
         /*remote not init*/
     }
     if (current == Buffer.from(remotePeer).toString('hex')) {
-        console.log('setPeers: already set');
+        console.log('set_remote: already set');
         return Promise.resolve()
     }
-    console.log('setPeer: changing peer')
+    console.log('set_remote: changing peer')
     await sendAndConfirm(connection, [admin], [ix])
 }
 
@@ -120,7 +127,7 @@ async function initUlnConfig(
     }
     console.log('initUlnConfig: initializing')
     const ix = await endpointProgram.initOAppConfig(admin.publicKey, ulnProgram, payer.publicKey, id, remote)
-    sendAndConfirm(connection, [admin], [ix])
+    await sendAndConfirm(connection, [admin], [ix])
 }
 
 async function setOAppExecutor(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
@@ -169,7 +176,7 @@ async function setSendLibrary(connection: Connection, admin: Keypair, remote: En
     }
     console.log('setSendLibrary: setting')
     const ix = await endpointProgram.setSendLibrary(admin.publicKey, idPDA, ulnProgram.program, remote)
-    sendAndConfirm(connection, [admin], [ix])
+    await sendAndConfirm(connection, [admin], [ix])
 }
 
 async function setReceiveLibrary(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
@@ -254,7 +261,7 @@ async function initOAppNonce(
     } catch (e) {
         console.log('initOappNonce: nonce not initialized');
     }
-    sendAndConfirm(connection, [admin], [ix])
+    await sendAndConfirm(connection, [admin], [ix])
 }
 
 async function sendAndConfirm(

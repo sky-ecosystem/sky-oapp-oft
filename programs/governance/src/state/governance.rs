@@ -32,3 +32,13 @@ pub struct LzReceiveAlt {
 impl LzReceiveAlt {
     pub const SIZE: usize = 8 + std::mem::size_of::<Self>();
 }
+
+#[account]
+pub struct CpiAuthorityConfig {
+    pub bump: u8,
+    pub cpi_authority_bump: u8,
+}
+
+impl CpiAuthorityConfig {
+    pub const SIZE: usize = 8 + std::mem::size_of::<Self>();
+}

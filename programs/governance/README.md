@@ -4,6 +4,30 @@ A program that can be used to send arbitrary transactions on connected blockchai
 
 Blockchain messaging protocol used is LayerZero.
 
+## Deployment
+
+### Devnet
+
+```
+solana program deploy target/deploy/governance.so -u devnet
+```
+
+Update `GOVERNANCE_PROGRAM_ID` in .env file. Also you might want to update file: `src/generated/governance/index.ts` - variable `PROGRAM_ADDRESS`.
+
+Deploy EVM side:
+```
+pnpm hardhat lz:deploy
+
+✔ Which deploy script tags would you like to use? … GovernanceControllerOApp
+```
+
+Take the deployed EVM address and put it as `GOVERNANCE_CONTROLLER_ADDRESS` in .env. Also update `scripts/configGov.ts` - `remotePeers` and in `programs/governance/tests/msg_codec.rs` update: `FUJI_PEER_ADDRESS`.
+
+Now run:
+```
+pnpm config:governance
+```
+
 ## Scenarios
 
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.

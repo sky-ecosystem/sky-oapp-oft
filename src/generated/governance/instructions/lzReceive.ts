@@ -37,8 +37,10 @@ export const lzReceiveStruct = new beet.FixableBeetArgsStruct<
  * Accounts required by the _lzReceive_ instruction
  *
  * @property [_writable_, **signer**] payer
- * @property [_writable_] governance
+ * @property [] governance
  * @property [] remote
+ * @property [] cpiAuthority
+ * @property [_writable_] cpiAuthorityConfig
  * @property [] program
  * @category Instructions
  * @category LzReceive
@@ -48,6 +50,8 @@ export type LzReceiveInstructionAccounts = {
   payer: web3.PublicKey
   governance: web3.PublicKey
   remote: web3.PublicKey
+  cpiAuthority: web3.PublicKey
+  cpiAuthorityConfig: web3.PublicKey
   program: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -70,7 +74,7 @@ export const lzReceiveInstructionDiscriminator = [
 export function createLzReceiveInstruction(
   accounts: LzReceiveInstructionAccounts,
   args: LzReceiveInstructionArgs,
-  programId = new web3.PublicKey('EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3')
+  programId = new web3.PublicKey('undefined')
 ) {
   const [data] = lzReceiveStruct.serialize({
     instructionDiscriminator: lzReceiveInstructionDiscriminator,
@@ -84,12 +88,22 @@ export function createLzReceiveInstruction(
     },
     {
       pubkey: accounts.governance,
-      isWritable: true,
+      isWritable: false,
       isSigner: false,
     },
     {
       pubkey: accounts.remote,
       isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.cpiAuthority,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.cpiAuthorityConfig,
+      isWritable: true,
       isSigner: false,
     },
     {

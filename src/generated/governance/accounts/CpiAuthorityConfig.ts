@@ -10,50 +10,52 @@ import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 
 /**
- * Arguments used to create {@link Remote}
+ * Arguments used to create {@link CpiAuthorityConfig}
  * @category Accounts
  * @category generated
  */
-export type RemoteArgs = {
-  address: number[] /* size: 32 */
+export type CpiAuthorityConfigArgs = {
   bump: number
+  cpiAuthorityBump: number
 }
 
-export const remoteDiscriminator = [142, 141, 61, 250, 205, 173, 146, 34]
+export const cpiAuthorityConfigDiscriminator = [
+  46, 55, 106, 182, 246, 121, 112, 122,
+]
 /**
- * Holds the data for the {@link Remote} Account and provides de/serialization
+ * Holds the data for the {@link CpiAuthorityConfig} Account and provides de/serialization
  * functionality for that data
  *
  * @category Accounts
  * @category generated
  */
-export class Remote implements RemoteArgs {
+export class CpiAuthorityConfig implements CpiAuthorityConfigArgs {
   private constructor(
-    readonly address: number[] /* size: 32 */,
-    readonly bump: number
+    readonly bump: number,
+    readonly cpiAuthorityBump: number
   ) {}
 
   /**
-   * Creates a {@link Remote} instance from the provided args.
+   * Creates a {@link CpiAuthorityConfig} instance from the provided args.
    */
-  static fromArgs(args: RemoteArgs) {
-    return new Remote(args.address, args.bump)
+  static fromArgs(args: CpiAuthorityConfigArgs) {
+    return new CpiAuthorityConfig(args.bump, args.cpiAuthorityBump)
   }
 
   /**
-   * Deserializes the {@link Remote} from the data of the provided {@link web3.AccountInfo}.
+   * Deserializes the {@link CpiAuthorityConfig} from the data of the provided {@link web3.AccountInfo}.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
   static fromAccountInfo(
     accountInfo: web3.AccountInfo<Buffer>,
     offset = 0
-  ): [Remote, number] {
-    return Remote.deserialize(accountInfo.data, offset)
+  ): [CpiAuthorityConfig, number] {
+    return CpiAuthorityConfig.deserialize(accountInfo.data, offset)
   }
 
   /**
    * Retrieves the account info from the provided address and deserializes
-   * the {@link Remote} from its data.
+   * the {@link CpiAuthorityConfig} from its data.
    *
    * @throws Error if no account info is found at the address or if deserialization fails
    */
@@ -61,15 +63,15 @@ export class Remote implements RemoteArgs {
     connection: web3.Connection,
     address: web3.PublicKey,
     commitmentOrConfig?: web3.Commitment | web3.GetAccountInfoConfig
-  ): Promise<Remote> {
+  ): Promise<CpiAuthorityConfig> {
     const accountInfo = await connection.getAccountInfo(
       address,
       commitmentOrConfig
     )
     if (accountInfo == null) {
-      throw new Error(`Unable to find Remote account at ${address}`)
+      throw new Error(`Unable to find CpiAuthorityConfig account at ${address}`)
     }
-    return Remote.fromAccountInfo(accountInfo, 0)[0]
+    return CpiAuthorityConfig.fromAccountInfo(accountInfo, 0)[0]
   }
 
   /**
@@ -81,39 +83,39 @@ export class Remote implements RemoteArgs {
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey('undefined')
   ) {
-    return beetSolana.GpaBuilder.fromStruct(programId, remoteBeet)
+    return beetSolana.GpaBuilder.fromStruct(programId, cpiAuthorityConfigBeet)
   }
 
   /**
-   * Deserializes the {@link Remote} from the provided data Buffer.
+   * Deserializes the {@link CpiAuthorityConfig} from the provided data Buffer.
    * @returns a tuple of the account data and the offset up to which the buffer was read to obtain it.
    */
-  static deserialize(buf: Buffer, offset = 0): [Remote, number] {
-    return remoteBeet.deserialize(buf, offset)
+  static deserialize(buf: Buffer, offset = 0): [CpiAuthorityConfig, number] {
+    return cpiAuthorityConfigBeet.deserialize(buf, offset)
   }
 
   /**
-   * Serializes the {@link Remote} into a Buffer.
+   * Serializes the {@link CpiAuthorityConfig} into a Buffer.
    * @returns a tuple of the created Buffer and the offset up to which the buffer was written to store it.
    */
   serialize(): [Buffer, number] {
-    return remoteBeet.serialize({
-      accountDiscriminator: remoteDiscriminator,
+    return cpiAuthorityConfigBeet.serialize({
+      accountDiscriminator: cpiAuthorityConfigDiscriminator,
       ...this,
     })
   }
 
   /**
    * Returns the byteSize of a {@link Buffer} holding the serialized data of
-   * {@link Remote}
+   * {@link CpiAuthorityConfig}
    */
   static get byteSize() {
-    return remoteBeet.byteSize
+    return cpiAuthorityConfigBeet.byteSize
   }
 
   /**
    * Fetches the minimum balance needed to exempt an account holding
-   * {@link Remote} data from rent
+   * {@link CpiAuthorityConfig} data from rent
    *
    * @param connection used to retrieve the rent exemption information
    */
@@ -122,27 +124,27 @@ export class Remote implements RemoteArgs {
     commitment?: web3.Commitment
   ): Promise<number> {
     return connection.getMinimumBalanceForRentExemption(
-      Remote.byteSize,
+      CpiAuthorityConfig.byteSize,
       commitment
     )
   }
 
   /**
    * Determines if the provided {@link Buffer} has the correct byte size to
-   * hold {@link Remote} data.
+   * hold {@link CpiAuthorityConfig} data.
    */
   static hasCorrectByteSize(buf: Buffer, offset = 0) {
-    return buf.byteLength - offset === Remote.byteSize
+    return buf.byteLength - offset === CpiAuthorityConfig.byteSize
   }
 
   /**
-   * Returns a readable version of {@link Remote} properties
+   * Returns a readable version of {@link CpiAuthorityConfig} properties
    * and can be used to convert to JSON and/or logging
    */
   pretty() {
     return {
-      address: this.address,
       bump: this.bump,
+      cpiAuthorityBump: this.cpiAuthorityBump,
     }
   }
 }
@@ -151,17 +153,17 @@ export class Remote implements RemoteArgs {
  * @category Accounts
  * @category generated
  */
-export const remoteBeet = new beet.BeetStruct<
-  Remote,
-  RemoteArgs & {
+export const cpiAuthorityConfigBeet = new beet.BeetStruct<
+  CpiAuthorityConfig,
+  CpiAuthorityConfigArgs & {
     accountDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['address', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['bump', beet.u8],
+    ['cpiAuthorityBump', beet.u8],
   ],
-  Remote.fromArgs,
-  'Remote'
+  CpiAuthorityConfig.fromArgs,
+  'CpiAuthorityConfig'
 )

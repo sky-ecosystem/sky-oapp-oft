@@ -63,7 +63,7 @@ export const lzReceiveTypesInstructionDiscriminator = [
 export function createLzReceiveTypesInstruction(
   accounts: LzReceiveTypesInstructionAccounts,
   args: LzReceiveTypesInstructionArgs,
-  programId = new web3.PublicKey('EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3')
+  programId = new web3.PublicKey('undefined')
 ) {
   const [data] = lzReceiveTypesStruct.serialize({
     instructionDiscriminator: lzReceiveTypesInstructionDiscriminator,
