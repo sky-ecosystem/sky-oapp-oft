@@ -193,32 +193,6 @@ createErrorFromCodeLookup.set(0x1777, () => new UnauthorizedError())
 createErrorFromNameLookup.set('Unauthorized', () => new UnauthorizedError())
 
 /**
- * InvalidAddressLookupTable: 'InvalidAddressLookupTable'
- *
- * @category Errors
- * @category generated
- */
-export class InvalidAddressLookupTableError extends Error {
-  readonly code: number = 0x1778
-  readonly name: string = 'InvalidAddressLookupTable'
-  constructor() {
-    super('InvalidAddressLookupTable')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, InvalidAddressLookupTableError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(
-  0x1778,
-  () => new InvalidAddressLookupTableError()
-)
-createErrorFromNameLookup.set(
-  'InvalidAddressLookupTable',
-  () => new InvalidAddressLookupTableError()
-)
-
-/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

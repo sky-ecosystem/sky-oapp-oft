@@ -123,6 +123,24 @@ export class Governance {
         )
     }
 
+    setLzReceiveTypesAccounts(admin: PublicKey, lzReceiveTypesAccounts: types.AddressOrAltIndex[], lzReceiveTypesAccountsAlts: PublicKey[]): TransactionInstruction {
+        const [lzReceiveTypesV2AccountsPDA] = this.governanceDeriver.lzReceiveTypesV2Accounts()
+        return instructions.createSetOappConfigInstruction(
+            {
+                admin,
+                governance: this.idPDA()[0],
+                lzReceiveTypesV2Accounts: lzReceiveTypesV2AccountsPDA,
+            } satisfies instructions.SetOappConfigInstructionAccounts,
+            {
+                params: {
+                    __kind: 'LzReceiveTypesAccounts',
+                    fields: [lzReceiveTypesAccounts, lzReceiveTypesAccountsAlts],
+                } satisfies types.SetOAppConfigParams,
+            },
+            this.program
+        )
+    }
+
     async getLzReceiveTypesInfo(connection: Connection, commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'): Promise<[number, LzReceiveTypesInfoResult]> {
         const [lzReceiveTypesV2AccountsPDA] = this.governanceDeriver.lzReceiveTypesV2Accounts()
         const ix = instructions.createLzReceiveTypesInfoInstruction(

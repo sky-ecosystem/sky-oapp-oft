@@ -144,6 +144,7 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         console.log('--------------------------------------')
 
         // if (accountsNotInALT.length > 0) {
+        //     await createLookupTable(connection, signer, accountsNotInALT)
         //     await extendLookupTable(connection, signer, alts[0].key, accountsNotInALT)
         // }
 
@@ -171,6 +172,34 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         console.log("lzReceive tx signature", lzReceiveTxSignature)
     }
 )
+
+async function createLookupTable(connection: Connection, signer: Keypair, addresses: PublicKey[]) {
+    const [createInstruction, lookupTableAddress] = AddressLookupTableProgram.createLookupTable({
+        payer: signer.publicKey,
+        authority: signer.publicKey,
+        recentSlot: await connection.getSlot(),
+    });
+    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+        payer: signer.publicKey,
+        authority: signer.publicKey,
+        lookupTable: lookupTableAddress,
+        addresses: addresses,
+    });
+
+    const blockhash = await connection.getLatestBlockhash();
+    const message = new TransactionMessage({
+        payerKey: signer.publicKey,
+        recentBlockhash: blockhash.blockhash,
+        instructions: [createInstruction, extendInstruction],
+    }).compileToV0Message();
+    const tx = new VersionedTransaction(message);
+    tx.sign([signer]);
+    const txHash = await connection.sendTransaction(tx);
+    console.log('create lookup table', {
+        txHash,
+        lookupTableAddress,
+    })
+};
 
 async function extendLookupTable(connection: Connection, signer: Keypair, lookupTableAddress: PublicKey, addresses: PublicKey[]) {
     const extendInstruction = AddressLookupTableProgram.extendLookupTable({
