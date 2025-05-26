@@ -7,7 +7,7 @@ import { ERC20Mock } from "@layerzerolabs/oft-evm/test/mocks/ERC20Mock.sol";
 import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 
 import { GovernanceMessageEVMCodec } from "../../contracts/GovernanceMessageEVMCodec.sol";
-import { GovernanceControllerOApp } from "../../contracts/GovernanceControllerOApp.sol";
+import { GovernanceAction } from "../../contracts/IGovernanceController.sol";
 import { MockCodec } from "../mocks/MockCodec.sol";
 
 contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
@@ -19,7 +19,7 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
         address originCaller = makeAddr("originCaller");
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
-            action: uint8(GovernanceControllerOApp.GovernanceAction.EVM_CALL),
+            action: uint8(GovernanceAction.EVM_CALL),
             dstEid: 1,
             originCaller: addressToBytes32(originCaller),
             governedContract: governedContract,

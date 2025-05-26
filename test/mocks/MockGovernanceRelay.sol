@@ -45,4 +45,8 @@ contract MockGovernanceRelay {
     function revertTest() external pure {
         revert TestRevert();
     }
+
+    function revertTestNoData() external pure {
+        revert();
+    }
 }

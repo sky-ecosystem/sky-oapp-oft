@@ -12,13 +12,6 @@ import { GovernanceMessageGenericCodec } from "./GovernanceMessageGenericCodec.s
 import { IGovernanceController, GovernanceOrigin } from "./IGovernanceController.sol";
 
 contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceController {
-    /// @notice The known set of governance actions.
-    enum GovernanceAction {
-        UNDEFINED,
-        EVM_CALL,
-        SOLANA_CALL
-    }
-
     // @notice Msg types that are used to identify the various OApp operations.
     // @dev This can be extended in child contracts for non-default OApp operations
     // @dev These values are used in things like combineOptions() in OAppOptionsType3.sol.
@@ -27,7 +20,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     // a temporary variable to store the origin caller and expose it to governed contract
     GovernanceOrigin public messageOrigin;
 
-    error InvalidAction(uint8 action);
+    error GovernanceCallFailed();
     error UnauthorizedOriginCaller();
 
     constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
@@ -82,11 +75,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         MessagingFee calldata _fee,
         address _refundAddress
     ) internal virtual returns (MessagingReceipt memory msgReceipt) {
-        if (_message.action != uint8(GovernanceAction.EVM_CALL)) {
-            revert InvalidAction(_message.action);
-        }
-
-        if (AddressCast.toAddress(_message.originCaller) != address(msg.sender)) {
+        if (AddressCast.toAddress(_message.originCaller) != msg.sender) {
             revert UnauthorizedOriginCaller();
         }
 
@@ -109,7 +98,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         MessagingFee calldata _fee,
         address _refundAddress
     ) internal virtual returns (MessagingReceipt memory msgReceipt) {
-        if (GovernanceMessageGenericCodec.originCaller(_message) != address(msg.sender)) {
+        if (GovernanceMessageGenericCodec.originCaller(_message) != msg.sender) {
             revert UnauthorizedOriginCaller();
         }
 
@@ -128,16 +117,15 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     ) internal override {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.decode(payload);
 
-        if (message.action != uint8(GovernanceAction.EVM_CALL)) {
-            revert InvalidAction(message.action);
-        }
-
         // @dev This is a temporary variable to store the origin caller and expose it to the governed contract.
         messageOrigin = GovernanceOrigin({ eid: origin.srcEid, caller: message.originCaller });
 
         (bool success, bytes memory returnData) = message.governedContract.call(message.callData);
         if (!success) {
-            revert(string(returnData));
+            if (returnData.length == 0) revert GovernanceCallFailed();
+            assembly ("memory-safe") {
+                revert(add(32, returnData), mload(returnData))
+            }
         }
 
         // @dev set back to zero
