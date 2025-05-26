@@ -1032,7 +1032,11 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
             "",
             ""
         );
-        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+        uint256 dummyNativeFee = 1 ether;
+        MessagingFee memory fee = MessagingFee({
+            nativeFee: dummyNativeFee,
+            lzTokenFee: 0
+        });
         
         vm.startPrank(userA);
         aToken.approve(address(aOFT), tokensToSend);

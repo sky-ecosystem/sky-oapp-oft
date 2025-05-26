@@ -137,7 +137,7 @@ abstract contract OFTAdapterDSRLFeeBase is OFTCore, DoubleSidedRateLimiter, Fee,
         uint256 _amountLD,
         uint256 _minAmountLD,
         uint32 _dstEid
-    ) internal view virtual override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
+    ) internal view virtual override whenNotPaused returns (uint256 amountSentLD, uint256 amountReceivedLD) {
         amountSentLD = _amountLD;
 
         // @dev Apply the fee, then de-dust the amount afterwards.

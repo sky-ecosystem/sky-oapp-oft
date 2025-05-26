@@ -1043,12 +1043,16 @@ contract OFTAdapterTest is TestHelperOz5WithRevertAssertions {
             "",
             ""
         );
-        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+        uint256 dummyNativeFee = 1 ether;
+        MessagingFee memory fee = MessagingFee({
+            nativeFee: dummyNativeFee,
+            lzTokenFee: 0
+        });
         
         vm.startPrank(userA);
         aToken.approve(address(aOFT), tokensToSend);
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+        aOFT.send{ value: dummyNativeFee }(sendParam, fee, payable(address(this)));
         vm.stopPrank();
     }
 

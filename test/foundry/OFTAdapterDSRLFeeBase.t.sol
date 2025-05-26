@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import { ERC20Mock } from "@layerzerolabs/oft-evm/test/mocks/ERC20Mock.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IOFT } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { IOFT, SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 
 import { OFTAdapterDSRLFeeBase } from "../../contracts/oft-dsrl/OFTAdapterDSRLFeeBase.sol";
 import { OFTAdapterDSRLFeeBaseMock } from "../mocks/OFTAdapterDSRLFeeBaseMock.sol";
@@ -66,5 +68,13 @@ contract OFTAdapterDSRLFeeBaseTest is TestHelperOz5WithRevertAssertions {
 
         vm.expectRevert(abi.encodeWithSelector(IOFT.SlippageExceeded.selector, 1e12, 1.3 * 1e12));
         (amountSentLD, amountReceivedLD) = adapter.debitView(1.3 * 1e12, 1.3 * 1e12, aEid);
+    }
+
+    function testQuoteSendRevertsWhenPaused() public {
+        adapter.setPauser(address(this), true);
+        adapter.pause();
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        adapter.quoteSend(SendParam(aEid, addressToBytes32(recipient), 1 ether, 1 ether, "", "", ""), false);
     }
 } 
