@@ -95,7 +95,7 @@ impl<'info> LzReceive<'info> {
             CPI_AUTHORITY_SEED,
             &ctx.accounts.governance.key().to_bytes(),
             &GovernanceMessage::decode_origin_caller(&params.message).unwrap(),
-            &[ctx.accounts.governance.bump],
+            &[ctx.accounts.cpi_authority_config.cpi_authority_bump],
         ];
 
         // the first 9 accounts are for clear()

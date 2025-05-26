@@ -8,10 +8,13 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { AddressOrAltIndex, addressOrAltIndexBeet } from './AddressOrAltIndex'
 export type InitGovernanceParams = {
   id: number
   admin: web3.PublicKey
   endpoint: web3.PublicKey
+  lzReceiveTypesAccountsAlts: web3.PublicKey[]
+  lzReceiveTypesAccounts: AddressOrAltIndex[]
 }
 
 /**
@@ -19,11 +22,13 @@ export type InitGovernanceParams = {
  * @category generated
  */
 export const initGovernanceParamsBeet =
-  new beet.BeetArgsStruct<InitGovernanceParams>(
+  new beet.FixableBeetArgsStruct<InitGovernanceParams>(
     [
       ['id', beet.u8],
       ['admin', beetSolana.publicKey],
       ['endpoint', beetSolana.publicKey],
+      ['lzReceiveTypesAccountsAlts', beet.array(beetSolana.publicKey)],
+      ['lzReceiveTypesAccounts', beet.array(addressOrAltIndexBeet)],
     ],
     'InitGovernanceParams'
   )

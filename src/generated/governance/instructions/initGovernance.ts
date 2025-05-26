@@ -25,7 +25,7 @@ export type InitGovernanceInstructionArgs = {
  * @category InitGovernance
  * @category generated
  */
-export const initGovernanceStruct = new beet.BeetArgsStruct<
+export const initGovernanceStruct = new beet.FixableBeetArgsStruct<
   InitGovernanceInstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
@@ -41,8 +41,7 @@ export const initGovernanceStruct = new beet.BeetArgsStruct<
  *
  * @property [_writable_, **signer**] payer
  * @property [_writable_] governance
- * @property [_writable_] lzReceiveTypesAccounts
- * @property [_writable_] lzReceiveAlt
+ * @property [_writable_] lzReceiveTypesV2Accounts
  * @category Instructions
  * @category InitGovernance
  * @category generated
@@ -50,8 +49,7 @@ export const initGovernanceStruct = new beet.BeetArgsStruct<
 export type InitGovernanceInstructionAccounts = {
   payer: web3.PublicKey
   governance: web3.PublicKey
-  lzReceiveTypesAccounts: web3.PublicKey
-  lzReceiveAlt: web3.PublicKey
+  lzReceiveTypesV2Accounts: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -91,12 +89,7 @@ export function createInitGovernanceInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.lzReceiveTypesAccounts,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.lzReceiveAlt,
+      pubkey: accounts.lzReceiveTypesV2Accounts,
       isWritable: true,
       isSigner: false,
     },

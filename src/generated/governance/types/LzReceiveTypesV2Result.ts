@@ -8,16 +8,21 @@
 import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
-export type SetLzReceiveAltParams = {
-  alt: web3.PublicKey
+import { Instruction, instructionBeet } from './Instruction'
+export type LzReceiveTypesV2Result = {
+  alts: web3.PublicKey[]
+  instructions: Instruction[]
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const setLzReceiveAltParamsBeet =
-  new beet.BeetArgsStruct<SetLzReceiveAltParams>(
-    [['alt', beetSolana.publicKey]],
-    'SetLzReceiveAltParams'
+export const lzReceiveTypesV2ResultBeet =
+  new beet.FixableBeetArgsStruct<LzReceiveTypesV2Result>(
+    [
+      ['alts', beet.array(beetSolana.publicKey)],
+      ['instructions', beet.array(instructionBeet)],
+    ],
+    'LzReceiveTypesV2Result'
   )

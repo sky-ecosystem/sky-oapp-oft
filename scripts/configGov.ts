@@ -17,6 +17,7 @@ import {
 import { arrayify, hexZeroPad } from '@ethersproject/bytes'
 import { GovernanceProgram } from '../src'
 import { EndpointId } from '@layerzerolabs/lz-definitions';
+import { types } from '../src/governance';
 
 if (!process.env.SOLANA_PRIVATE_KEY) {
     throw new Error("SOLANA_PRIVATE_KEY env required");
@@ -39,8 +40,23 @@ const remotePeers: { [key in EndpointId]?: string } = {
     [EndpointId.AVALANCHE_V2_TESTNET]: '0x391D534b9EEe0e4afA2Aa339155340527936B633',
 }
 
+const DEFAULT_COMMITMENT = 'finalized'
+
 ;(async () => {
-    await initGovernance(connection, signer, signer)
+    const [governance] = governanceProgram.idPDA()
+    const addressLookupTable = new PublicKey('3uBhgRWPTPLfvfqxi4M9eVZC8nS1kDG9XPkdHKgG69nw')
+
+    await initGovernance(connection, signer, signer, [
+        {
+            __kind: 'Address',
+            fields: [governance],
+        },
+        {
+            __kind: 'Address',
+            fields: [addressLookupTable],
+        },
+    ], [addressLookupTable]);
+
     for (const [remoteStr, remotePeer] of Object.entries(remotePeers)) {
         const remotePeerBytes = arrayify(hexZeroPad(remotePeer, 32))
         const remote = parseInt(remoteStr) as EndpointId
@@ -54,10 +70,9 @@ const remotePeers: { [key in EndpointId]?: string } = {
         await initUlnConfig(connection, signer, signer, remote)
         await setOAppExecutor(connection, signer, remote)
     }
-    // await setLzReceiveAlt(connection, signer, new PublicKey('3uBhgRWPTPLfvfqxi4M9eVZC8nS1kDG9XPkdHKgG69nw'))
 })()
 
-async function initGovernance(connection: Connection, payer: Keypair, admin: Keypair): Promise<void> {
+async function initGovernance(connection: Connection, payer: Keypair, admin: Keypair, lzReceiveTypesAccounts: types.AddressOrAltIndex[], lzReceiveTypesAccountsAlts: PublicKey[]): Promise<void> {
     const [governance] = governanceProgram.idPDA()
     console.log('governancePDA base58', governance.toBase58());
     console.log('governancePDA hex', '0x' + governance.toBuffer().toString('hex'));
@@ -76,7 +91,9 @@ async function initGovernance(connection: Connection, payer: Keypair, admin: Key
         connection,
         payer.publicKey,
         admin.publicKey, // admin/delegate double check it, is the same public key
-        endpointProgram
+        endpointProgram,
+        lzReceiveTypesAccounts,
+        lzReceiveTypesAccountsAlts,
     )
     if (ix == null) {
         console.log('initGovernance: already initialized');
@@ -270,14 +287,12 @@ async function sendAndConfirm(
     instructions: TransactionInstruction[]
 ): Promise<string> {
     const { blockhash } = await connection.getLatestBlockhash();
-    // const ALT = new PublicKey('GvbvNTqJgRKn8diHeY2S3c3xLAGNZW2gUqycwdoKRWqe')
     const tx = await buildVersionedTransaction(
-        connection, signers[0].publicKey, instructions, 'confirmed', blockhash,
+        connection, signers[0].publicKey, instructions, DEFAULT_COMMITMENT, blockhash,
     )
-        // ALT)
     tx.sign(signers)
     const hash = await connection.sendTransaction(tx)
-    await connection.confirmTransaction(hash, 'confirmed')
+    await connection.confirmTransaction(hash, DEFAULT_COMMITMENT)
     return hash
 }
 
@@ -287,7 +302,7 @@ async function logSerializedTransaction(
     instructions: TransactionInstruction[]
 ): Promise<void> {
     const { blockhash } = await connection.getLatestBlockhash();
-    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, 'confirmed', blockhash)
+    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, DEFAULT_COMMITMENT, blockhash)
     tx.sign(signers)
     const serializedTx = Buffer.from(tx.serialize()).toString('base64');
     console.log('serialized transaction');
@@ -300,36 +315,10 @@ async function simulateTransaction(
     instructions: TransactionInstruction[]
 ): Promise<SimulatedTransactionResponse> {
     const { blockhash } = await connection.getLatestBlockhash();
-    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, 'confirmed', blockhash)
+    const tx = await buildVersionedTransaction(connection, signers[0].publicKey, instructions, DEFAULT_COMMITMENT, blockhash)
     tx.sign(signers)
     const serializedTx = Buffer.from(tx.serialize()).toString('base64');
 
     const simulation = await connection.simulateTransaction(tx)
     return simulation.value
 }
-
-async function setLzReceiveAlt(
-    connection: Connection,
-    admin: Keypair,
-    alt: PublicKey
-): Promise<void> {
-    const ix = governanceProgram.setLzReceiveAlt(admin.publicKey, alt)
-    const [lzReceiveAltPDA] = governanceProgram.governanceDeriver.lzReceiveAlt()
-    // console.log('lzReceiveAltPDA', lzReceiveAltPDA.toBase58());
-    let current = ''
-    try {
-        const info = await GovernanceProgram.accounts.LzReceiveAlt.fromAccountAddress(connection, lzReceiveAltPDA, {
-            commitment: 'confirmed',
-        })
-        current = info.address.toBase58();
-    } catch (e) {
-        /*remote not init*/
-    }
-    if (current == alt.toBase58()) {
-        console.log('setLzReceiveAlt: already set');
-        return Promise.resolve()
-    }
-    console.log('setLzReceiveAlt: setting')
-    await sendAndConfirm(connection, [admin], [ix])
-}
-

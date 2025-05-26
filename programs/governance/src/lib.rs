@@ -7,7 +7,7 @@ pub mod msg_codec;
 
 use anchor_lang::prelude::*;
 use instructions::*;
-use oapp::{endpoint_cpi::LzAccount, LzReceiveParams};
+use oapp::{LzReceiveParams};
 use state::*;
 use solana_helper::program_id_from_env;
 
@@ -22,8 +22,7 @@ pub const SOLANA_CHAIN_ID: u32 = 30168;
 #[cfg(feature = "testnet")]
 pub const SOLANA_CHAIN_ID: u32 = 40168;
 
-pub const LZ_RECEIVE_TYPES_SEED: &[u8] = b"LzReceiveTypes";
-pub const LZ_RECEIVE_ALT_SEED: &[u8] = b"LzReceiveAlt";
+pub const LZ_RECEIVE_TYPES_V2_SEED: &[u8] = b"LzReceiveTypesV2";
 pub const GOVERNANCE_SEED: &[u8] = b"Governance";
 pub const REMOTE_SEED: &[u8] = b"Remote";
 pub const CPI_AUTHORITY_SEED: &[u8] = b"CpiAuthority";
@@ -54,25 +53,17 @@ pub mod governance {
         LzReceive::apply(&mut ctx, &params)
     }
 
-    pub fn lz_receive_types(
-        ctx: Context<LzReceiveTypes>,
-        params: LzReceiveParams,
-    ) -> Result<Vec<LzAccount>> {
-        LzReceiveTypes::apply(&ctx, &params)
+    pub fn lz_receive_types_info(
+        ctx: Context<LzReceiveTypesInfo>,
+    ) -> Result<(u8, LzReceiveTypesV2Accounts)> {
+        LzReceiveTypesInfo::apply(&ctx)
     }
 
-    pub fn lz_receive_types_with_alt(
-        ctx: Context<LzReceiveTypesWithAlt>,
+    pub fn lz_receive_types_v2(
+        ctx: Context<LzReceiveTypesV2>,
         params: LzReceiveParams,
-    ) -> Result<Vec<LzAccountAlt>> {
-        LzReceiveTypesWithAlt::apply(&ctx, &params)
-    }
-
-    pub fn set_lz_receive_alt(
-        mut ctx: Context<SetLzReceiveAlt>,
-        params: SetLzReceiveAltParams,
-    ) -> Result<()> {
-        SetLzReceiveAlt::apply(&mut ctx, &params)
+    ) -> Result<LzReceiveTypesV2Result> {
+        LzReceiveTypesV2::apply(&ctx, &params)
     }
 
     pub fn set_oapp_config(

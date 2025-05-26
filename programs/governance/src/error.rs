@@ -19,4 +19,6 @@ pub enum GovernanceError {
     InvalidInstruction,
     #[msg("Unauthorized")]
     Unauthorized,
+    #[msg("InvalidAddressLookupTable")]
+    InvalidAddressLookupTable,
 }

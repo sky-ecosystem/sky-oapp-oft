@@ -18,19 +18,11 @@ pub struct InitGovernance<'info> {
     #[account(
         init,
         payer = payer,
-        space = LzReceiveTypesAccounts::SIZE,
-        seeds = [LZ_RECEIVE_TYPES_SEED, &governance.key().to_bytes()],
+        space = 8 + LzReceiveTypesV2Accounts::INIT_SPACE,
+        seeds = [LZ_RECEIVE_TYPES_V2_SEED, &governance.key().to_bytes()],
         bump
     )]
-    pub lz_receive_types_accounts: Account<'info, LzReceiveTypesAccounts>,
-    #[account(
-        init,
-        payer = payer,
-        space = LzReceiveAlt::SIZE,
-        seeds = [LZ_RECEIVE_ALT_SEED, &governance.key().to_bytes()],
-        bump
-    )]
-    pub lz_receive_alt: Account<'info, LzReceiveAlt>,
+    pub lz_receive_types_v2_accounts: Account<'info, LzReceiveTypesV2Accounts>,
     pub system_program: Program<'info, System>,
 }
 
@@ -40,7 +32,8 @@ impl InitGovernance<'_> {
         ctx.accounts.governance.admin = params.admin;
         ctx.accounts.governance.bump = ctx.bumps.governance;
         ctx.accounts.governance.endpoint_program = params.endpoint;
-        ctx.accounts.lz_receive_types_accounts.governance = ctx.accounts.governance.key();
+        ctx.accounts.lz_receive_types_v2_accounts.accounts = params.lz_receive_types_accounts.clone();
+        ctx.accounts.lz_receive_types_v2_accounts.alts = params.lz_receive_types_accounts_alts.clone();
 
         // calling endpoint cpi
         let register_params = RegisterOAppParams {
@@ -68,4 +61,6 @@ pub struct InitGovernanceParams {
     pub id: u8,
     pub admin: Pubkey,
     pub endpoint: Pubkey,
+    pub lz_receive_types_accounts_alts: Vec<Pubkey>,
+    pub lz_receive_types_accounts: Vec<AddressOrAltIndex>,
 }

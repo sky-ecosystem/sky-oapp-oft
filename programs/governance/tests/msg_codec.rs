@@ -1478,7 +1478,10 @@ mod test_msg_codec {
     }
 
     fn get_cpi_authority() -> Pubkey {
-        let cpi_authority = Pubkey::create_program_address(&[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER), &[get_governance_oapp_pda().1]], &governance::id()).unwrap();
+        let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
+            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
+            &governance::id(),
+        );
 
         cpi_authority
     }

@@ -41,6 +41,7 @@ export const setOappConfigStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [**signer**] admin
  * @property [_writable_] governance
+ * @property [] lzReceiveTypesV2Accounts
  * @category Instructions
  * @category SetOappConfig
  * @category generated
@@ -48,6 +49,7 @@ export const setOappConfigStruct = new beet.FixableBeetArgsStruct<
 export type SetOappConfigInstructionAccounts = {
   admin: web3.PublicKey
   governance: web3.PublicKey
+  lzReceiveTypesV2Accounts: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -83,6 +85,11 @@ export function createSetOappConfigInstruction(
     {
       pubkey: accounts.governance,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.lzReceiveTypesV2Accounts,
+      isWritable: false,
       isSigner: false,
     },
   ]

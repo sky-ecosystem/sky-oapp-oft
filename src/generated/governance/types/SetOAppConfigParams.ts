@@ -8,6 +8,7 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { AddressOrAltIndex, addressOrAltIndexBeet } from './AddressOrAltIndex'
 /**
  * This type is used to derive the {@link SetOAppConfigParams} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link SetOAppConfigParams} type instead.
@@ -20,6 +21,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
 export type SetOAppConfigParamsRecord = {
   Admin: { fields: [web3.PublicKey] }
   Delegate: { fields: [web3.PublicKey] }
+  LzReceiveTypesAccounts: { fields: [AddressOrAltIndex[], web3.PublicKey[]] }
 }
 
 /**
@@ -42,6 +44,10 @@ export const isSetOAppConfigParamsAdmin = (
 export const isSetOAppConfigParamsDelegate = (
   x: SetOAppConfigParams
 ): x is SetOAppConfigParams & { __kind: 'Delegate' } => x.__kind === 'Delegate'
+export const isSetOAppConfigParamsLzReceiveTypesAccounts = (
+  x: SetOAppConfigParams
+): x is SetOAppConfigParams & { __kind: 'LzReceiveTypesAccounts' } =>
+  x.__kind === 'LzReceiveTypesAccounts'
 
 /**
  * @category userTypes
@@ -61,6 +67,23 @@ export const setOAppConfigParamsBeet = beet.dataEnum<SetOAppConfigParamsRecord>(
       new beet.BeetArgsStruct<SetOAppConfigParamsRecord['Delegate']>(
         [['fields', beet.fixedSizeTuple([beetSolana.publicKey])]],
         'SetOAppConfigParamsRecord["Delegate"]'
+      ),
+    ],
+    [
+      'LzReceiveTypesAccounts',
+      new beet.FixableBeetArgsStruct<
+        SetOAppConfigParamsRecord['LzReceiveTypesAccounts']
+      >(
+        [
+          [
+            'fields',
+            beet.tuple([
+              beet.array(addressOrAltIndexBeet),
+              beet.array(beetSolana.publicKey),
+            ]),
+          ],
+        ],
+        'SetOAppConfigParamsRecord["LzReceiveTypesAccounts"]'
       ),
     ],
   ]

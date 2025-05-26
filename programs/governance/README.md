@@ -37,13 +37,20 @@ pnpm config:governance
 
 Take the: "governancePDA hex" from log of the above command and call `setPeer` on the EVM contract with its value and endpoint id. Eg. `setPeer, dstEid = 40168, peer = 0xa2a4c256938d341b8b41812a0348da0f489ec1bca07fdc7979717fdfb4aa8498`.
 
+Note: If for some reason you modified Governance program and want to re-generate TypeScript SDK types you can run:
+```
+pnpm generate:governance
+```
+
+This is definitely not required if you didn't modify Governance program source code.
+
 ## Scenarios
 
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/twPgPhKjkpB6czgoUL6gRnBbvHQhZhrzWwm3yhFHDCbxqURdreDW4H6jCerheX8U8Qjp9DK74dJmmtBmMwYNLZY?cluster=devnet)
-2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/679FYRoPgEYgHy7nckjgY83EB7Npq6UYYqdxec8vMDPt29gqUYaggaauk1HsCBJDHMDmQXPPzrbEpsjHanrd1K4j?cluster=devnet)
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/2YJQoYxTm5jjQcSTv5MYrhz6bSVGpa4tpdmNF8mTg7ib3AeuHhqouQuKYeSPb1CDHzHCycHs8kFTHiZYAFV4t8LS?cluster=devnet)
+2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/XeUXGWbUYHJeAPznc1zSxeev4t1hohrEA7H4bNsHPa6jgPBZgAHS123by9Tqn2rpkWN9bfnJih94KT66pJwRSeU?cluster=devnet)
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet)
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet)
 5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet)
@@ -120,7 +127,7 @@ Clearing of transactions is manual because it uses ALT for lzReceive.
 Example clear tx:
 
 ```
-pnpm hardhat lz:oapp:solana:clear-with-alt --compute-units 99999999999 --lamports 9999999999 --with-priority-fee 9900000000 --src-tx-hash 0x862abd513f43cd8ff6bba12bcc4289e3501edfed7ec1b36cd79cd5724efe799c
+pnpm hardhat lz:oapp:solana:clear-v2 --src-tx-hash 0x41006c361e15153c0b2cae14f92121bd32e8484c2f0a3db54810e571fe8363d7
 ```
 
 where --src-tx-hash is source transaction hash where the governance message was sent on the source chain.

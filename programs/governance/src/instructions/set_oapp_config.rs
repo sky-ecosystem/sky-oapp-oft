@@ -12,6 +12,12 @@ pub struct SetOAppConfig<'info> {
         has_one = admin @GovernanceError::Unauthorized
     )]
     pub governance: Account<'info, Governance>,
+
+    #[account(
+        seeds = [LZ_RECEIVE_TYPES_V2_SEED, &governance.key().as_ref()],
+        bump
+    )]
+    pub lz_receive_types_v2_accounts: Account<'info, LzReceiveTypesV2Accounts>,
 }
 
 impl SetOAppConfig<'_> {
@@ -30,6 +36,10 @@ impl SetOAppConfig<'_> {
                     seeds,
                     SetDelegateParams { delegate },
                 )?;
+            },
+            SetOAppConfigParams::LzReceiveTypesAccounts(accounts, alts) => {
+                ctx.accounts.lz_receive_types_v2_accounts.accounts = accounts;
+                ctx.accounts.lz_receive_types_v2_accounts.alts = alts;
             }
         }
         Ok(())
@@ -40,4 +50,5 @@ impl SetOAppConfig<'_> {
 pub enum SetOAppConfigParams {
     Admin(Pubkey),
     Delegate(Pubkey), // OApp delegate for the endpoint
+    LzReceiveTypesAccounts(Vec<AddressOrAltIndex>, Vec<Pubkey>),
 }
