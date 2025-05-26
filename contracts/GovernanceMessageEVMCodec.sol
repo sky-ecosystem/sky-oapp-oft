@@ -79,7 +79,5 @@ library GovernanceMessageEVMCodec {
         if (_msg.length != CALLDATA_OFFSET + callDataLength) revert InvalidCallDataLength();
         
         message.callData = _msg[CALLDATA_OFFSET:];
-        
-        return message;
     }
 }
