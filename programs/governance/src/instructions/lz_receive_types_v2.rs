@@ -26,8 +26,6 @@ pub enum Instruction {
 pub struct LzReceiveTypesV2<'info> {
     #[account(seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()], bump = governance.bump)]
     pub governance: Account<'info, Governance>,
-
-    pub lookup_table: AccountInfo<'info>,
 }
 
 /// Account metadata returned by `lz_receive_types_v2`.
@@ -56,22 +54,22 @@ impl LzReceiveTypesV2<'_> {
         ctx: &Context<LzReceiveTypesV2>,
         params: &LzReceiveParams,
     ) -> Result<LzReceiveTypesV2Result> {
-        let lookup_table = &ctx.accounts.lookup_table;
-        let alt_addresses =
-            AddressLookupTable::deserialize(*lookup_table.try_borrow_data().unwrap())
+        // Get the address lookup tables from the context
+        let mut all_alts_addresses: Vec<(u8, Vec<Pubkey>)> =
+            Vec::with_capacity(ctx.remaining_accounts.len());
+        let mut alts: Vec<Pubkey> = Vec::with_capacity(ctx.remaining_accounts.len());
+        for i in 0..ctx.remaining_accounts.len() {
+            let alt = &ctx.remaining_accounts[i];
+            alts.push(alt.key());
+            let alt_addresses = AddressLookupTable::deserialize(*alt.try_borrow_data().unwrap())
                 .unwrap()
                 .addresses
                 .to_vec();
+            all_alts_addresses.push((i as u8, alt_addresses));
+        }
 
         let governance = ctx.accounts.governance.key();
-
-        // The second account is the remote account, we find it by the params.src_eid.
-        let seeds = [
-            REMOTE_SEED,
-            &governance.to_bytes(),
-            &params.src_eid.to_be_bytes(),
-        ];
-        let (remote, _) = Pubkey::find_program_address(&seeds, ctx.program_id);
+        let (remote, _) = Pubkey::find_program_address(&[REMOTE_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes()], ctx.program_id);
         let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
         let (cpi_authority_config, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_CONFIG_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
 
@@ -157,35 +155,29 @@ impl LzReceiveTypesV2<'_> {
         let accounts: Vec<ALTAccountMeta> = accounts
             .iter()
             .map(|account| {
-                // Try to find the account in the ALT
-                let alt_index = alt_addresses
-                    .iter()
-                    .position(|&alt_addr| alt_addr.to_bytes() == account.pubkey.to_bytes());
-
-                match alt_index {
-                    Some(index) => {
-                        ALTAccountMeta {
-                            pubkey: AddressOrAltIndex::AltIndex(0, index as u8),
+                for (i, alt_addresses) in all_alts_addresses.iter() {
+                    let index =
+                        alt_addresses.iter().position(|alt_addr| *alt_addr == account.pubkey);
+                    if let Some(idx) = index {
+                        return ALTAccountMeta {
+                            pubkey: AddressOrAltIndex::AltIndex(*i, idx as u8),
                             is_writable: account.is_writable,
-                        }
-                    }
-                    None => {
-                        ALTAccountMeta {
-                            pubkey: AddressOrAltIndex::Address(account.pubkey),
-                            is_writable: account.is_writable,
-                        }
+                        };
                     }
                 }
+                return ALTAccountMeta {
+                    pubkey: AddressOrAltIndex::Address(account.pubkey),
+                    is_writable: account.is_writable,
+                };
             })
             .collect();
 
-        let result = LzReceiveTypesV2Result {
-            alts: vec![ctx.accounts.lookup_table.key()],
+        Ok(LzReceiveTypesV2Result {
+            alts,
             instructions: vec![Instruction::LzReceive {
                 accounts,
                 sending_to: None,
             }],
-        };
-        Ok(result)
+        })
     }
 }

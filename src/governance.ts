@@ -187,7 +187,7 @@ export class Governance {
         const ix = instructions.createLzReceiveTypesV2Instruction(
             {
                 governance: keys[0].pubkey,
-                lookupTable: keys[1].pubkey,
+                anchorRemainingAccounts: keys.slice(1),
             } satisfies instructions.LzReceiveTypesV2InstructionAccounts,
             {
                 params,

@@ -120,6 +120,15 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 forge script scripts/SendRawBytes.s.sol --rpc-url https://api.avax-test.network/ext/bc/C/rpc --broadcast --force
 ```
 
+## Configuring ALTs
+
+If you are sending transaction with a lot of accounts you can configure ALTs to be used when lz_receive is called. You can create ALTs eg. `createLookupTable()` from `tasks/solana/clearPayloadV2.ts`.
+
+Then you can set the ALT using following script:
+```
+pnpm hardhat lz:oapp:solana:setLzReceiveTypes --from-eid 40168 --alts GXR4civq2anMtcHGgApYrQWhpWJeqSybXkC4nVpAwWfg
+```
+
 ## Delivering transactions
 
 Clearing of transactions is manual because it uses ALT for lzReceive.

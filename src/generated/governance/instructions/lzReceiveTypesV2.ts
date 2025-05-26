@@ -37,14 +37,12 @@ export const lzReceiveTypesV2Struct = new beet.FixableBeetArgsStruct<
  * Accounts required by the _lzReceiveTypesV2_ instruction
  *
  * @property [] governance
- * @property [] lookupTable
  * @category Instructions
  * @category LzReceiveTypesV2
  * @category generated
  */
 export type LzReceiveTypesV2InstructionAccounts = {
   governance: web3.PublicKey
-  lookupTable: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -74,11 +72,6 @@ export function createLzReceiveTypesV2Instruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.governance,
-      isWritable: false,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.lookupTable,
       isWritable: false,
       isSigner: false,
     },
