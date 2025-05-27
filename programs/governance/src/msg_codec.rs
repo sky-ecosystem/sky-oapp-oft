@@ -105,6 +105,7 @@ impl GovernanceMessage {
 
         let data_len = Self::read_u16(reader)?;
         let mut data = vec![0u8; data_len as usize];
+        assert_eq!(usize::from(data_len), data.len());
         reader.read_exact(&mut data)?;
 
         Ok(Self {
