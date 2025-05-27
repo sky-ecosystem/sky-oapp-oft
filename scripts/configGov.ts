@@ -37,25 +37,13 @@ const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governa
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
 const remotePeers: { [key in EndpointId]?: string } = {
-    [EndpointId.AVALANCHE_V2_TESTNET]: '0x739f10f1E08d80Dc918b64770fbfd5155ed4b904',
+    [EndpointId.AVALANCHE_V2_TESTNET]: '0xc281a57873777D6646FDCA10de90F4De390604D9',
 }
 
 const DEFAULT_COMMITMENT = 'finalized'
 
 ;(async () => {
-    const [governance] = governanceProgram.idPDA()
-    const addressLookupTable = new PublicKey('3uBhgRWPTPLfvfqxi4M9eVZC8nS1kDG9XPkdHKgG69nw')
-
-    await initGovernance(connection, signer, signer, [
-        {
-            __kind: 'Address',
-            fields: [governance],
-        },
-        {
-            __kind: 'Address',
-            fields: [addressLookupTable],
-        },
-    ], [addressLookupTable]);
+    await initGovernance(connection, signer, signer);
 
     for (const [remoteStr, remotePeer] of Object.entries(remotePeers)) {
         const remotePeerBytes = arrayify(hexZeroPad(remotePeer, 32))
@@ -72,7 +60,7 @@ const DEFAULT_COMMITMENT = 'finalized'
     }
 })()
 
-async function initGovernance(connection: Connection, payer: Keypair, admin: Keypair, lzReceiveTypesAccounts: types.AddressOrAltIndex[], lzReceiveTypesAccountsAlts: PublicKey[]): Promise<void> {
+async function initGovernance(connection: Connection, payer: Keypair, admin: Keypair, lzReceiveAlts: PublicKey[] = []): Promise<void> {
     const [governance] = governanceProgram.idPDA()
     console.log('governancePDA base58', governance.toBase58());
     console.log('governancePDA hex', '0x' + governance.toBuffer().toString('hex'));
@@ -92,8 +80,7 @@ async function initGovernance(connection: Connection, payer: Keypair, admin: Key
         payer.publicKey,
         admin.publicKey, // admin/delegate double check it, is the same public key
         endpointProgram,
-        lzReceiveTypesAccounts,
-        lzReceiveTypesAccountsAlts,
+        lzReceiveAlts
     )
     if (ix == null) {
         console.log('initGovernance: already initialized');

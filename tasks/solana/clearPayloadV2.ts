@@ -8,7 +8,7 @@ import { types as hardhatTypes } from '@layerzerolabs/devtools-evm-hardhat'
 import { deriveConnection } from './index'
 import { arrayify } from '@ethersproject/bytes'
 import { Governance, instructions, types } from '../../src/governance'
-import { isAddressOrAltIndexAltIndex } from '../../src/generated/governance'
+import { isAddressLocatorAddress, isAddressLocatorAltIndex, isAddressLocatorPayer } from '../../src/generated/governance/types'
 
 interface Args {
     srcTxHash: string
@@ -83,7 +83,7 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
             extraData: arrayify("0x"),
         }
 
-        const lzReceiveTypesResult = await governance.getLzReceiveTypesV2(connection, lzReceiveParams, lzReceiveTypesV2Accounts.accounts, lzReceiveTypesV2Accounts.alts)
+        const lzReceiveTypesResult = await governance.getLzReceiveTypesV2(connection, lzReceiveParams, lzReceiveTypesV2Accounts.accounts)
 
         const lzReceiveInstruction = instructions.createLzReceiveInstruction(
             {} as any,
@@ -94,7 +94,7 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         );
 
         const alts: AddressLookupTableAccount[] = [];
-        for (const alt of lzReceiveTypesV2Accounts.alts) {
+        for (const alt of lzReceiveTypesResult.alts) {
             const lookupTableAccount = (
                 await connection.getAddressLookupTable(alt)
             ).value;
@@ -111,16 +111,17 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         let index = 0;
         for (const account of lzReceiveTypesResult.instructions[0].accounts) {
             let pubkey: PublicKey;
-            if (isAddressOrAltIndexAltIndex(account.pubkey)) {
+            let isSigner = false;
+            if (isAddressLocatorAltIndex(account.pubkey)) {
                 pubkey = alts[account.pubkey.fields[0]].state.addresses[account.pubkey.fields[1]];
-            } else {
+            } else if (isAddressLocatorAddress(account.pubkey)) {
                 pubkey = account.pubkey.fields[0];
                 accountsNotInALT.push(pubkey);
-            }
-
-            const isSigner = index === 0;
-            if (isSigner && pubkey.toBase58() === PublicKey.default.toBase58()) {
+            } else if (isAddressLocatorPayer(account.pubkey)) {
                 pubkey = signer.publicKey;
+                isSigner = true;
+            } else {
+                throw new Error('Invalid address locator')
             }
 
             keys.push({

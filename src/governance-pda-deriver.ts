@@ -24,7 +24,7 @@ export class GovernancePDADeriver {
         )
     }
 
-    lzReceiveTypesV2Accounts(): [PublicKey, number] {
+    lzReceiveTypesInfoAccounts(): [PublicKey, number] {
         return PublicKey.findProgramAddressSync(
             [Buffer.from(LZ_RECEIVE_TYPES_V2_SEED, 'utf8'), this.governance()[0].toBytes()],
             this.program

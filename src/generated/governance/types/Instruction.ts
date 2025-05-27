@@ -5,9 +5,10 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
+import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
-import { ALTAccountMeta, aLTAccountMetaBeet } from './ALTAccountMeta'
-import { AddressOrAltIndex, addressOrAltIndexBeet } from './AddressOrAltIndex'
+import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { AccountMetaRef, accountMetaRefBeet } from './AccountMetaRef'
 /**
  * This type is used to derive the {@link Instruction} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link Instruction} type instead.
@@ -18,12 +19,11 @@ import { AddressOrAltIndex, addressOrAltIndexBeet } from './AddressOrAltIndex'
  * @private
  */
 export type InstructionRecord = {
-  LzReceive: { accounts: ALTAccountMeta[]; sendingTo: beet.COption<number> }
+  LzReceive: { accounts: AccountMetaRef[] }
   Standard: {
-    programId: AddressOrAltIndex
-    accounts: ALTAccountMeta[]
+    programId: web3.PublicKey
+    accounts: AccountMetaRef[]
     data: Uint8Array
-    sendingTo: beet.COption<number>
   }
 }
 
@@ -55,10 +55,7 @@ export const instructionBeet = beet.dataEnum<InstructionRecord>([
   [
     'LzReceive',
     new beet.FixableBeetArgsStruct<InstructionRecord['LzReceive']>(
-      [
-        ['accounts', beet.array(aLTAccountMetaBeet)],
-        ['sendingTo', beet.coption(beet.u32)],
-      ],
+      [['accounts', beet.array(accountMetaRefBeet)]],
       'InstructionRecord["LzReceive"]'
     ),
   ],
@@ -67,10 +64,9 @@ export const instructionBeet = beet.dataEnum<InstructionRecord>([
     'Standard',
     new beet.FixableBeetArgsStruct<InstructionRecord['Standard']>(
       [
-        ['programId', addressOrAltIndexBeet],
-        ['accounts', beet.array(aLTAccountMetaBeet)],
+        ['programId', beetSolana.publicKey],
+        ['accounts', beet.array(accountMetaRefBeet)],
         ['data', beet.bytes],
-        ['sendingTo', beet.coption(beet.u32)],
       ],
       'InstructionRecord["Standard"]'
     ),

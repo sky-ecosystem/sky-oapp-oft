@@ -23,14 +23,14 @@ export const lzReceiveTypesInfoStruct = new beet.BeetArgsStruct<{
  * Accounts required by the _lzReceiveTypesInfo_ instruction
  *
  * @property [] governance
- * @property [] lzReceiveTypesAccounts
+ * @property [] lzReceiveTypesAccount
  * @category Instructions
  * @category LzReceiveTypesInfo
  * @category generated
  */
 export type LzReceiveTypesInfoInstructionAccounts = {
   governance: web3.PublicKey
-  lzReceiveTypesAccounts: web3.PublicKey
+  lzReceiveTypesAccount: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -60,7 +60,7 @@ export function createLzReceiveTypesInfoInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.lzReceiveTypesAccounts,
+      pubkey: accounts.lzReceiveTypesAccount,
       isWritable: false,
       isSigner: false,
     },

@@ -6,9 +6,9 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-import { AddressOrAltIndex, addressOrAltIndexBeet } from './AddressOrAltIndex'
-export type ALTAccountMeta = {
-  pubkey: AddressOrAltIndex
+import { AddressLocator, addressLocatorBeet } from './AddressLocator'
+export type AccountMetaRef = {
+  pubkey: AddressLocator
   isWritable: boolean
 }
 
@@ -16,11 +16,11 @@ export type ALTAccountMeta = {
  * @category userTypes
  * @category generated
  */
-export const aLTAccountMetaBeet =
-  new beet.FixableBeetArgsStruct<ALTAccountMeta>(
+export const accountMetaRefBeet =
+  new beet.FixableBeetArgsStruct<AccountMetaRef>(
     [
-      ['pubkey', addressOrAltIndexBeet],
+      ['pubkey', addressLocatorBeet],
       ['isWritable', beet.bool],
     ],
-    'ALTAccountMeta'
+    'AccountMetaRef'
   )

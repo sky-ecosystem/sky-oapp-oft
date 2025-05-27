@@ -18,7 +18,7 @@ pub struct SetOAppConfig<'info> {
         seeds = [LZ_RECEIVE_TYPES_V2_SEED, &governance.key().as_ref()],
         bump
     )]
-    pub lz_receive_types_v2_accounts: Account<'info, LzReceiveTypesV2Accounts>,
+    pub lz_receive_types_account: Account<'info, LzReceiveTypesV2GovernanceAccounts>,
 }
 
 impl SetOAppConfig<'_> {
@@ -38,9 +38,8 @@ impl SetOAppConfig<'_> {
                     SetDelegateParams { delegate },
                 )?;
             },
-            SetOAppConfigParams::LzReceiveTypesAccounts(accounts, alts) => {
-                ctx.accounts.lz_receive_types_v2_accounts.accounts = accounts;
-                ctx.accounts.lz_receive_types_v2_accounts.alts = alts;
+            SetOAppConfigParams::LzReceiveAlts(alts) => {
+                ctx.accounts.lz_receive_types_account.alts = alts;
             }
         }
         Ok(())
@@ -51,5 +50,5 @@ impl SetOAppConfig<'_> {
 pub enum SetOAppConfigParams {
     Admin(Pubkey),
     Delegate(Pubkey), // OApp delegate for the endpoint
-    LzReceiveTypesAccounts(Vec<AddressOrAltIndex>, Vec<Pubkey>),
+    LzReceiveAlts(Vec<Pubkey>),
 }

@@ -37,8 +37,7 @@ export class Governance {
         payer: PublicKey,
         admin: PublicKey,
         endpoint: EndpointProgram.Endpoint,
-        lzReceiveTypesAccounts: types.AddressOrAltIndex[],
-        lzReceiveTypesAccountsAlts: PublicKey[],
+        lzReceiveAlts: PublicKey[] = [],
         commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'
     ): Promise<TransactionInstruction | null> {
         const [id] = this.idPDA()
@@ -75,7 +74,7 @@ export class Governance {
             {
                 payer,
                 governance: id,
-                lzReceiveTypesV2Accounts: this.governanceDeriver.lzReceiveTypesV2Accounts()[0],
+                lzReceiveTypesV2Accounts: this.governanceDeriver.lzReceiveTypesInfoAccounts()[0],
                 anchorRemainingAccounts: registerOAppAccounts,
             } satisfies instructions.InitGovernanceInstructionAccounts,
             {
@@ -83,8 +82,7 @@ export class Governance {
                     id: this.governanceId,
                     admin,
                     endpoint: endpoint.program,
-                    lzReceiveTypesAccounts,
-                    lzReceiveTypesAccountsAlts,
+                    lzReceiveAlts,
                 } satisfies types.InitGovernanceParams,
             } satisfies instructions.InitGovernanceInstructionArgs,
             this.program
@@ -123,18 +121,18 @@ export class Governance {
         )
     }
 
-    setLzReceiveTypesAccounts(admin: PublicKey, lzReceiveTypesAccounts: types.AddressOrAltIndex[], lzReceiveTypesAccountsAlts: PublicKey[]): TransactionInstruction {
-        const [lzReceiveTypesV2AccountsPDA] = this.governanceDeriver.lzReceiveTypesV2Accounts()
+    setLzReceiveTypesAccounts(admin: PublicKey, lzReceiveAlts: PublicKey[]): TransactionInstruction {
+        const [lzReceiveTypesInfoAccountsPDA] = this.governanceDeriver.lzReceiveTypesInfoAccounts()
         return instructions.createSetOappConfigInstruction(
             {
                 admin,
                 governance: this.idPDA()[0],
-                lzReceiveTypesV2Accounts: lzReceiveTypesV2AccountsPDA,
+                lzReceiveTypesAccount: lzReceiveTypesInfoAccountsPDA,
             } satisfies instructions.SetOappConfigInstructionAccounts,
             {
                 params: {
-                    __kind: 'LzReceiveTypesAccounts',
-                    fields: [lzReceiveTypesAccounts, lzReceiveTypesAccountsAlts],
+                    __kind: 'LzReceiveAlts',
+                    fields: [lzReceiveAlts],
                 } satisfies types.SetOAppConfigParams,
             },
             this.program
@@ -142,11 +140,11 @@ export class Governance {
     }
 
     async getLzReceiveTypesInfo(connection: Connection, commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'): Promise<[number, LzReceiveTypesInfoResult]> {
-        const [lzReceiveTypesV2AccountsPDA] = this.governanceDeriver.lzReceiveTypesV2Accounts()
+        const [lzReceiveTypesInfoAccountsPDA] = this.governanceDeriver.lzReceiveTypesInfoAccounts()
         const ix = instructions.createLzReceiveTypesInfoInstruction(
             {
                 governance: this.idPDA()[0],
-                lzReceiveTypesAccounts: lzReceiveTypesV2AccountsPDA,
+                lzReceiveTypesAccount: lzReceiveTypesInfoAccountsPDA,
             } satisfies instructions.LzReceiveTypesInfoInstructionAccounts,
             this.program
         )
@@ -169,20 +167,12 @@ export class Governance {
         return [version, lzReceiveTypesInfoResultBeet.deserialize(data, 1)[0]];
     }
 
-    async getLzReceiveTypesV2(connection: Connection, params: types.LzReceiveParams, accounts: types.AddressOrAltIndex[], alts: PublicKey[], commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'): Promise<types.LzReceiveTypesV2Result> {
-        const keys: AccountMeta[] = [];
-
-        for (const account of accounts) {
-            if (types.isAddressOrAltIndexAddress(account)) {
-                keys.push({
-                    pubkey: account.fields[0],
-                    isSigner: false,
-                    isWritable: false,
-                })
-            } else {
-                throw new Error('getLzReceiveTypesV2 AltIndex not supported')
-            }
-        }
+    async getLzReceiveTypesV2(connection: Connection, params: types.LzReceiveParams, accounts: PublicKey[], commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'): Promise<types.LzReceiveTypesV2Result> {
+        const keys: AccountMeta[] = accounts.map(account => ({
+            pubkey: account,
+            isSigner: false,
+            isWritable: false,
+        }))
 
         const ix = instructions.createLzReceiveTypesV2Instruction(
             {
@@ -197,7 +187,7 @@ export class Governance {
 
         const { blockhash } = await connection.getLatestBlockhash();
         const dummyPayer = new PublicKey('Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8');
-        const tx = await buildVersionedTransaction(connection, dummyPayer, [ix], commitmentOrConfig, blockhash, alts[0])
+        const tx = await buildVersionedTransaction(connection, dummyPayer, [ix], commitmentOrConfig, blockhash)
 
         const simulation = await connection.simulateTransaction(tx, {
             sigVerify: false

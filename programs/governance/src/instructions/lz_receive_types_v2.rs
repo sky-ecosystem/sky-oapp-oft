@@ -8,17 +8,12 @@ use solana_program::address_lookup_table::state::AddressLookupTable;
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub enum Instruction {
     LzReceive {
-        // The list of accounts needed for lz_receive       
-        accounts: Vec<ALTAccountMeta>,     
-        // Optional destination EID for ABA messaging pattern
-        sending_to: Option<u32>,
+        accounts: Vec<AccountMetaRef>
     },
-    // Arbitrary custom instruction
     Standard {
-        program_id: AddressOrAltIndex,
-        accounts: Vec<ALTAccountMeta>,
-        data: Vec<u8>,
-        sending_to: Option<u32>,
+        program_id: Pubkey,
+        accounts: Vec<AccountMetaRef>,
+        data: Vec<u8>
     }
 }
 
@@ -28,18 +23,30 @@ pub struct LzReceiveTypesV2<'info> {
     pub governance: Account<'info, Governance>,
 }
 
+/// A generic account locator used in LZ execution planning.
+/// Can reference the address directly, via ALT, or as a placeholder.
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub enum AddressLocator {
+    // Executor's fee payer
+    Payer,
+    // Additional signer can be used as a data account
+    Signer(u8),
+    // Directly supplied public key
+    Address(Pubkey),
+    // (ALT list index, address index within ALT) 
+    AltIndex(u8, u8),
+}
+
 /// Account metadata returned by `lz_receive_types_v2`.
 /// Used by the Executor to invoke `lz_receive`.
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ALTAccountMeta {
-    // The account address (direct or ALT-based)
-    pub pubkey: AddressOrAltIndex,
+pub struct AccountMetaRef {
+    // The account address
+    pub pubkey: AddressLocator,
     // Whether the account should be writable       
     pub is_writable: bool,      
 }
 
-/// Output of the `lz_receive_types_v2` instruction.
-/// Includes account information and optional intent to send a new cross-chain message.
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct LzReceiveTypesV2Result {
     // ALTs required for this execution context
@@ -78,7 +85,7 @@ impl LzReceiveTypesV2<'_> {
         let mut accounts = vec![
             // payer
             LzAccount {
-                pubkey: Pubkey::default(),
+                pubkey: PAYER_PLACEHOLDER,
                 is_signer: true,
                 is_writable: true,
             },
@@ -134,8 +141,6 @@ impl LzReceiveTypesV2<'_> {
                 .map(|acc| LzAccount {
                     pubkey: if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
                         cpi_authority
-                    } else if acc.pubkey == PAYER_PLACEHOLDER {
-                        Pubkey::default()
                     } else {
                         acc.pubkey
                     },
@@ -144,22 +149,29 @@ impl LzReceiveTypesV2<'_> {
                 }),
         );
 
-        // Convert LzAccount to ALTAccountMeta, using ALT index when possible
-        let accounts: Vec<ALTAccountMeta> = accounts
+        // Convert LzAccount to AccountMetaRef, using ALT index when possible
+        let accounts: Vec<AccountMetaRef> = accounts
             .iter()
             .map(|account| {
+                if account.pubkey == PAYER_PLACEHOLDER {
+                    return AccountMetaRef {
+                        pubkey: AddressLocator::Payer,
+                        is_writable: true,
+                    };
+                }
+
                 for (i, alt_addresses) in all_alts_addresses.iter() {
                     let index =
                         alt_addresses.iter().position(|alt_addr| *alt_addr == account.pubkey);
                     if let Some(idx) = index {
-                        return ALTAccountMeta {
-                            pubkey: AddressOrAltIndex::AltIndex(*i, idx as u8),
+                        return AccountMetaRef {
+                            pubkey: AddressLocator::AltIndex(*i, idx as u8),
                             is_writable: account.is_writable,
                         };
                     }
                 }
-                return ALTAccountMeta {
-                    pubkey: AddressOrAltIndex::Address(account.pubkey),
+                return AccountMetaRef {
+                    pubkey: AddressLocator::Address(account.pubkey),
                     is_writable: account.is_writable,
                 };
             })
@@ -169,7 +181,6 @@ impl LzReceiveTypesV2<'_> {
             alts,
             instructions: vec![Instruction::LzReceive {
                 accounts,
-                sending_to: None,
             }],
         })
     }

@@ -1,5 +1,5 @@
-export * from './ALTAccountMeta'
-export * from './AddressOrAltIndex'
+export * from './AccountMetaRef'
+export * from './AddressLocator'
 export * from './InitGovernanceParams'
 export * from './Instruction'
 export * from './LzReceiveParams'
