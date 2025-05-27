@@ -22,8 +22,26 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
 
     error GovernanceCallFailed();
     error UnauthorizedOriginCaller();
+    error NotAllowlisted();
+
+    // flag to enable or disable allowlist enforcement; disabled by default
+    bool public allowlistEnabled;
+
+    // allowlist of addresses allowed to send messages
+    mapping(address => bool) public allowlist;
+
+    event AllowlistAdded(address indexed _address);
+    event AllowlistRemoved(address indexed _address);
+
+    event AllowlistEnabled();
+    event AllowlistDisabled();
 
     constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
+
+    modifier onlyAllowlisted() {
+        if (allowlistEnabled && !allowlist[msg.sender]) revert NotAllowlisted();
+        _;
+    }
 
     // [---- EXTERNAL METHODS ----]
 
@@ -32,7 +50,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
-    ) external payable returns (MessagingReceipt memory receipt) {
+    ) external payable onlyAllowlisted returns (MessagingReceipt memory receipt) {
         return _sendEVMAction(_message, _extraOptions, _fee, _refundAddress);
     }
 
@@ -52,7 +70,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
-    ) external payable returns (MessagingReceipt memory receipt) {
+    ) external payable onlyAllowlisted returns (MessagingReceipt memory receipt) {
         return _sendRawBytesAction(_message, _extraOptions, _fee, _refundAddress);
     }
 
@@ -65,6 +83,41 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
 
         return _quote(dstEid, _message, options, _payInLzToken);
+    }
+
+    // [---- ALLOWLIST MANAGEMENT ----]
+    /**
+     * @notice Adds an address to the allowlist.
+     * @param _address The address to add to the allowlist.
+     */
+    function addToAllowlist(address _address) external onlyOwner {
+        allowlist[_address] = true;
+        emit AllowlistAdded(_address);
+    }
+
+    /**
+     * @notice Removes an address from the allowlist.
+     * @param _address The address to remove from the allowlist.
+     */
+    function removeFromAllowlist(address _address) external onlyOwner {
+        allowlist[_address] = false;
+        emit AllowlistRemoved(_address);
+    }
+
+    /**
+     * @notice Enable enforcement of the allowlist.
+     */
+    function enableAllowlist() external onlyOwner {
+        allowlistEnabled = true;
+        emit AllowlistEnabled();
+    }
+
+    /**
+     * @notice Disable enforcement of the allowlist.
+     */
+    function disableAllowlist() external onlyOwner {
+        allowlistEnabled = false;
+        emit AllowlistDisabled();
     }
 
     // [---- INTERNAL METHODS ----]

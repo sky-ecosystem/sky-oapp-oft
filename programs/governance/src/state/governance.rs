@@ -48,13 +48,3 @@ pub struct LzReceiveTypesV2Accounts {
     #[max_len(30)]
     pub accounts: Vec<AddressOrAltIndex>,
 }
-
-#[account]
-pub struct CpiAuthorityConfig {
-    pub bump: u8,
-    pub cpi_authority_bump: u8,
-}
-
-impl CpiAuthorityConfig {
-    pub const SIZE: usize = 8 + std::mem::size_of::<Self>();
-}

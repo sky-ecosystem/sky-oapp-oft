@@ -7,6 +7,7 @@ import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Opti
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import "forge-std/console.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { GovernanceControllerOApp } from "../../contracts/GovernanceControllerOApp.sol";
 import { GovernanceMessageEVMCodec } from "../../contracts/GovernanceMessageEVMCodec.sol";
@@ -30,6 +31,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
     MockControlledContract aControlledContract;
     MockControlledContract bControlledContract;
+
+    address NOT_OWNER = makeAddr("NOT_OWNER");
 
     /// @notice Calls setUp from TestHelper and initializes contract instances for testing.
     function setUp() public virtual override {
@@ -112,5 +115,51 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(GovernanceControllerOApp.GovernanceCallFailed.selector), "");
+    }
+
+    function test_send_with_allowlist() public {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        MockSpell spell = new MockSpell(bControlledContract);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(bRelay),
+            callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        aGov.enableAllowlist();
+        vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        aGov.disableAllowlist();
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        aGov.enableAllowlist();
+        aGov.addToAllowlist(address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        aGov.removeFromAllowlist(address(this));
+        vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+    }
+
+    function test_allowlist_management() public {
+        aGov.enableAllowlist();
+        assertEq(aGov.allowlistEnabled(), true);
+
+        aGov.disableAllowlist();
+        assertEq(aGov.allowlistEnabled(), false);
+
+        vm.prank(NOT_OWNER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
+        aGov.enableAllowlist();
+
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
+        vm.prank(NOT_OWNER);
+        aGov.disableAllowlist();
     }
 }

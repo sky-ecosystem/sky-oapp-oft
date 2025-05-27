@@ -71,7 +71,6 @@ impl LzReceiveTypesV2<'_> {
         let governance = ctx.accounts.governance.key();
         let (remote, _) = Pubkey::find_program_address(&[REMOTE_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes()], ctx.program_id);
         let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
-        let (cpi_authority_config, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_CONFIG_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
 
         let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
 
@@ -98,12 +97,6 @@ impl LzReceiveTypesV2<'_> {
             // cpi authority
             LzAccount {
                 pubkey: cpi_authority,
-                is_signer: false,
-                is_writable: true,
-            },
-            // cpi authority config
-            LzAccount {
-                pubkey: cpi_authority_config,
                 is_signer: false,
                 is_writable: true,
             },
