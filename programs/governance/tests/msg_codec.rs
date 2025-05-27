@@ -26,7 +26,7 @@ mod test_msg_codec {
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
-    const FUJI_PEER_ADDRESS: &str = "0x391D534b9EEe0e4afA2Aa339155340527936B633";
+    const FUJI_PEER_ADDRESS: &str = "0x739f10f1E08d80Dc918b64770fbfd5155ed4b904";
     const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;

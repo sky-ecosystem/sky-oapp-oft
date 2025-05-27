@@ -37,7 +37,7 @@ const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governa
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
 const remotePeers: { [key in EndpointId]?: string } = {
-    [EndpointId.AVALANCHE_V2_TESTNET]: '0x391D534b9EEe0e4afA2Aa339155340527936B633',
+    [EndpointId.AVALANCHE_V2_TESTNET]: '0x739f10f1E08d80Dc918b64770fbfd5155ed4b904',
 }
 
 const DEFAULT_COMMITMENT = 'finalized'
