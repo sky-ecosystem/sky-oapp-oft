@@ -17,7 +17,7 @@ library GovernanceMessageGenericCodec {
         return uint32(bytes4(_msg[DST_EID_OFFSET:DST_EID_OFFSET+4]));
     }
 
-    function originCaller(bytes calldata _msg) internal pure returns (address) {
-        return AddressCast.toAddress(bytes32(_msg[ORIGIN_CALLER_OFFSET:ORIGIN_CALLER_OFFSET+32]));
+    function originCaller(bytes calldata _msg) internal pure returns (bytes32) {
+        return bytes32(_msg[ORIGIN_CALLER_OFFSET:ORIGIN_CALLER_OFFSET+32]);
     }
 }
