@@ -24,3 +24,6 @@ pnpm-error.log
 # Editor and OS files
 .DS_Store
 .idea
+
+# Kinobi
+tasks/solana/sdk/generated

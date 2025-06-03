@@ -59,9 +59,9 @@ const config: HardhatUserConfig = {
         ],
     },
     networks: {
-        'sepolia-testnet': {
-            eid: EndpointId.SEPOLIA_V2_TESTNET,
-            url: process.env.RPC_URL_SEPOLIA || 'https://gateway.tenderly.co/public/sepolia',
+        'avalanche-testnet': {
+            eid: EndpointId.AVALANCHE_V2_TESTNET,
+            url: process.env.RPC_URL_AVALANCHE || 'https://api.avax-test.network/ext/bc/C/rpc',
             accounts,
         },
         hardhat: {
