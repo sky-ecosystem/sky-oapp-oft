@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.22;
 
 // Mock imports
 import { OFTComposerMock } from "@layerzerolabs/oft-evm/test/mocks/OFTComposerMock.sol";
@@ -20,6 +20,7 @@ import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/I
 import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
 import { DoubleEndedQueue } from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import { MintAndBurnOFTAdapter } from "../../contracts/MintAndBurnOFTAdapter.sol";
+import { OFTAdapterDSRLFeeBase } from "../../contracts/oft-dsrl/OFTAdapterDSRLFeeBase.sol";
 
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -205,8 +206,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         vm.stopPrank();
 
         // Verify and execute those packets all at once to test if the inbound rate limit applies.
-        verifyPackets(bEid, addressToBytes32(address(bOFT)));
-        // verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
 
         assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend * 2);
         assertEq(bToken.balanceOf(userB), initialBalance + tokensToSend * 2);
@@ -296,8 +296,13 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bToken.balanceOf(userB), initialBalance);
 
         vm.startPrank(userA);
+
         aToken.approve(address(aOFT), tokensToSend);
+        
+        vm.expectEmit();
+        emit IERC20.Transfer(userA, address(0), tokensToSend);
         aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+
         vm.stopPrank();
 
         verifyPackets(bEid, addressToBytes32(address(bOFT)));
@@ -966,8 +971,15 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bToken.balanceOf(userB), initialBalance);
 
         vm.startPrank(userA);
+
         aToken.approve(address(aOFT), tokensToSend);
+
+        vm.expectEmit();
+        emit IERC20.Transfer(userA, address(aOFT), tokenFee);
+        vm.expectEmit();
+        emit IERC20.Transfer(userA, address(0), tokensToSend - tokenFee);
         aOFT.send{ value: protocolFee.nativeFee }(sendParam, protocolFee, payable(address(this)));
+
         vm.stopPrank();
 
         verifyPackets(bEid, addressToBytes32(address(bOFT)));
@@ -994,13 +1006,13 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertFalse(aOFT.pausers(userA));
         
         vm.expectEmit(true, true, true, true);
-        emit MABAOFTDSRLFee.PauserStatusChange(userA, true);
+        emit OFTAdapterDSRLFeeBase.PauserStatusChange(userA, true);
         aOFT.setPauser(userA, true);
     }
 
     function test_pause() public {
         vm.prank(userB);
-        vm.expectRevert(MABAOFTDSRLFee.NotPauser.selector);
+        vm.expectRevert(OFTAdapterDSRLFeeBase.NotPauser.selector);
         aOFT.pause();
         
         aOFT.setPauser(userA, true);
@@ -1020,7 +1032,11 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
             "",
             ""
         );
-        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+        uint256 dummyNativeFee = 1 ether;
+        MessagingFee memory fee = MessagingFee({
+            nativeFee: dummyNativeFee,
+            lzTokenFee: 0
+        });
         
         vm.startPrank(userA);
         aToken.approve(address(aOFT), tokensToSend);
@@ -1088,5 +1104,100 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         
         assertFalse(aOFT.pausers(userA));
         assertFalse(aOFT.pausers(userB));
+    }
+
+    function test_send_oft_to_inner_token_address() public {
+        uint256 tokensToSend = 1 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(address(bToken)),
+            tokensToSend,
+            tokensToSend,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+
+        assertEq(aToken.balanceOf(userA), initialBalance);
+        assertEq(bToken.balanceOf(address(0xdead)), 0);
+
+        vm.startPrank(userA);
+
+        aToken.approve(address(aOFT), tokensToSend);
+        
+        vm.expectEmit();
+        emit IERC20.Transfer(userA, address(0), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+
+        vm.stopPrank();
+
+        verifyPackets(bEid, addressToBytes32(address(bOFT)));
+
+        assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend);
+        assertEq(bToken.balanceOf(address(0xdead)), tokensToSend);
+    }
+
+    function test_rate_limit_send_with_fee() public {
+        uint16 feeBps = 100;
+        aOFT.setDefaultFeeBps(feeBps);
+
+        uint256 tokensToSend = 1 ether;
+        uint256 tokenFee = tokensToSend * feeBps / 10000;
+        uint256 minAmountToCreditLD = tokensToSend - tokenFee;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            minAmountToCreditLD,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory protocolFee = aOFT.quoteSend(sendParam, false);
+
+        (uint256 currentSendAmountInFlight, uint256 amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (uint256 currentReceiveAmountInFlight, uint256 amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        (currentSendAmountInFlight, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        vm.startPrank(userA);
+
+        aToken.approve(address(aOFT), tokensToSend);
+
+        aOFT.send{ value: protocolFee.nativeFee }(sendParam, protocolFee, payable(address(this)));
+
+        vm.stopPrank();
+
+        verifyPackets(bEid, addressToBytes32(address(bOFT)));
+
+        (currentSendAmountInFlight, amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentSendAmountInFlight, minAmountToCreditLD);
+        assertEq(amountCanBeSent, 10 ether - minAmountToCreditLD);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(currentReceiveAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 10 ether);
+
+        (currentSendAmountInFlight, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
+        assertEq(currentSendAmountInFlight, 0);
+        assertEq(amountCanBeSent, 10 ether);
+
+        (currentReceiveAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentReceiveAmountInFlight, minAmountToCreditLD);
+        assertEq(amountCanBeReceived, 10 ether - minAmountToCreditLD);
     }
 }

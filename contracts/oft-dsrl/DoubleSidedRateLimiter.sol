@@ -177,7 +177,6 @@ abstract contract DoubleSidedRateLimiter {
             uint256 decay = (_limit * timeSinceLastUpdate) / _window;
             currentAmountInFlight = _amountInFlight > decay ? _amountInFlight - decay : 0;
             availableCapacity = _limit > currentAmountInFlight ? _limit - currentAmountInFlight : 0;
-            return (currentAmountInFlight, availableCapacity);
         }
     }
 
@@ -200,7 +199,7 @@ abstract contract DoubleSidedRateLimiter {
     }
 
     /**
-     * @notice Checks current amount in flight and amount that can be sent for a given rate limit window.
+     * @notice Checks current amount in flight and amount that can be received for a given rate limit window.
      * @param _amountInFlight The amount in the current window.
      * @param _lastUpdated Timestamp representing the last time the rate limit was checked or updated.
      * @param _limit This represents the maximum allowed amount within a given window.
