@@ -103,8 +103,8 @@ export class Governance {
         return null
     }
 
-    setRemote(admin: PublicKey, dstAddress: Uint8Array, dstEid: number): TransactionInstruction {
-        const [remotePDA] = this.governanceDeriver.remote(dstEid)
+    setRemote(admin: PublicKey, dstAddress: Uint8Array, remoteEid: number): TransactionInstruction {
+        const [remotePDA] = this.governanceDeriver.remote(remoteEid)
         return instructions.createSetRemoteInstruction(
             {
                 admin,
@@ -113,7 +113,7 @@ export class Governance {
             } satisfies instructions.SetRemoteInstructionAccounts,
             {
                 params: {
-                    dstEid,
+                    remoteEid,
                     remote: Array.from(dstAddress),
                 } satisfies types.SetRemoteParams,
             },
