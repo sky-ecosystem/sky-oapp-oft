@@ -27,8 +27,7 @@ pub enum AddressOrAltIndex {
 #[account]
 #[derive(InitSpace)]
 pub struct LzReceiveTypesV2GovernanceAccounts {
-    pub governance: Pubkey,
-
     #[max_len(10)]
     pub alts: Vec<Pubkey>,
+    pub bump: u8,
 }

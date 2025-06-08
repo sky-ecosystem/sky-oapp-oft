@@ -51,8 +51,6 @@ pub struct LzReceive<'info> {
 
     #[account(executable)]
     pub program: UncheckedAccount<'info>,
-
-    pub system_program: Program<'info, System>,
 }
 
 impl<'info> LzReceive<'info> {

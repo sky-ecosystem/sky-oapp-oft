@@ -113,12 +113,6 @@ impl LzReceiveTypesV2<'_> {
                 is_signer: false,
                 is_writable: false,
             },
-            // system program
-            LzAccount {
-                pubkey: solana_program::system_program::id(),
-                is_signer: false,
-                is_writable: false,
-            },
         ];
 
         // accounts 7..14 (8 accounts, last one #15)

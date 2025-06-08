@@ -11,7 +11,7 @@ pub struct SetRemote<'info> {
         init_if_needed,
         payer = admin,
         space = Remote::SIZE,
-        seeds = [REMOTE_SEED, &governance.key().to_bytes(), &params.dst_eid.to_be_bytes()],
+        seeds = [REMOTE_SEED, &governance.key().to_bytes(), &params.remote_eid.to_be_bytes()],
         bump
     )]
     pub remote: Account<'info, Remote>,
@@ -30,6 +30,6 @@ impl SetRemote<'_> {
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct SetRemoteParams {
-    pub dst_eid: u32,
+    pub remote_eid: u32,
     pub remote: [u8; 32],
 }

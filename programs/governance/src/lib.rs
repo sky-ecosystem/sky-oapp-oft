@@ -22,7 +22,7 @@ pub const SOLANA_CHAIN_ID: u32 = 30168;
 #[cfg(feature = "testnet")]
 pub const SOLANA_CHAIN_ID: u32 = 40168;
 
-pub const LZ_RECEIVE_TYPES_V2_SEED: &[u8] = b"LzReceiveTypesV2";
+pub const LZ_RECEIVE_TYPES_SEED: &[u8] = b"LzReceiveTypes";
 pub const GOVERNANCE_SEED: &[u8] = b"Governance";
 pub const REMOTE_SEED: &[u8] = b"Remote";
 pub const CPI_AUTHORITY_SEED: &[u8] = b"CpiAuthority";

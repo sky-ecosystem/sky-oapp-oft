@@ -15,8 +15,8 @@ pub struct SetOAppConfig<'info> {
 
     #[account(
         mut,
-        seeds = [LZ_RECEIVE_TYPES_V2_SEED, &governance.key().as_ref()],
-        bump
+        seeds = [LZ_RECEIVE_TYPES_SEED, &governance.key().as_ref()],
+        bump = lz_receive_types_account.bump
     )]
     pub lz_receive_types_account: Account<'info, LzReceiveTypesV2GovernanceAccounts>,
 }

@@ -5,7 +5,7 @@ import { oappIDPDA } from '@layerzerolabs/lz-solana-sdk-v2'
 
 export const GOVERNANCE_SEED = 'Governance'
 export const REMOTE_SEED = 'Remote'
-export const LZ_RECEIVE_TYPES_V2_SEED = 'LzReceiveTypesV2'
+export const LZ_RECEIVE_TYPES_SEED = 'LzReceiveTypes'
 
 export class GovernancePDADeriver {
     constructor(
@@ -26,7 +26,7 @@ export class GovernancePDADeriver {
 
     lzReceiveTypesInfoAccounts(): [PublicKey, number] {
         return PublicKey.findProgramAddressSync(
-            [Buffer.from(LZ_RECEIVE_TYPES_V2_SEED, 'utf8'), this.governance()[0].toBytes()],
+            [Buffer.from(LZ_RECEIVE_TYPES_SEED, 'utf8'), this.governance()[0].toBytes()],
             this.program
         )
     }

@@ -105,8 +105,16 @@ impl GovernanceMessage {
 
         let data_len = Self::read_u16(reader)?;
         let mut data = vec![0u8; data_len as usize];
-        assert_eq!(usize::from(data_len), data.len());
         reader.read_exact(&mut data)?;
+        
+        // Check that there's no remaining data in the reader
+        let mut extra_byte = [0u8; 1];
+        if reader.read_exact(&mut extra_byte).is_ok() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                GovernanceError::UnexpectedExtraData.to_string(),
+            ));
+        }
 
         Ok(Self {
             origin_caller,
