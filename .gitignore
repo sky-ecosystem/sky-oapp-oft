@@ -25,5 +25,7 @@ pnpm-error.log
 .DS_Store
 .idea
 
+broadcast
+
 # Kinobi
 src/generated

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 mod instructions;
 mod state;
+mod libs;
 
 pub mod error;
 pub mod msg_codec;
@@ -10,6 +11,7 @@ use instructions::*;
 use oapp::{LzReceiveParams};
 use state::*;
 use solana_helper::program_id_from_env;
+use crate::libs::oapp::LzReceiveTypesV2Result;
 
 declare_id!(Pubkey::new_from_array(program_id_from_env!(
     "GOVERNANCE_ID",
