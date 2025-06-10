@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::*;
 use crate::msg_codec::GovernanceMessage;
-use crate::libs::oapp::{build_alt_address_map, get_accounts_for_clear, to_address_locator, AccountMetaRef, AddressLocator, LzInstruction, LzReceiveTypesV2Result};
-use oapp::{endpoint::ID as ENDPOINT_ID, LzReceiveParams};
+use oapp::{
+    endpoint::ID as ENDPOINT_ID,
+    lz_receive_v2::{build_alt_address_map, get_accounts_for_clear, to_address_locator, AccountMetaRef, AddressLocator, LzInstruction, LzReceiveTypesV2Result},
+    LzReceiveParams,
+};
 
 #[derive(Accounts)]
 pub struct LzReceiveTypesV2<'info> {

@@ -22,8 +22,7 @@ anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
 anchor-spl = { version = "0.29.0" }
 solana-program = "1.17.31"
 solana-helper = "0.1.0"
-oapp = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "34321ac15e47e0dafd25d66659e2f3d1b9b6db8f" }
-uln = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "34321ac15e47e0dafd25d66659e2f3d1b9b6db8f" }
+oapp = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "aaf6ecc8cff56bba58015aa8917fe91005e1cbb8" }
 
 [dev-dependencies]
 hex = "0.4.3"
@@ -33,3 +32,4 @@ solana-sdk = "1.17.31"
 bincode = "1.3.3"
 base64 = "0.22.1"
 oft = { path = "../oft", features = ["no-entrypoint"] }
+uln = { git = "https://github.com/LayerZero-Labs/LayerZero-v2.git", rev = "aaf6ecc8cff56bba58015aa8917fe91005e1cbb8" }

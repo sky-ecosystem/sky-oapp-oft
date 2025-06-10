@@ -701,6 +701,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpi-helper"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
+dependencies = [
+ "bs58 0.5.1",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -902,11 +913,24 @@ version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "anchor-lang",
- "cpi-helper",
- "messagelib-interface",
+ "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
  "solana-helper",
  "solana-program",
- "utils",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+]
+
+[[package]]
+name = "endpoint"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
+dependencies = [
+ "anchor-lang",
+ "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
+ "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
+ "solana-helper",
+ "solana-program",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
 ]
 
 [[package]]
@@ -914,7 +938,7 @@ name = "endpoint-mock"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
- "cpi-helper",
+ "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
  "solana-program",
 ]
 
@@ -1004,7 +1028,7 @@ dependencies = [
  "base64 0.22.1",
  "bincode",
  "hex",
- "oapp",
+ "oapp 0.2.0",
  "oft",
  "solana-helper",
  "solana-program",
@@ -1299,18 +1323,26 @@ dependencies = [
 [[package]]
 name = "messagelib-helper"
 version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
 dependencies = [
  "anchor-lang",
- "endpoint",
- "messagelib-interface",
- "utils",
+ "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
+ "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
 ]
 
 [[package]]
 name = "messagelib-interface"
 version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
+name = "messagelib-interface"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
 dependencies = [
  "anchor-lang",
 ]
@@ -1413,7 +1445,16 @@ version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "anchor-lang",
- "endpoint",
+ "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+]
+
+[[package]]
+name = "oapp"
+version = "0.2.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
+dependencies = [
+ "anchor-lang",
+ "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
 ]
 
 [[package]]
@@ -1422,9 +1463,9 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
- "oapp",
+ "oapp 0.1.0",
  "solana-helper",
- "utils",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
 ]
 
 [[package]]
@@ -2514,14 +2555,14 @@ dependencies = [
 [[package]]
 name = "uln"
 version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
  "messagelib-helper",
  "primitive-types",
  "solana-helper",
- "utils",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8)",
  "worker-interface",
 ]
 
@@ -2570,6 +2611,14 @@ dependencies = [
 name = "utils"
 version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
+name = "utils"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
 dependencies = [
  "anchor-lang",
 ]
@@ -2772,7 +2821,7 @@ dependencies = [
 [[package]]
 name = "worker-interface"
 version = "0.1.0"
-source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=aaf6ecc8cff56bba58015aa8917fe91005e1cbb8#aaf6ecc8cff56bba58015aa8917fe91005e1cbb8"
 dependencies = [
  "anchor-lang",
 ]
