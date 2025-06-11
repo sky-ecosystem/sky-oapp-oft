@@ -214,4 +214,33 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         vm.expectRevert(GovernanceControllerOApp.UnauthorizedOriginCaller.selector);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
     }
+
+    function test_send_raw_bytes() public {
+        string memory dataBefore = bControlledContract.data();
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        MockSpell spell = new MockSpell(bControlledContract);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(bRelay),
+            callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
+        });
+        bytes memory messageBytes = GovernanceMessageEVMCodec.encode(message);
+        MessagingFee memory fee = aGov.quoteRawBytesAction(messageBytes, options, false);
+
+        aGov.sendRawBytesAction{ value: fee.nativeFee }(messageBytes, options, fee, address(this));
+
+        // Asserting that the receiving OApps have NOT had data manipulated.
+        assertEq(bControlledContract.data(), dataBefore, "shouldn't be changed until lzReceive packet is verified");
+
+        // STEP 2 & 3: Deliver packet to bGov manually.
+        verifyPackets(bEid, addressToBytes32(address(bGov)));
+
+        // Asserting that the data variable has updated in the receiving OApp.
+        assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
+    }
 }
