@@ -9,7 +9,6 @@ use std::io::{self, Read, Write};
 /// The wire format for this message is:
 /// | field           |                     size (bytes) | description                             |
 /// |-----------------+----------------------------------+-----------------------------------------|
-/// | MODULE          |                               32 | Governance module identifier            |
 /// | ACTION          |                                1 | Governance action identifier            |
 /// | CHAIN           |                                4 | Chain identifier                        |
 /// | ORIGIN_CALLER   |                               32 | Origin caller address as bytes32        |
@@ -29,30 +28,13 @@ pub struct GovernanceMessage {
 }
 
 impl GovernanceMessage {
-    // "GeneralPurposeGovernance" (right padded)
-    // Solidity right-pads when converting a string to bytes32, so it works better on EVMs
-    pub const MODULE: [u8; 32] = [
-        0x47, 0x65, 0x6E, 0x65, 0x72, 0x61, 0x6C, 0x50, 0x75, 0x72, 0x70, 0x6F, 0x73, 0x65, 0x47, 0x6F, 0x76, 0x65, 0x72, 0x6E, 0x61, 0x6E, 0x63, 0x65, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-    ];
-
     pub fn from_bytes(message: &[u8]) -> Result<Self> {
         Self::decode(&mut message.as_ref())
             .map_err(|_| error!(GovernanceError::InvalidGovernanceMessage))
     }
 
-    /// Decode a full governance message (module header + body).
+    /// Decode a full governance message (header + body).
     pub fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
-        // Read module
-        let mut module = [0u8; 32];
-        reader.read_exact(&mut module)?;
-        if module != Self::MODULE {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                GovernanceError::InvalidGovernanceModule.to_string(),
-            ));
-        }
-
-        // Read action
         let action: u8 = Self::read_u8(reader)?;
         if action != GovernanceAction::SolanaCall as u8 {
             return Err(io::Error::new(
@@ -61,7 +43,6 @@ impl GovernanceMessage {
             ));
         }
 
-        // Read chain
         let chain = Self::read_u32(reader)?;
         if chain != SOLANA_CHAIN_ID {
             return Err(io::Error::new(
@@ -70,23 +51,20 @@ impl GovernanceMessage {
             ));
         }
 
-        // Read origin caller
         let origin_caller = Self::read_bytes32(reader)?;
 
-        // Read the rest of the body
         Self::read_body(reader, origin_caller)
     }
 
-    /// Encode a full governance message (module header + body).
+    /// Encode a full governance message (header + body).
     pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(&Self::MODULE)?;
         Self::write_u8(writer, GovernanceAction::SolanaCall as u8)?;
         Self::write_u32(writer, SOLANA_CHAIN_ID)?;
         Self::write_bytes32(writer, &self.origin_caller)?;
         self.write_body(writer)
     }
 
-    /// Reads ONLY the body of the message, not the module header.
+    /// Reads ONLY the body of the message, not the header.
     fn read_body<R: io::Read>(reader: &mut R, origin_caller: [u8; 32]) -> io::Result<Self> {
         let program_id = Self::read_pubkey(reader)?;
         let accounts_len = Self::read_u16(reader)?;
@@ -124,7 +102,7 @@ impl GovernanceMessage {
         })
     }
 
-    /// Writes ONLY the body of the message, not the module header.
+    /// Writes ONLY the body of the message, not the header.
     fn write_body<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
         Self::write_pubkey(writer, &self.program_id)?;
         Self::write_u16(writer, self.accounts.len() as u16)?;
@@ -142,11 +120,13 @@ impl GovernanceMessage {
 
     /// Decodes ONLY the origin caller from the message.
     pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
-        if message.len() < 32 + 1 + 4 + 32 {
+        let origin_caller_start = 1 + 4;
+        let origin_caller_end = origin_caller_start + 32;
+
+        if message.len() < origin_caller_end {
             return Err(error!(GovernanceError::InvalidGovernanceMessage));
         }
-        let origin_caller_start = 32 + 1 + 4;
-        let origin_caller_end = origin_caller_start + 32;
+        
         let mut origin_caller = [0u8; 32];
         origin_caller.copy_from_slice(&message[origin_caller_start..origin_caller_end]);
         Ok(origin_caller)

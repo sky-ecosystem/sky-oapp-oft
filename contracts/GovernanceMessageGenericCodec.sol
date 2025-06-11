@@ -4,8 +4,7 @@ pragma solidity ^0.8.22;
 import { AddressCast } from "@layerzerolabs/lz-evm-protocol-v2/contracts/libs/AddressCast.sol";
 
 library GovernanceMessageGenericCodec {
-    uint8 private constant MODULE_OFFSET = 0;
-    uint8 private constant ACTION_OFFSET = MODULE_OFFSET + 32;
+    uint8 private constant ACTION_OFFSET = 0;
     uint8 private constant DST_EID_OFFSET = ACTION_OFFSET + 1;
     uint8 private constant ORIGIN_CALLER_OFFSET = DST_EID_OFFSET + 4;
 

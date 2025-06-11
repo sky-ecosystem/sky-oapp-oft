@@ -33,14 +33,6 @@ mod test_msg_codec {
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
 
     #[test]
-    fn test_governance_module() {
-        let s = "GeneralPurposeGovernance";
-        let mut module = [0; 32];
-        module[..s.len()].copy_from_slice(s.as_bytes());
-        assert_eq!(module, GovernanceMessage::MODULE);
-    }
-
-    #[test]
     fn test_hello_world() {
         // hello world program id
         let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
@@ -68,10 +60,8 @@ mod test_msg_codec {
     #[test]
     fn test_governance_message_parse() {
         let origin_caller_hex = "9876543210000000000000000000000000000000000000000000000001234567";
-        let module_hex = "47656e6572616c507572706f7365476f7665726e616e63650000000000000000";
         let hex_string = format!(
-            "{}02{:08x}{}00000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405",
-            module_hex,
+            "02{:08x}{}00000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405",
             40168u32,
             origin_caller_hex,
         );

@@ -4,12 +4,7 @@ pragma solidity ^0.8.22;
 import { GovernanceAction } from "./IGovernanceController.sol";
 
 library GovernanceMessageEVMCodec {
-    // "GeneralPurposeGovernance" (right padded)
-    // Solidity right-pads when converting a string to bytes32, so it works better on EVMs
-    bytes32 public constant MODULE = 0x47656E6572616C507572706F7365476F7665726E616E63650000000000000000;
-
-    uint8 private constant MODULE_OFFSET = 0;
-    uint8 private constant ACTION_OFFSET = MODULE_OFFSET + 32;
+    uint8 private constant ACTION_OFFSET = 0;
     uint8 private constant DST_EID_OFFSET = ACTION_OFFSET + 1;
     uint8 private constant ORIGIN_CALLER_OFFSET = DST_EID_OFFSET + 4;
     uint8 private constant GOVERNED_CONTRACT_OFFSET = ORIGIN_CALLER_OFFSET + 32;
@@ -19,7 +14,6 @@ library GovernanceMessageEVMCodec {
     /*
      * @dev General purpose governance message to call arbitrary methods on a governed EVM smart contract.
      *      The wire format for this message is:
-     *      - MODULE - 32 bytes
      *      - action - 1 byte
      *      - dstEid - 4 bytes
      *      - originCaller - 32 bytes
@@ -37,7 +31,6 @@ library GovernanceMessageEVMCodec {
 
     error InvalidAction(uint8 action);
     error InvalidMessageLength();
-    error InvalidModule();
     error InvalidCallDataLength();
     error PayloadTooLong(uint256 length);
 
@@ -53,7 +46,6 @@ library GovernanceMessageEVMCodec {
         uint16 callDataLength = uint16(_message.callData.length);
 
         return abi.encodePacked(
-            MODULE,
             _message.action,
             _message.dstEid,
             _message.originCaller,
@@ -65,7 +57,6 @@ library GovernanceMessageEVMCodec {
 
     function decode(bytes calldata _msg) internal pure returns (GovernanceMessage memory message) {
         if (_msg.length < CALLDATA_OFFSET) revert InvalidMessageLength();
-        if (bytes32(_msg[MODULE_OFFSET:ACTION_OFFSET]) != MODULE) revert InvalidModule();
         if (uint8(_msg[ACTION_OFFSET]) != uint8(GovernanceAction.EVM_CALL)) {
             revert InvalidAction(uint8(_msg[ACTION_OFFSET]));
         }
