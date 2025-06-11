@@ -103,6 +103,19 @@ export class Governance {
         return null
     }
 
+    async getLzReceiveTypesAccounts(
+        connection: Connection,
+        commitmentOrConfig?: Commitment | GetAccountInfoConfig
+    ): Promise<accounts.LzReceiveTypesV2GovernanceAccounts | null> {
+        const [lzReceiveTypesV2AccountsPDA] = this.governanceDeriver.lzReceiveTypesInfoAccounts()
+        const info = await connection.getAccountInfo(lzReceiveTypesV2AccountsPDA, commitmentOrConfig)
+        if (info) {
+            const lzReceiveTypesV2Accounts = await accounts.LzReceiveTypesV2GovernanceAccounts.fromAccountAddress(connection, lzReceiveTypesV2AccountsPDA, commitmentOrConfig)
+            return lzReceiveTypesV2Accounts
+        }
+        return null
+    }
+
     setRemote(admin: PublicKey, dstAddress: Uint8Array, remoteEid: number): TransactionInstruction {
         const [remotePDA] = this.governanceDeriver.remote(remoteEid)
         return instructions.createSetRemoteInstruction(

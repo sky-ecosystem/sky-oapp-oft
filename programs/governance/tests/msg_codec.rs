@@ -179,6 +179,86 @@ mod test_msg_codec {
     }
 
     #[test]
+    fn test_squads_execute() {
+        let accounts = vec![
+            Acc {
+                pubkey: pubkey!("3E95XGTEhgXFjipoqzCWE1gyTWw3yS1XvdkVRvgkCLSN"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("8ypfPcdyKeHNHA4dykn3YTS5wWMWsoWxVwsnL2tbEZcV"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("9AfDRgfkSF7ERe9SrNirY9vwGF9LNcEiogEDCDwvzEDr"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
+                is_signer: true,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("21hsK8veGnBBab97gLqJxV2fXQPMKmTwPA4Mg9ZU4x1L"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("4aLLvFDsgPsz7WXWgAEVPXJ4Kpczbb2z8uPW4Aca2r1b"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("EDizhd7eizSX2AgAGiXTLeHYkJTCNwAx9VELVwjMvnvb"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("HC8D1rWMtAifPRhUYD7PwKHMtMVLtwCjarfNVvcN3SGK"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("11111111111111111111111111111111"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+                is_signer: false,
+                is_writable: true,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
+            program_id: pubkey!("SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"),
+            accounts: accounts.clone(),
+            data: hex::decode("c208a15799a419ab").unwrap(),
+        };
+
+        let mut buf = Vec::new();
+        msg.serialize(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
     fn test_governance_message_upgrade_program<'a>() {
         let buffer_address = pubkey!("6yfcTwqobTw9CP2etWDuogMbjinp63Ea4DbQKX5W3DNL");
 
