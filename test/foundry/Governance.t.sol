@@ -196,4 +196,22 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
         ILayerZeroEndpointV2(endpoints[bEid]).lzReceive(Origin({ srcEid: aEid, sender: addressToBytes32(address(aGov)), nonce: 1 }), address(bGov), guidOne, messageOne, bytes(""));
     }
+
+    function test_send_unauthorized_origin_caller() public {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        MockSpell spell = new MockSpell(bControlledContract);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(0xdead)),
+            governedContract: address(bRelay),
+            callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        vm.expectRevert(GovernanceControllerOApp.UnauthorizedOriginCaller.selector);
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+    }
 }
