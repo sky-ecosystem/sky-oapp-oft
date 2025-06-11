@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { OApp, MessagingFee, Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
@@ -11,7 +12,7 @@ import { GovernanceMessageEVMCodec } from "./GovernanceMessageEVMCodec.sol";
 import { GovernanceMessageGenericCodec } from "./GovernanceMessageGenericCodec.sol";
 import { IGovernanceController, GovernanceOrigin } from "./IGovernanceController.sol";
 
-contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceController {
+contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceController, ReentrancyGuard {
     // @notice Msg types that are used to identify the various OApp operations.
     // @dev This can be extended in child contracts for non-default OApp operations
     // @dev These values are used in things like combineOptions() in OAppOptionsType3.sol.
@@ -167,7 +168,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata payload,
         address /*_executor*/,
         bytes calldata /*_extraData*/
-    ) internal override {
+    ) internal override nonReentrant {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.decode(payload);
 
         // @dev This is a temporary variable to store the origin caller and expose it to the governed contract.

@@ -16,12 +16,17 @@ import { MockControlledContract } from "../mocks/MockControlledContract.sol";
 import { MockGovernanceRelay } from "../mocks/MockGovernanceRelay.sol";
 import { MockSpell } from "../mocks/MockSpell.sol";
 import { TestHelperOz5WithRevertAssertions } from "./helpers/TestHelperOz5WithRevertAssertions.sol";
+import { ILayerZeroEndpointV2, Origin } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { PacketBytesHelper } from "./helpers/PacketBytesHelper.sol";
+import { MockControlledContractNestedDelivery } from "../mocks/MockControlledContractNestedDelivery.sol";
 
 contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     using OptionsBuilder for bytes;
 
-    uint16 aEid = 1;
-    uint16 bEid = 2;
+    uint32 aEid = 1;
+    uint32 bEid = 2;
 
     GovernanceControllerOApp aGov;
     GovernanceControllerOApp bGov;
@@ -161,5 +166,34 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
         vm.prank(NOT_OWNER);
         aGov.disableAllowlist();
+    }
+
+    function test_reentrancy_lz_receive() public {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        MockControlledContractNestedDelivery controllerNestedDelivery = new MockControlledContractNestedDelivery(aGov, bGov, address(this));
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(controllerNestedDelivery),
+            callData: abi.encodeWithSelector(controllerNestedDelivery.deliverNestedPacket.selector)
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        bytes memory packetOneBytes = hex"01000000000000000100000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e624af70d91a3ee419f51a2d4f11f114a1e0da3511966904b1c7871ff00eee176f01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b100047aba9f80";
+        bytes memory packetTwoBytes = hex"01000000000000000200000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e65c4ff3a57f16ea1239276ac9bbd90e50a4a5e5d3d9accc0906f4c26c785ad31c01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b100047aba9f80";
+        TestHelperOz5WithRevertAssertions(payable(address(this))).validatePacket(packetOneBytes);
+        TestHelperOz5WithRevertAssertions(payable(address(this))).validatePacket(packetTwoBytes);
+
+        (bytes32 guidOne, bytes memory messageOne) = new PacketBytesHelper().decodeGuidAndMessage(packetOneBytes);
+
+        controllerNestedDelivery.setPacketBytes(packetTwoBytes);
+        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        ILayerZeroEndpointV2(endpoints[bEid]).lzReceive(Origin({ srcEid: aEid, sender: addressToBytes32(address(aGov)), nonce: 1 }), address(bGov), guidOne, messageOne, bytes(""));
     }
 }
