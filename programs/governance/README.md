@@ -73,7 +73,7 @@ The Governance program includes support for Solana and the current repository he
 
 Tested scenarios include:
 1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/3WT7pjNdm3BdiSkxtBFyQamgVWYkSJkkZWUV2tszBpk4sGJ6qVHMY97qU5kTJpTgXVYm28yLsSEQb8qJ2eZbfwMQ?cluster=devnet)
-2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/5MFuzordevcTM2cfnr3TQt5YFenqMfv9uPBvZYewWojGPMQ6q4n5eqDorg4JrpchMZ9ctceU123oJK6YCAn3bkHB?cluster=devnet)
+2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/616vEzQooz26TNwjWPMdxLf6XwX5UvTrG2rBJfAYBnTxVyQenKQGwcEctcUBQrWuDXpEocAQ772uhjky13VriDXQ?cluster=devnet)
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet)
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet)
 5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet)

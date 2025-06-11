@@ -206,6 +206,12 @@ export class Governance {
             sigVerify: false
         })
 
+        if (simulation.value.err) {
+            console.log('getLzReceiveTypesV2 simulation error');
+            console.log(simulation.value);
+            throw new Error();
+        }
+
         const dataRaw = simulation.value.returnData?.data[0];
         if (!dataRaw) {
             throw new Error('No data returned')

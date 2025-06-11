@@ -17,5 +17,5 @@ limitations under the License.
 Modifications Copyright 2025 LayerZero Labs
 
 This product is based on software from the Wormhole Project
-(https://github.com/wormhole-foundation/native-token-transfers/blob/main/LICENSE), specifically Governance module and has been modified.
+(https://github.com/wormhole-foundation/native-token-transfers/blob/main/LICENSE), specifically Governance module has been modified.
 All modifications are licensed under the same Apache License, Version 2.0.
