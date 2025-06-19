@@ -7,9 +7,9 @@ pub mod msg_codec;
 
 use anchor_lang::prelude::*;
 use instructions::*;
-use oapp::{lz_receive_v2::LzReceiveTypesV2Result, LzReceiveParams};
 use state::*;
 use solana_helper::program_id_from_env;
+use oapp::LzReceiveParams;
 
 declare_id!(Pubkey::new_from_array(program_id_from_env!(
     "GOVERNANCE_ID",
@@ -22,7 +22,6 @@ pub const SOLANA_CHAIN_ID: u32 = 30168;
 #[cfg(feature = "testnet")]
 pub const SOLANA_CHAIN_ID: u32 = 40168;
 
-pub const LZ_RECEIVE_TYPES_SEED: &[u8] = b"LzReceiveTypes";
 pub const GOVERNANCE_SEED: &[u8] = b"Governance";
 pub const REMOTE_SEED: &[u8] = b"Remote";
 pub const CPI_AUTHORITY_SEED: &[u8] = b"CpiAuthority";
@@ -54,14 +53,14 @@ pub mod governance {
 
     pub fn lz_receive_types_info(
         ctx: Context<LzReceiveTypesInfo>,
-    ) -> Result<(u8, LzReceiveTypesV2Accounts)> {
+    ) -> Result<(u8, oapp::lz_receive_types_v2::LzReceiveTypesV2Accounts)> {
         LzReceiveTypesInfo::apply(&ctx)
     }
 
     pub fn lz_receive_types_v2(
         ctx: Context<LzReceiveTypesV2>,
         params: LzReceiveParams,
-    ) -> Result<LzReceiveTypesV2Result> {
+    ) -> Result<oapp::lz_receive_types_v2::LzReceiveTypesV2Result> {
         LzReceiveTypesV2::apply(&ctx, &params)
     }
 

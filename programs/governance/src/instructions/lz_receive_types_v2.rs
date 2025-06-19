@@ -1,12 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::*;
 use crate::msg_codec::GovernanceMessage;
-use oapp::{
-    endpoint::ID as ENDPOINT_ID,
-    lz_receive_v2::{build_alt_address_map, get_accounts_for_clear, to_address_locator, AccountMetaRef, AddressLocator, LzInstruction, LzReceiveTypesV2Result},
-    LzReceiveParams,
+use oapp::common::{
+    compact_accounts_with_alts, AccountMetaRef, AddressLocator, EXECUTION_CONTEXT_VERSION_1,
 };
+use oapp::lz_receive_types_v2::{
+    get_accounts_for_clear, Instruction, LzReceiveTypesV2Result,
+};
+use oapp::{endpoint::ID as ENDPOINT_ID, LzReceiveParams};
 
+/// LzReceiveTypesV2 instruction implements the V2 framework for resolving account dependencies.
+///
+/// V2 introduces an extensible and optimized framework addressing V1 limitations by introducing:
+/// - Support for multiple ALTs to increase the number of accounts
+/// - A compact and flexible account reference model via AddressLocator
+/// - Explicit support for multiple EOA signers, enabling dynamic data account initialization
+/// - A multi-instruction execution model for complex workflows within a single atomic transaction
+///
+/// Unlike V1's single-instruction CPI-based execution model, V2 adopts a transaction-based
+/// execution model to avoid Solana's CPI depth limitation of 4, making ABA messaging patterns
+/// feasible.
 #[derive(Accounts)]
 pub struct LzReceiveTypesV2<'info> {
     #[account(seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()], bump = governance.bump)]
@@ -14,15 +27,16 @@ pub struct LzReceiveTypesV2<'info> {
 }
 
 impl LzReceiveTypesV2<'_> {
+    /// Returns the account dependencies and execution plan for lz_receive
+    ///
+    /// This instruction is called by the Executor after resolving version and account data
+    /// from lz_receive_types_info. It returns a complete execution plan including:
+    /// - ALTs required for this execution context (from remaining_accounts)
+    /// - List of instructions required for LzReceive (including exactly one LzReceive instruction)
     pub fn apply(
         ctx: &Context<LzReceiveTypesV2>,
         params: &LzReceiveParams,
     ) -> Result<LzReceiveTypesV2Result> {
-        // Build address lookup table mapping from remaining_accounts
-        // This enables efficient account referencing via ALT indices
-        let alt_address_map = build_alt_address_map(&ctx.remaining_accounts)?;
-        let alts: Vec<Pubkey> = ctx.remaining_accounts.iter().map(|alt| alt.key()).collect();
-
         let governance = ctx.accounts.governance.key();
         let (remote, _) = Pubkey::find_program_address(&[REMOTE_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes()], ctx.program_id);
         let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
@@ -38,30 +52,30 @@ impl LzReceiveTypesV2<'_> {
             },
             // governance
             AccountMetaRef {
-                pubkey: to_address_locator(&alt_address_map, governance),
+                pubkey: governance.into(),
                 is_writable: true,
             },
             // remote
             AccountMetaRef {
-                pubkey: to_address_locator(&alt_address_map, remote),
+                pubkey: remote.into(),
                 is_writable: false,
             },
             // cpi authority
             AccountMetaRef {
-                pubkey: to_address_locator(&alt_address_map, cpi_authority),
+                pubkey: cpi_authority.into(),
                 is_writable: true,
             },
             // program
             AccountMetaRef {
-                pubkey: to_address_locator(&alt_address_map, governance_message.program_id),
+                pubkey: governance_message.program_id.into(),
                 is_writable: false,
             },
         ];
 
         // accounts 7..14 (8 accounts, last one #15)
-        // Endpoint Clear instruction accounts
-        let accounts_for_clear = get_accounts_for_clear(
-            &alt_address_map,
+        // Add accounts required for LayerZero's Endpoint clear operation
+        // These accounts handle the core message verification and processing
+        let accounts_for_clear: Vec<AccountMetaRef> = get_accounts_for_clear(
             ENDPOINT_ID,
             &governance,
             params.src_eid,
@@ -77,20 +91,25 @@ impl LzReceiveTypesV2<'_> {
                 .accounts
                 .iter()
                 .map(|acc| AccountMetaRef {
-                    pubkey: to_address_locator(&alt_address_map, if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
-                        cpi_authority
+                    pubkey: if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
+                        cpi_authority.into()
                     } else {
-                        acc.pubkey
-                    }),
+                        acc.pubkey.into()
+                    },
                     is_writable: acc.is_writable,
                 }),
         );
 
+        // Return the complete execution plan with ALTs and instructions
         Ok(LzReceiveTypesV2Result {
-            alts,
-            instructions: vec![LzInstruction::LzReceive {
-                accounts,
-            }],
+            context_version: EXECUTION_CONTEXT_VERSION_1,
+            alts: ctx.remaining_accounts.iter().map(|alt| alt.key()).collect(),
+            instructions: vec![
+                // Main LzReceive instruction - processes the cross-chain message
+                Instruction::LzReceive {
+                    accounts: compact_accounts_with_alts(&ctx.remaining_accounts, accounts)?,
+                },
+            ],
         })
     }
 }

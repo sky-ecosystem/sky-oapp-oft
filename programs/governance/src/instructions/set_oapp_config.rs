@@ -1,5 +1,5 @@
 use crate::{error::GovernanceError, *};
-use oapp::endpoint::instructions::SetDelegateParams;
+use oapp::{endpoint::instructions::SetDelegateParams, LZ_RECEIVE_TYPES_SEED};
 
 #[derive(Accounts)]
 pub struct SetOAppConfig<'info> {
@@ -15,10 +15,10 @@ pub struct SetOAppConfig<'info> {
 
     #[account(
         mut,
-        seeds = [LZ_RECEIVE_TYPES_SEED, &governance.key().as_ref()],
-        bump = lz_receive_types_account.bump
+        seeds = [LZ_RECEIVE_TYPES_SEED, &governance.key().to_bytes()],
+        bump = lz_receive_types_accounts.bump
     )]
-    pub lz_receive_types_account: Account<'info, LzReceiveTypesV2GovernanceAccounts>,
+    pub lz_receive_types_accounts: Account<'info, GovernanceLzReceiveTypesAccounts>,
 }
 
 impl SetOAppConfig<'_> {
@@ -39,7 +39,7 @@ impl SetOAppConfig<'_> {
                 )?;
             },
             SetOAppConfigParams::LzReceiveAlts(alts) => {
-                ctx.accounts.lz_receive_types_account.alts = alts;
+                ctx.accounts.lz_receive_types_accounts.alts = alts;
             }
         }
         Ok(())

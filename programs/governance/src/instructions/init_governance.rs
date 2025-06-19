@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::*;
-use oapp::endpoint::{instructions::RegisterOAppParams, ID as ENDPOINT_ID};
+use oapp::{endpoint::{instructions::RegisterOAppParams, ID as ENDPOINT_ID}, LZ_RECEIVE_TYPES_SEED};
 
 #[derive(Accounts)]
 #[instruction(params: InitGovernanceParams)]
@@ -18,11 +18,11 @@ pub struct InitGovernance<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + LzReceiveTypesV2GovernanceAccounts::INIT_SPACE,
+        space = 8 + GovernanceLzReceiveTypesAccounts::INIT_SPACE,
         seeds = [LZ_RECEIVE_TYPES_SEED, &governance.key().to_bytes()],
         bump
     )]
-    pub lz_receive_types_v2_accounts: Account<'info, LzReceiveTypesV2GovernanceAccounts>,
+    pub lz_receive_types_v2_accounts: Account<'info, GovernanceLzReceiveTypesAccounts>,
     pub system_program: Program<'info, System>,
 }
 
