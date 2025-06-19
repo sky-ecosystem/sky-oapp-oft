@@ -106,11 +106,11 @@ export class Governance {
     async getLzReceiveTypesAccounts(
         connection: Connection,
         commitmentOrConfig?: Commitment | GetAccountInfoConfig
-    ): Promise<accounts.LzReceiveTypesV2GovernanceAccounts | null> {
+    ): Promise<accounts.GovernanceLzReceiveTypesAccounts | null> {
         const [lzReceiveTypesV2AccountsPDA] = this.governanceDeriver.lzReceiveTypesInfoAccounts()
         const info = await connection.getAccountInfo(lzReceiveTypesV2AccountsPDA, commitmentOrConfig)
         if (info) {
-            const lzReceiveTypesV2Accounts = await accounts.LzReceiveTypesV2GovernanceAccounts.fromAccountAddress(connection, lzReceiveTypesV2AccountsPDA, commitmentOrConfig)
+            const lzReceiveTypesV2Accounts = await accounts.GovernanceLzReceiveTypesAccounts.fromAccountAddress(connection, lzReceiveTypesV2AccountsPDA, commitmentOrConfig)
             return lzReceiveTypesV2Accounts
         }
         return null
@@ -140,7 +140,7 @@ export class Governance {
             {
                 admin,
                 governance: this.idPDA()[0],
-                lzReceiveTypesAccount: lzReceiveTypesInfoAccountsPDA,
+                lzReceiveTypesAccounts: lzReceiveTypesInfoAccountsPDA,
             } satisfies instructions.SetOappConfigInstructionAccounts,
             {
                 params: {
@@ -157,7 +157,7 @@ export class Governance {
         const ix = instructions.createLzReceiveTypesInfoInstruction(
             {
                 governance: this.idPDA()[0],
-                lzReceiveTypesAccount: lzReceiveTypesInfoAccountsPDA,
+                lzReceiveTypesAccounts: lzReceiveTypesInfoAccountsPDA,
             } satisfies instructions.LzReceiveTypesInfoInstructionAccounts,
             this.program
         )
