@@ -10,7 +10,7 @@ pub struct SetRemote<'info> {
     #[account(
         init_if_needed,
         payer = admin,
-        space = Remote::SIZE,
+        space = Remote::INIT_SPACE,
         seeds = [REMOTE_SEED, &governance.key().to_bytes(), &params.remote_eid.to_be_bytes()],
         bump
     )]

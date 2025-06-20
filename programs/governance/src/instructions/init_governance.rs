@@ -10,7 +10,7 @@ pub struct InitGovernance<'info> {
     #[account(
         init,
         payer = payer,
-        space = Governance::SIZE,
+        space = Governance::INIT_SPACE,
         seeds = [GOVERNANCE_SEED, &params.id.to_be_bytes()],
         bump
     )]

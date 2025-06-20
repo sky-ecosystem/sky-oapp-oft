@@ -2,14 +2,11 @@
 use crate::*;
 
 #[account]
+#[derive(InitSpace)]
 pub struct Governance {
     pub id: u8,
     pub admin: Pubkey,
     pub bump: u8,
-}
-
-impl Governance {
-    pub const SIZE: usize = 8 + std::mem::size_of::<Self>();
 }
 
 #[account]
