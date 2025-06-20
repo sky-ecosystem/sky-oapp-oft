@@ -8,7 +8,6 @@ Blockchain messaging protocol used is LayerZero.
 
 ```
 pnpm i
-pnpm generate:governance
 ```
 
 ## Deployment
@@ -33,7 +32,14 @@ Deploy Governance Program to Solana Devnet:
 solana program deploy target/deploy/governance.so -u devnet
 ```
 
-Update `GOVERNANCE_PROGRAM_ID` in `.env` file. Also you might want to update file: `src/generated/governance/index.ts` - variable `PROGRAM_ADDRESS`.
+Update `GOVERNANCE_PROGRAM_ID` in `.env` file. 
+
+Now you can generate TypeScript types for Governance:
+```
+pnpm generate:governance
+```
+
+Double check generated file: `src/generated/governance/index.ts` - variable `PROGRAM_ADDRESS` - make sure it matches Governance Program ID.
 
 Deploy EVM side:
 ```
