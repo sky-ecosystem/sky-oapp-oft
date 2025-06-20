@@ -5,7 +5,7 @@
 // - Fill in the environment variables
 import 'dotenv/config'
 
-import { Connection, Keypair, PublicKey, Signer, TransactionInstruction, SimulatedTransactionResponse, SendTransactionError, ComputeBudgetProgram } from '@solana/web3.js'
+import { Connection, Keypair, PublicKey, Signer, TransactionInstruction, SimulatedTransactionResponse } from '@solana/web3.js'
 import bs58 from 'bs58';
 import {
     EndpointProgram,
@@ -15,9 +15,9 @@ import {
     buildVersionedTransaction,
 } from '@layerzerolabs/lz-solana-sdk-v2'
 import { arrayify, hexZeroPad } from '@ethersproject/bytes'
-import { GovernanceProgram } from '../src'
 import { EndpointId } from '@layerzerolabs/lz-definitions';
-import { types } from '../src/governance';
+
+import { GovernanceProgram } from '../src'
 
 if (!process.env.SOLANA_PRIVATE_KEY) {
     throw new Error("SOLANA_PRIVATE_KEY env required");
@@ -32,13 +32,13 @@ if (!governanceProgramId) {
     throw new Error("GOVERNANCE_PROGRAM_ID env required");
 }
 
-const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governanceProgramId))
+const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governanceProgramId), endpointProgram)
 
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
 const remotePeers: { [key in EndpointId]?: string } = {
     // @TODO change this to your actual remote peer address
-    [EndpointId.AVALANCHE_V2_TESTNET]: '0xc281a57873777D6646FDCA10de90F4De390604D9',
+    [EndpointId.AVALANCHE_V2_TESTNET]: '0x44981d6685a16C88De4fE9958792BCde81f032e0',
 }
 
 const DEFAULT_COMMITMENT = 'finalized'
@@ -80,7 +80,6 @@ async function initGovernance(connection: Connection, payer: Keypair, admin: Key
         connection,
         payer.publicKey,
         admin.publicKey, // admin/delegate double check it, is the same public key
-        endpointProgram,
         lzReceiveAlts
     )
     if (ix == null) {

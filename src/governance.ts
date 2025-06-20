@@ -19,11 +19,11 @@ export { accounts, instructions, types }
 
 export class Governance {
     governanceDeriver: GovernancePDADeriver
-    endpoint: EndpointProgram.Endpoint | undefined
 
     constructor(
         public readonly program: PublicKey,
-        public governanceId = 0
+        public readonly endpoint: EndpointProgram.Endpoint,
+        public governanceId = 0,
     ) {
         this.governanceDeriver = new GovernancePDADeriver(program, governanceId)
     }
@@ -36,32 +36,31 @@ export class Governance {
         connection: Connection,
         payer: PublicKey,
         admin: PublicKey,
-        endpoint: EndpointProgram.Endpoint,
         lzReceiveAlts: PublicKey[] = [],
         commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'
     ): Promise<TransactionInstruction | null> {
         const [id] = this.idPDA()
-        const [oAppRegistry] = endpoint.deriver.oappRegistry(id)
+        const [oAppRegistry] = this.endpoint.deriver.oappRegistry(id)
         const info = await connection.getAccountInfo(id, commitmentOrConfig)
         if (info) {
             return null
         }
 
-        const [eventAuthority] = new EventPDADeriver(endpoint.program).eventAuthority()
+        const [eventAuthority] = new EventPDADeriver(this.endpoint.program).eventAuthority()
         const ixAccounts = EndpointProgram.instructions.createRegisterOappInstructionAccounts(
             {
                 payer: payer,
                 oapp: this.idPDA()[0],
                 oappRegistry: oAppRegistry,
                 eventAuthority,
-                program: endpoint.program,
+                program: this.endpoint.program,
             },
-            endpoint.program
+            this.endpoint.program
         )
         // these accounts are used for the CPI, so we need to set them to false
         const registerOAppAccounts = [
             {
-                pubkey: endpoint.program,
+                pubkey: this.endpoint.program,
                 isSigner: false,
                 isWritable: false,
             },
@@ -81,7 +80,6 @@ export class Governance {
                 params: {
                     id: this.governanceId,
                     admin,
-                    endpoint: endpoint.program,
                     lzReceiveAlts,
                 } satisfies types.InitGovernanceParams,
             } satisfies instructions.InitGovernanceInstructionArgs,
@@ -222,34 +220,18 @@ export class Governance {
         return types.lzReceiveTypesV2ResultBeet.deserialize(data, 0)[0];
     }
 
-    async getEndpoint(connection: Connection): Promise<EndpointProgram.Endpoint> {
-        if (this.endpoint) {
-            return this.endpoint
-        }
-        const [id] = this.governanceDeriver.governance()
-        const info = await accounts.Governance.fromAccountAddress(connection, id)
-        const programAddr = info.endpointProgram
-        const endpoint = new EndpointProgram.Endpoint(programAddr)
-        this.endpoint = endpoint
-        return endpoint
-    }
-
     async getSendLibraryProgram(
         connection: Connection,
         payer: PublicKey,
         dstEid: number,
-        endpoint?: EndpointProgram.Endpoint
     ): Promise<SimpleMessageLibProgram.SimpleMessageLib | UlnProgram.Uln> {
-        if (!endpoint) {
-            endpoint = await this.getEndpoint(connection)
-        }
         const [id] = this.idPDA()
-        const sendLibInfo = await endpoint.getSendLibrary(connection, id, dstEid)
+        const sendLibInfo = await this.endpoint.getSendLibrary(connection, id, dstEid)
         if (!sendLibInfo?.programId) {
             throw new Error('Send library not initialized or blocked message library')
         }
         const { programId: msgLibProgram } = sendLibInfo
-        const msgLibVersion = await endpoint.getMessageLibVersion(connection, payer, msgLibProgram)
+        const msgLibVersion = await this.endpoint.getMessageLibVersion(connection, payer, msgLibProgram)
         if (msgLibVersion?.major.toString() === '0' && msgLibVersion.minor == 0 && msgLibVersion.endpointVersion == 2) {
             return new SimpleMessageLibProgram.SimpleMessageLib(msgLibProgram)
         } else if (

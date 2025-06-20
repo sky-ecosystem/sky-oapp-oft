@@ -7,6 +7,7 @@ pub mod msg_codec;
 
 use anchor_lang::prelude::*;
 use instructions::*;
+use solana_program::pubkey;
 use state::*;
 use solana_helper::program_id_from_env;
 use oapp::LzReceiveParams;
@@ -22,12 +23,15 @@ pub const SOLANA_CHAIN_ID: u32 = 30168;
 #[cfg(feature = "testnet")]
 pub const SOLANA_CHAIN_ID: u32 = 40168;
 
+pub const EXECUTOR_ID: Pubkey = pubkey!("6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn");
+
 pub const GOVERNANCE_SEED: &[u8] = b"Governance";
 pub const REMOTE_SEED: &[u8] = b"Remote";
 pub const CPI_AUTHORITY_SEED: &[u8] = b"CpiAuthority";
 
 pub const CPI_AUTHORITY_PLACEHOLDER: Pubkey = sentinel_pubkey(b"cpi_authority");
 pub const PAYER_PLACEHOLDER: Pubkey = sentinel_pubkey(b"payer");
+pub const CONTEXT_PLACEHOLDER: Pubkey = sentinel_pubkey(b"context");
 
 #[program]
 pub mod governance {

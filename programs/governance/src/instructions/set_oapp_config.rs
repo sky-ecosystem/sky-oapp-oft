@@ -1,5 +1,5 @@
 use crate::{error::GovernanceError, *};
-use oapp::{endpoint::instructions::SetDelegateParams, LZ_RECEIVE_TYPES_SEED};
+use oapp::{endpoint::{instructions::SetDelegateParams, ID as ENDPOINT_ID}, LZ_RECEIVE_TYPES_SEED};
 
 #[derive(Accounts)]
 pub struct SetOAppConfig<'info> {
@@ -31,7 +31,7 @@ impl SetOAppConfig<'_> {
                 let seeds: &[&[u8]] =
                     &[GOVERNANCE_SEED, &ctx.accounts.governance.id.to_be_bytes(), &[ctx.accounts.governance.bump]];
                 let _ = oapp::endpoint_cpi::set_delegate(
-                    ctx.accounts.governance.endpoint_program,
+                    ENDPOINT_ID,
                     ctx.accounts.governance.key(),
                     &ctx.remaining_accounts,
                     seeds,

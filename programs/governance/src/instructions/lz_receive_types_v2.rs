@@ -43,7 +43,7 @@ impl LzReceiveTypesV2<'_> {
 
         let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
 
-        // accounts 0..6 (first 7 accounts)
+        // accounts 0..4 (first 5 accounts)
         let mut accounts = vec![
             // payer
             AccountMetaRef {
@@ -53,7 +53,7 @@ impl LzReceiveTypesV2<'_> {
             // governance
             AccountMetaRef {
                 pubkey: governance.into(),
-                is_writable: true,
+                is_writable: false,
             },
             // remote
             AccountMetaRef {
@@ -63,7 +63,7 @@ impl LzReceiveTypesV2<'_> {
             // cpi authority
             AccountMetaRef {
                 pubkey: cpi_authority.into(),
-                is_writable: true,
+                is_writable: false,
             },
             // program
             AccountMetaRef {
@@ -72,7 +72,7 @@ impl LzReceiveTypesV2<'_> {
             },
         ];
 
-        // accounts 7..14 (8 accounts, last one #15)
+        // accounts 5..12 (8 accounts, last one #13)
         // Add accounts required for LayerZero's Endpoint clear operation
         // These accounts handle the core message verification and processing
         let accounts_for_clear: Vec<AccountMetaRef> = get_accounts_for_clear(
@@ -84,7 +84,7 @@ impl LzReceiveTypesV2<'_> {
         );
         accounts.extend(accounts_for_clear);
 
-        // accounts 15..
+        // accounts 13..
         // Governance message instruction accounts
         accounts.extend(
             governance_message
@@ -93,6 +93,10 @@ impl LzReceiveTypesV2<'_> {
                 .map(|acc| AccountMetaRef {
                     pubkey: if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
                         cpi_authority.into()
+                    } else if acc.pubkey == PAYER_PLACEHOLDER {
+                        AddressLocator::Payer
+                    } else if acc.pubkey == CONTEXT_PLACEHOLDER {
+                        AddressLocator::Context
                     } else {
                         acc.pubkey.into()
                     },

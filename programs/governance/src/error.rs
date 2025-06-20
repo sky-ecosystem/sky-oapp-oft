@@ -3,20 +3,16 @@ use anchor_lang::prelude::error_code;
 
 #[error_code]
 pub enum GovernanceError {
-    #[msg("CpiAuthorityBumpMismatch")]
-    CpiAuthorityBumpMismatch,
-    #[msg("CpiAuthorityMismatch")]
-    CpiAuthorityMismatch,
+    #[msg("CpiAuthorityDataNotEmpty")]
+    CpiAuthorityDataNotEmpty,
+    #[msg("CpiAuthorityOwnerNotSystemProgram")]
+    CpiAuthorityOwnerNotSystemProgram,
     #[msg("InvalidGovernanceChain")]
     InvalidGovernanceChain,
     #[msg("InvalidGovernanceMessage")]
     InvalidGovernanceMessage,
-    #[msg("InvalidGovernanceModule")]
-    InvalidGovernanceModule,
     #[msg("InvalidGovernanceAction")]
     InvalidGovernanceAction,
-    #[msg("InvalidInstruction")]
-    InvalidInstruction,
     #[msg("Unauthorized")]
     Unauthorized,
     #[msg("UnexpectedExtraData")]
