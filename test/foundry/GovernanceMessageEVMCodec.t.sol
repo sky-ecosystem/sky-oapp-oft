@@ -16,8 +16,7 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     uint8 private constant DST_EID_OFFSET = ACTION_OFFSET + 1;
     uint8 private constant ORIGIN_CALLER_OFFSET = DST_EID_OFFSET + 4;
     uint8 private constant GOVERNED_CONTRACT_OFFSET = ORIGIN_CALLER_OFFSET + 32;
-    uint8 private constant CALLDATA_LENGTH_OFFSET = GOVERNED_CONTRACT_OFFSET + 20;
-    uint8 private constant CALLDATA_OFFSET = CALLDATA_LENGTH_OFFSET + 2;
+    uint8 private constant CALLDATA_OFFSET = GOVERNED_CONTRACT_OFFSET + 20;
 
     MockCodec mockCodec = new MockCodec();
     GovernanceEVMCodecLibraryHelper helper = new GovernanceEVMCodecLibraryHelper();
@@ -87,20 +86,5 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
         
         vm.expectRevert(abi.encodeWithSelector(GovernanceMessageEVMCodec.InvalidMessageLength.selector));
         helper.decode(message);
-    }
-
-    function test_invalid_call_data_length() public {
-        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
-            action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: 1,
-            originCaller: addressToBytes32(makeAddr("originCaller")),
-            governedContract: makeAddr("governedContract"),
-            callData: abi.encodeWithSelector(ERC20Mock.mint.selector, makeAddr("mintReceiver"), 100)
-        });
-
-        bytes memory encoded = GovernanceMessageEVMCodec.encode(message);
-        encoded[CALLDATA_LENGTH_OFFSET] = 0xFF;
-        vm.expectRevert(abi.encodeWithSelector(GovernanceMessageEVMCodec.InvalidCallDataLength.selector));
-        helper.decode(encoded);
     }
 }

@@ -21,6 +21,7 @@ import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messa
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { PacketBytesHelper } from "./helpers/PacketBytesHelper.sol";
 import { MockControlledContractNestedDelivery } from "../mocks/MockControlledContractNestedDelivery.sol";
+import { MockFundsReceiver } from "../mocks/MockFundsReceiver.sol";
 
 contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     using OptionsBuilder for bytes;
@@ -184,9 +185,10 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
-
-        bytes memory packetOneBytes = hex"01000000000000000100000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e624af70d91a3ee419f51a2d4f11f114a1e0da3511966904b1c7871ff00eee176f01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b100047aba9f80";
-        bytes memory packetTwoBytes = hex"01000000000000000200000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e65c4ff3a57f16ea1239276ac9bbd90e50a4a5e5d3d9accc0906f4c26c785ad31c01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b100047aba9f80";
+        
+        bytes memory packetOneBytes = hex"01000000000000000100000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e624af70d91a3ee419f51a2d4f11f114a1e0da3511966904b1c7871ff00eee176f01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b17aba9f80";
+        bytes memory packetTwoBytes = hex"01000000000000000200000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e65c4ff3a57f16ea1239276ac9bbd90e50a4a5e5d3d9accc0906f4c26c785ad31c01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b17aba9f80";
+        
         TestHelperOz5WithRevertAssertions(payable(address(this))).validatePacket(packetOneBytes);
         TestHelperOz5WithRevertAssertions(payable(address(this))).validatePacket(packetTwoBytes);
 
@@ -274,4 +276,26 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
     }
 
+    function test_send_no_calldata_just_value() public {
+        MockFundsReceiver fundsReceiver = new MockFundsReceiver();
+
+        assertEq(address(fundsReceiver).balance, 0);
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 1e10);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(fundsReceiver),
+            callData: ""
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        verifyPackets(bEid, addressToBytes32(address(bGov)));
+
+        assertEq(address(fundsReceiver).balance, 1e10);
+    }
 }
