@@ -32,13 +32,16 @@ if (!governanceProgramId) {
     throw new Error("GOVERNANCE_PROGRAM_ID env required");
 }
 
+if (!process.env.GOVERNANCE_CONTROLLER_ADDRESS) {
+    throw new Error("GOVERNANCE_CONTROLLER_ADDRESS env required to specify your peer address");
+}
+
 const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governanceProgramId), endpointProgram)
 
 const connection = new Connection('https://api.devnet.solana.com')
 const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
 const remotePeers: { [key in EndpointId]?: string } = {
-    // @TODO change this to your actual remote peer address
-    [EndpointId.AVALANCHE_V2_TESTNET]: '0x44981d6685a16C88De4fE9958792BCde81f032e0',
+    [EndpointId.AVALANCHE_V2_TESTNET]: process.env.GOVERNANCE_CONTROLLER_ADDRESS,
 }
 
 const DEFAULT_COMMITMENT = 'finalized'
