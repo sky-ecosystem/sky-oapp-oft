@@ -47,11 +47,11 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized message: {:?}", hex::encode(&buf));
 
-        let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
+        let msg2 = GovernanceMessage::decode(&mut buf.as_slice()).unwrap();
         assert_eq!(msg, msg2);
 
         prepare_governance_message_simulation(&msg);
@@ -61,13 +61,13 @@ mod test_msg_codec {
     fn test_governance_message_parse() {
         let origin_caller_hex = "9876543210000000000000000000000000000000000000000000000001234567";
         let hex_string = format!(
-            "02{:08x}{}00000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405",
+            "02{:08x}{}0000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
             40168u32,
             origin_caller_hex,
         );
         let h = hex::decode(hex_string).unwrap();
 
-        let actual = GovernanceMessage::deserialize(&mut h.as_slice()).unwrap();
+        let actual = GovernanceMessage::decode(&mut h.as_slice()).unwrap();
 
         let accounts = vec![
             Acc {
@@ -92,7 +92,7 @@ mod test_msg_codec {
 
         assert_eq!(actual, expected);
         let mut serialized = Vec::new();
-        actual.serialize(&mut serialized).unwrap();
+        actual.encode(&mut serialized).unwrap();
         assert_eq!(GovernanceMessage::decode_origin_caller(&serialized).unwrap(), origin_caller);
     }
 
@@ -161,7 +161,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -241,7 +241,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -267,7 +267,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -290,7 +290,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -337,7 +337,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -384,7 +384,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -456,7 +456,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -500,7 +500,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -574,7 +574,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -702,7 +702,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -824,7 +824,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -952,7 +952,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -1036,7 +1036,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -1120,7 +1120,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -1213,7 +1213,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -1307,7 +1307,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -1402,7 +1402,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 
@@ -1481,7 +1481,7 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.serialize(&mut buf).unwrap();
+        msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
 

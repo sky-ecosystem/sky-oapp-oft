@@ -15,6 +15,4 @@ pub enum GovernanceError {
     InvalidGovernanceAction,
     #[msg("Unauthorized")]
     Unauthorized,
-    #[msg("UnexpectedExtraData")]
-    UnexpectedExtraData,
 }

@@ -16,8 +16,7 @@ use std::io::{self, Read, Write};
 /// | program_id      |                               32 | Program ID of the program to be invoked |
 /// | accounts_length |                                2 | Number of accounts                      |
 /// | accounts        | `accounts_length` * (32 + 1 + 1) | Accounts to be passed to the program    |
-/// | data_length     |                                2 | Length of the data                      |
-/// | data            |                    `data_length` | Data to be passed to the program        |
+/// | data            |                        remaining | Data to be passed to the program        |
 ///
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GovernanceMessage {
@@ -34,7 +33,7 @@ impl GovernanceMessage {
     }
 
     /// Decode a full governance message (header + body).
-    pub fn decode<R: Read>(reader: &mut R) -> io::Result<Self> {
+    pub fn decode(reader: &mut &[u8]) -> io::Result<Self> {
         let action: u8 = Self::read_u8(reader)?;
         if action != GovernanceAction::SolanaCall as u8 {
             return Err(io::Error::new(
@@ -65,7 +64,7 @@ impl GovernanceMessage {
     }
 
     /// Reads ONLY the body of the message, not the header.
-    fn read_body<R: io::Read>(reader: &mut R, origin_caller: [u8; 32]) -> io::Result<Self> {
+    fn read_body(reader: &mut &[u8], origin_caller: [u8; 32]) -> io::Result<Self> {
         let program_id = Self::read_pubkey(reader)?;
         let accounts_len = Self::read_u16(reader)?;
         let mut accounts = Vec::with_capacity(accounts_len as usize);
@@ -81,18 +80,10 @@ impl GovernanceMessage {
             });
         }
 
-        let data_len = Self::read_u16(reader)?;
-        let mut data = vec![0u8; data_len as usize];
+        // &[u8] reader is behind the mutable reference, slice is trimmed to the remaining unconsumed part
+        // so we can read the remaining data into a vec
+        let mut data = vec![0u8; reader.len()];
         reader.read_exact(&mut data)?;
-        
-        // Check that there's no remaining data in the reader
-        let mut extra_byte = [0u8; 1];
-        if reader.read_exact(&mut extra_byte).is_ok() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                GovernanceError::UnexpectedExtraData.to_string(),
-            ));
-        }
 
         Ok(Self {
             origin_caller,
@@ -113,7 +104,6 @@ impl GovernanceMessage {
             Self::write_u8(writer, acc.is_writable as u8)?;
         }
 
-        Self::write_u16(writer, self.data.len() as u16)?;
         writer.write_all(&self.data)?;
         Ok(())
     }
@@ -275,18 +265,5 @@ impl From<AccountMeta> for Acc {
             is_signer,
             is_writable,
         }
-    }
-}
-
-// Update Anchor traits to use inherent methods
-impl AnchorSerialize for GovernanceMessage {
-    fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        self.encode(writer)
-    }
-}
-
-impl AnchorDeserialize for GovernanceMessage {
-    fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
-        Self::decode(reader)
     }
 }
