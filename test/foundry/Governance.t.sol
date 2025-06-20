@@ -243,4 +243,35 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         // Asserting that the data variable has updated in the receiving OApp.
         assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
     }
+
+    function test_sending_garbage_in_origin_caller_reverts() public {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        MockSpell spell = new MockSpell(bControlledContract);
+
+        bytes32 originCaller = addressToBytes32(address(this));
+        bytes32 originCallerWithGarbage = bytes32(abi.encodePacked(bytes12(type(uint96).max), address(this)));
+        
+        GovernanceMessageEVMCodec.GovernanceMessage memory messageWithGarbage = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: originCallerWithGarbage,
+            governedContract: address(bRelay),
+            callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(messageWithGarbage, options, false);
+
+        vm.expectRevert(GovernanceControllerOApp.UnauthorizedOriginCaller.selector);
+        aGov.sendEVMAction{ value: fee.nativeFee }(messageWithGarbage, options, fee, address(this));
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: originCaller,
+            governedContract: address(bRelay),
+            callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
+        });
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+    }
+
 }
