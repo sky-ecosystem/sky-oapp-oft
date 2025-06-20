@@ -39,7 +39,7 @@ impl LzReceiveTypesV2<'_> {
     ) -> Result<LzReceiveTypesV2Result> {
         let governance = ctx.accounts.governance.key();
         let (remote, _) = Pubkey::find_program_address(&[REMOTE_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes()], ctx.program_id);
-        let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
+        let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()], ctx.program_id);
 
         let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
 
