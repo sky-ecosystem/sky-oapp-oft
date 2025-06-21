@@ -3,7 +3,7 @@
 mod test_msg_codec {
     use anchor_lang::prelude::*;
     use base64::Engine;
-    use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
+    use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, InitConfigParams, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
     use oft::{instructions::{PeerConfigParam, SetOFTConfigParams, SetPauseParams, SetPeerConfigParams}, PEER_SEED};
     use solana_program::pubkey::Pubkey;
     use solana_program::bpf_loader_upgradeable;
@@ -22,10 +22,11 @@ mod test_msg_codec {
         pub remote_oapp: [u8; 32],
     }
     
-    const OFT_STORE_ADDRESS: Pubkey = pubkey!("AePeMdWyhjm4rWijym5fmhiW3NnaiPV1rALTs2NVaG4i");
+    const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
+    const BSC_EID: u32 = 40102;
     const FUJI_PEER_ADDRESS: &str = "0xc281a57873777D6646FDCA10de90F4De390604D9";
     const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
@@ -1487,6 +1488,110 @@ mod test_msg_codec {
 
         prepare_governance_message_simulation(&msg);
     }
+
+    #[test]
+    fn test_endpoint_init_config<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "init_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = InitConfigParams {
+            oapp: OFT_STORE_ADDRESS,
+            eid: BSC_EID,
+        };
+
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize InitConfigParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
+            &[
+                OAPP_SEED,
+                params.oapp.as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
+            &[
+                MESSAGE_LIB_SEED,
+                MSG_LIB_KEY.to_bytes().as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let accounts = vec![
+            // The PDA of the OApp or delegate
+            Acc {
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
+                is_signer: true,
+                is_writable: true,
+            },
+            // OApp registry account
+            Acc {
+                pubkey: oapp_registry,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: message_lib_info,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: MSG_LIB_KEY,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: uln::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
+                is_signer: true,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: MSG_LIB_KEY,
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: pubkey!("2NfYFUCZnjPgNos7FxxnvzMdN6EM9KDnXpLQ1FptZmNy"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: pubkey!("7wrvBobvSNGswuyLxQZKG4tvE2qrkzjEUAzrFmosg9oS"),
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: solana_program::system_program::ID,
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
+            program_id: endpoint::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.encode(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
 
     pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
         let preimage = format!("{}:{}", namespace, name);

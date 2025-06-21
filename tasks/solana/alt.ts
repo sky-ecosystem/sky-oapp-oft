@@ -4,20 +4,17 @@ import { types as hardhatTypes } from '@layerzerolabs/devtools-evm-hardhat'
 import { deriveConnection } from './index'
 import { arrayify } from '@ethersproject/bytes'
 import { buildLzReceiveExecutionPlan, LzReceiveParams } from '@layerzerolabs/lz-solana-sdk-v2/umi'
+import { publicKey } from '@metaplex-foundation/umi'
+import { AddressLookupTableAccount, AddressLookupTableProgram, Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
 import { EndpointProgram } from '@layerzerolabs/lz-solana-sdk-v2'
-import { base58 } from '@metaplex-foundation/umi/serializers'
-import { AddressLookupTableInput, publicKey } from '@metaplex-foundation/umi'
-import { simulateTransaction } from './utils'
-import { PublicKey } from '@solana/web3.js'
 import { Governance } from '../../src/governance'
-import { fetchAddressLookupTable } from '@metaplex-foundation/mpl-toolbox'
-import { fromWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
+import { toWeb3JsKeypair, toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
 
 interface Args {
     srcTxHash: string
 }
 
-task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 lzReceive instruction')
+task('lz:oapp:solana:alt-prepare', 'Prepare the ALT for the message')
     .addParam('srcTxHash', 'The source transaction hash', undefined, hardhatTypes.string)
     .setAction(async ({ srcTxHash, }: Args) => {
         if (!process.env.SOLANA_PRIVATE_KEY) {
@@ -46,6 +43,7 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         }
 
         const { connection, umi, umiWalletKeyPair, umiWalletSigner } = await deriveConnection(message.pathway.dstEid)
+        const signer = toWeb3JsKeypair(umiWalletKeyPair)
         
         const packet = {
             nonce: message.pathway.nonce,
@@ -71,10 +69,21 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         const lzReceiveTypesV2Accounts = await governance.getLzReceiveTypesAccounts(connection)
 
         const altsKeys = lzReceiveTypesV2Accounts?.alts || [];
-        const addressLookupTableInputs: AddressLookupTableInput[] = [];
+        console.log('Current accounts:', {
+            alts: altsKeys.map(alt => alt.toBase58()),
+        })
+
+        const alts: AddressLookupTableAccount[] = [];
         for (const alt of altsKeys) {
-            const addressLookupTableInput: AddressLookupTableInput = await fetchAddressLookupTable(umi, fromWeb3JsPublicKey(alt))
-            addressLookupTableInputs.push(addressLookupTableInput)
+            const lookupTableAccount = (
+                await connection.getAddressLookupTable(alt)
+            ).value;
+
+            if (!lookupTableAccount) {
+                throw new Error("ALT not found");
+            }
+
+            alts.push(lookupTableAccount);
         }
 
         const lzReceiveParams: LzReceiveParams = {
@@ -87,21 +96,54 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         }
 
         const lzReceiveExecutionPlan = await buildLzReceiveExecutionPlan(umi.rpc, publicKey("6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn"), umiWalletKeyPair.publicKey, packet.receiver, publicKey(process.env.GOVERNANCE_PROGRAM_ID), lzReceiveParams)
-        console.log('lzReceiveExecutionPlan', lzReceiveExecutionPlan)
 
-        const transaction = umi.transactions.create({
-            version: 0,
-            blockhash: (await umi.rpc.getLatestBlockhash()).blockhash,
-            instructions: lzReceiveExecutionPlan.instructions,
-            payer: umi.payer.publicKey,
-            addressLookupTables: addressLookupTableInputs,
-        })
-        const signedTransaction = await umiWalletSigner.signTransaction(transaction)
+        let accountsNotInALT: PublicKey[] = [];
+        
+        if (alts.length === 0) {
+            accountsNotInALT = lzReceiveExecutionPlan.instructions[0].keys.map(key => toWeb3JsPublicKey(key.pubkey));
+        }
 
-        const simulation = await simulateTransaction(umi, signedTransaction, connection, { verifySignatures: true })
-        console.log('simulation', simulation)
+        const accountsInAlt = lzReceiveExecutionPlan.instructions[0].keys.length - accountsNotInALT.length;
+        console.log('--------------- ACCOUNTS ---------------')
+        console.log('Total accounts  : ', lzReceiveExecutionPlan.instructions[0].keys.length);
+        console.log('Accounts in ALT : ', accountsInAlt);
+        console.log('Accounts not-ALT: ', accountsNotInALT.length);
+        console.log('Accounts not in ALT:');
+        accountsNotInALT.forEach((acc, index) => {
+            console.log(`${index}: ${acc.toBase58()}`);
+        });
+        console.log('--------------------------------------')
 
-        const txHash = await umi.rpc.sendTransaction(signedTransaction)
-        console.log('lzReceive tx signature', base58.deserialize(txHash)[0])
+        if (accountsNotInALT.length > 0) {
+            await createLookupTable(connection, signer, accountsNotInALT)
+        }
     }
 )
+
+async function createLookupTable(connection: Connection, signer: Keypair, addresses: PublicKey[]) {
+    const [createInstruction, lookupTableAddress] = AddressLookupTableProgram.createLookupTable({
+        payer: signer.publicKey,
+        authority: signer.publicKey,
+        recentSlot: await connection.getSlot(),
+    });
+    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+        payer: signer.publicKey,
+        authority: signer.publicKey,
+        lookupTable: lookupTableAddress,
+        addresses: addresses,
+    });
+
+    const blockhash = await connection.getLatestBlockhash();
+    const message = new TransactionMessage({
+        payerKey: signer.publicKey,
+        recentBlockhash: blockhash.blockhash,
+        instructions: [createInstruction, extendInstruction],
+    }).compileToV0Message();
+    const tx = new VersionedTransaction(message);
+    tx.sign([signer]);
+    const txHash = await connection.sendTransaction(tx);
+    console.log('create lookup table', {
+        txHash,
+        lookupTableAddress,
+    })
+};
