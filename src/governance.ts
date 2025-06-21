@@ -1,5 +1,4 @@
 import {
-    AccountMeta,
     Commitment,
     Connection,
     GetAccountInfoConfig,
@@ -7,13 +6,12 @@ import {
     TransactionInstruction,
 } from '@solana/web3.js'
 
-import { buildVersionedTransaction, EndpointProgram, EventPDADeriver, SimpleMessageLibProgram, UlnProgram } from '@layerzerolabs/lz-solana-sdk-v2'
+import { EndpointProgram, EventPDADeriver } from '@layerzerolabs/lz-solana-sdk-v2'
 
 import * as accounts from './generated/governance/accounts'
 import * as instructions from './generated/governance/instructions'
 import * as types from './generated/governance/types'
 import { GovernancePDADeriver } from './governance-pda-deriver'
-import { LzReceiveTypesInfoResult, lzReceiveTypesInfoResultBeet } from './types'
 
 export { accounts, instructions, types }
 
@@ -148,100 +146,5 @@ export class Governance {
             },
             this.program
         )
-    }
-
-    async getLzReceiveTypesInfo(connection: Connection, commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'): Promise<[number, LzReceiveTypesInfoResult]> {
-        const [lzReceiveTypesInfoAccountsPDA] = this.governanceDeriver.lzReceiveTypesInfoAccounts()
-        const ix = instructions.createLzReceiveTypesInfoInstruction(
-            {
-                governance: this.idPDA()[0],
-                lzReceiveTypesAccounts: lzReceiveTypesInfoAccountsPDA,
-            } satisfies instructions.LzReceiveTypesInfoInstructionAccounts,
-            this.program
-        )
-
-        const { blockhash } = await connection.getLatestBlockhash();
-        const dummyPayer = new PublicKey('Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8');
-        const tx = await buildVersionedTransaction(connection, dummyPayer, [ix], commitmentOrConfig, blockhash)
-
-        const simulation = await connection.simulateTransaction(tx, {
-            sigVerify: false
-        })
-
-        const dataRaw = simulation.value.returnData?.data[0];
-        if (!dataRaw) {
-            throw new Error('No data returned')
-        }
-        const data = Buffer.from(dataRaw, 'base64');
-        const version = data.readUInt8(0);
-
-        return [version, lzReceiveTypesInfoResultBeet.deserialize(data, 1)[0]];
-    }
-
-    async getLzReceiveTypesV2(connection: Connection, params: types.LzReceiveParams, accounts: PublicKey[], commitmentOrConfig: Commitment | GetAccountInfoConfig = 'confirmed'): Promise<types.LzReceiveTypesV2Result> {
-        const keys: AccountMeta[] = accounts.map(account => ({
-            pubkey: account,
-            isSigner: false,
-            isWritable: false,
-        }))
-
-        const ix = instructions.createLzReceiveTypesV2Instruction(
-            {
-                governance: keys[0].pubkey,
-                anchorRemainingAccounts: keys.slice(1),
-            } satisfies instructions.LzReceiveTypesV2InstructionAccounts,
-            {
-                params,
-            } satisfies instructions.LzReceiveTypesV2InstructionArgs,
-            this.program
-        )
-
-        const { blockhash } = await connection.getLatestBlockhash();
-        const dummyPayer = new PublicKey('Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8');
-        const tx = await buildVersionedTransaction(connection, dummyPayer, [ix], commitmentOrConfig, blockhash)
-
-        const simulation = await connection.simulateTransaction(tx, {
-            sigVerify: false
-        })
-
-        if (simulation.value.err) {
-            console.log('getLzReceiveTypesV2 simulation error');
-            console.log(simulation.value);
-            throw new Error();
-        }
-
-        const dataRaw = simulation.value.returnData?.data[0];
-        if (!dataRaw) {
-            throw new Error('No data returned')
-        }
-
-        const data = Buffer.from(dataRaw, 'base64');
-
-        return types.lzReceiveTypesV2ResultBeet.deserialize(data, 0)[0];
-    }
-
-    async getSendLibraryProgram(
-        connection: Connection,
-        payer: PublicKey,
-        dstEid: number,
-    ): Promise<SimpleMessageLibProgram.SimpleMessageLib | UlnProgram.Uln> {
-        const [id] = this.idPDA()
-        const sendLibInfo = await this.endpoint.getSendLibrary(connection, id, dstEid)
-        if (!sendLibInfo?.programId) {
-            throw new Error('Send library not initialized or blocked message library')
-        }
-        const { programId: msgLibProgram } = sendLibInfo
-        const msgLibVersion = await this.endpoint.getMessageLibVersion(connection, payer, msgLibProgram)
-        if (msgLibVersion?.major.toString() === '0' && msgLibVersion.minor == 0 && msgLibVersion.endpointVersion == 2) {
-            return new SimpleMessageLibProgram.SimpleMessageLib(msgLibProgram)
-        } else if (
-            msgLibVersion?.major.toString() === '3' &&
-            msgLibVersion.minor == 0 &&
-            msgLibVersion.endpointVersion == 2
-        ) {
-            return new UlnProgram.Uln(msgLibProgram)
-        }
-
-        throw new Error(`Unsupported message library version: ${JSON.stringify(msgLibVersion, null, 2)}`)
     }
 }

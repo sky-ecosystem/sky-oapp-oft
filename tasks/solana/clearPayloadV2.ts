@@ -1,14 +1,12 @@
-import { BN } from '@coral-xyz/anchor'
-import { toWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
-import { AccountMeta, AddressLookupTableAccount, Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction, AddressLookupTableProgram } from '@solana/web3.js'
-import bs58 from 'bs58'
 import { task } from 'hardhat/config'
 import { makeBytes32 } from '@layerzerolabs/devtools'
 import { types as hardhatTypes } from '@layerzerolabs/devtools-evm-hardhat'
 import { deriveConnection } from './index'
 import { arrayify } from '@ethersproject/bytes'
-import { Governance, instructions, types } from '../../src/governance'
-import { isAddressLocatorAddress, isAddressLocatorAltIndex, isAddressLocatorPayer } from '../../src/generated/governance/types'
+import { buildLzReceiveExecutionPlan, LzReceiveParams } from '@layerzerolabs/lz-solana-sdk-v2/umi'
+import { base58 } from '@metaplex-foundation/umi/serializers'
+import { publicKey } from '@metaplex-foundation/umi'
+import { simulateTransaction } from './utils'
 
 interface Args {
     srcTxHash: string
@@ -42,8 +40,7 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
             return;
         }
 
-        const { connection, umiWalletKeyPair } = await deriveConnection(message.pathway.dstEid)
-        const signer = toWeb3JsKeypair(umiWalletKeyPair)
+        const { connection, umi, umiWalletKeyPair, umiWalletSigner } = await deriveConnection(message.pathway.dstEid)
         
         const packet = {
             nonce: message.pathway.nonce,
@@ -60,164 +57,34 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
             packet
         })
 
-        const signerKeypair = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY))
-
         if (!process.env.GOVERNANCE_PROGRAM_ID) {
             throw new Error('GOVERNANCE_PROGRAM_ID is not defined in the environment variables.')
         }
 
-        const governance = new Governance(new PublicKey(process.env.GOVERNANCE_PROGRAM_ID), 0)
-        const [version, lzReceiveTypesV2Accounts] = await governance.getLzReceiveTypesInfo(connection)
-        console.log('lzReceiveTypesInfo', lzReceiveTypesV2Accounts)
-
-        if (version !== 2) {
-            throw new Error(`Invalid lz_receive version ${version}. Expected version 2.`)
-        }
-
-        const lzReceiveParams: types.LzReceiveParams = {
+        const lzReceiveParams: LzReceiveParams = {
             srcEid: packet.srcEid,
-            sender: Array.from(arrayify(packet.sender)),
-            nonce: new BN(packet.nonce),
-            guid: Array.from(arrayify(packet.guid)),
+            sender: arrayify(packet.sender),
+            nonce: BigInt(packet.nonce),
+            guid: arrayify(packet.guid),
             message: arrayify(packet.message),
-            extraData: arrayify("0x"),
+            callerParams: arrayify("0x"),
         }
 
-        const lzReceiveTypesResult = await governance.getLzReceiveTypesV2(connection, lzReceiveParams, lzReceiveTypesV2Accounts.accounts)
+        const lzReceiveExecutionPlan = await buildLzReceiveExecutionPlan(umi.rpc, publicKey("6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn"), umiWalletKeyPair.publicKey, packet.receiver, publicKey(process.env.GOVERNANCE_PROGRAM_ID), lzReceiveParams)
+        console.log('lzReceiveExecutionPlan', lzReceiveExecutionPlan)
 
-        const lzReceiveInstruction = instructions.createLzReceiveInstruction(
-            {} as any,
-            {
-                params: lzReceiveParams,
-            },
-            governance.program
-        );
+        const transaction = umi.transactions.create({
+            version: 0,
+            blockhash: (await umi.rpc.getLatestBlockhash()).blockhash,
+            instructions: lzReceiveExecutionPlan.instructions,
+            payer: umi.payer.publicKey,
+        })
+        const signedTransaction = await umiWalletSigner.signTransaction(transaction)
 
-        const alts: AddressLookupTableAccount[] = [];
-        for (const alt of lzReceiveTypesResult.alts) {
-            const lookupTableAccount = (
-                await connection.getAddressLookupTable(alt)
-            ).value;
-
-            if (!lookupTableAccount) {
-                throw new Error("ALT not found");
-            }
-
-            alts.push(lookupTableAccount);
-        }
-
-        const keys: AccountMeta[] = [];
-        const accountsNotInALT: PublicKey[] = [];
-        let index = 0;
-        for (const account of lzReceiveTypesResult.instructions[0].accounts) {
-            let pubkey: PublicKey;
-            let isSigner = false;
-            if (isAddressLocatorAltIndex(account.pubkey)) {
-                pubkey = alts[account.pubkey.fields[0]].state.addresses[account.pubkey.fields[1]];
-            } else if (isAddressLocatorAddress(account.pubkey)) {
-                pubkey = account.pubkey.fields[0];
-                accountsNotInALT.push(pubkey);
-            } else if (isAddressLocatorPayer(account.pubkey)) {
-                pubkey = signer.publicKey;
-                isSigner = true;
-            } else {
-                throw new Error('Invalid address locator')
-            }
-
-            keys.push({
-                pubkey,
-                isSigner,
-                isWritable: account.isWritable,
-            });
-
-            index++;
-        }
-
-        const accountsInAlt = keys.length - accountsNotInALT.length;
-        console.log('--------------- ACCOUNTS ---------------')
-        console.log('Total accounts  : ', keys.length);
-        console.log('Accounts in ALT : ', accountsInAlt);
-        console.log('Accounts not-ALT: ', accountsNotInALT.length);
-        console.log('Accounts not in ALT:');
-        accountsNotInALT.forEach((acc, index) => {
-            console.log(`${index}: ${acc.toBase58()}`);
-        });
-        console.log('--------------------------------------')
-
-        // if (accountsNotInALT.length > 0) {
-        //     await createLookupTable(connection, signer, accountsNotInALT)
-        //     await extendLookupTable(connection, signer, alts[0].key, accountsNotInALT)
-        // }
-
-        lzReceiveInstruction.keys = keys;
-
-        const blockhash = await connection.getLatestBlockhash();
-        const lzReceiveMessage = new TransactionMessage({
-            payerKey: signer.publicKey,
-            recentBlockhash: blockhash.blockhash,
-            instructions: [lzReceiveInstruction],
-        }).compileToV0Message(alts);
-
-        const lzReceiveTx = new VersionedTransaction(lzReceiveMessage);
-        
-        lzReceiveTx.sign([signerKeypair]);
-
-        console.log(Buffer.from(lzReceiveTx.serialize()).toString('base64'));
-
-        const simulation = (await connection.simulateTransaction(lzReceiveTx, { sigVerify: true }));
-
+        const simulation = await simulateTransaction(umi, signedTransaction, connection, { verifySignatures: true })
         console.log('simulation', simulation)
 
-        const lzReceiveTxSignature = await connection.sendTransaction(lzReceiveTx);
-
-        console.log("lzReceive tx signature", lzReceiveTxSignature)
+        const txHash = await umi.rpc.sendTransaction(signedTransaction)
+        console.log('lzReceive tx signature', base58.deserialize(txHash)[0])
     }
 )
-
-async function createLookupTable(connection: Connection, signer: Keypair, addresses: PublicKey[]) {
-    const [createInstruction, lookupTableAddress] = AddressLookupTableProgram.createLookupTable({
-        payer: signer.publicKey,
-        authority: signer.publicKey,
-        recentSlot: await connection.getSlot(),
-    });
-    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-        payer: signer.publicKey,
-        authority: signer.publicKey,
-        lookupTable: lookupTableAddress,
-        addresses: addresses,
-    });
-
-    const blockhash = await connection.getLatestBlockhash();
-    const message = new TransactionMessage({
-        payerKey: signer.publicKey,
-        recentBlockhash: blockhash.blockhash,
-        instructions: [createInstruction, extendInstruction],
-    }).compileToV0Message();
-    const tx = new VersionedTransaction(message);
-    tx.sign([signer]);
-    const txHash = await connection.sendTransaction(tx);
-    console.log('create lookup table', {
-        txHash,
-        lookupTableAddress,
-    })
-};
-
-async function extendLookupTable(connection: Connection, signer: Keypair, lookupTableAddress: PublicKey, addresses: PublicKey[]) {
-    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
-        payer: signer.publicKey,
-        authority: signer.publicKey,
-        lookupTable: lookupTableAddress,
-        addresses: addresses,
-    });
-
-    const blockhash = await connection.getLatestBlockhash();
-    const message = new TransactionMessage({
-        payerKey: signer.publicKey,
-        recentBlockhash: blockhash.blockhash,
-        instructions: [extendInstruction],
-    }).compileToV0Message();
-    const tx = new VersionedTransaction(message);
-    tx.sign([signer]);
-    const signature = await connection.sendTransaction(tx);
-    console.log('extend instruction', signature)
-};

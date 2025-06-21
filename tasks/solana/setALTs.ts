@@ -10,6 +10,7 @@ import {
 import { Governance } from '../../src/governance'
 import { PublicKey } from '@solana/web3.js'
 import { toWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
+import { EndpointProgram } from '@layerzerolabs/lz-solana-sdk-v2'
 
 interface Args {
     alts: string
@@ -29,7 +30,8 @@ task('lz:oapp:solana:set-alts', 'Set the alts for the OApp')
             throw new Error('GOVERNANCE_PROGRAM_ID is not defined in the environment variables.')
         }
 
-        const governance = new Governance(new PublicKey(process.env.GOVERNANCE_PROGRAM_ID), 0)
+        const endpointProgram = new EndpointProgram.Endpoint(new PublicKey('76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6')) // endpoint program id, mainnet and testnet are the same
+        const governance = new Governance(new PublicKey(process.env.GOVERNANCE_PROGRAM_ID), endpointProgram)
         const lzReceiveTypesV2Accounts = await governance.getLzReceiveTypesAccounts(connection)
         console.log('Current accounts:', {
             alts: lzReceiveTypesV2Accounts?.alts.map(alt => alt.toBase58()),
