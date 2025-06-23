@@ -4,18 +4,15 @@ import { types as hardhatTypes } from '@layerzerolabs/devtools-evm-hardhat'
 import { deriveConnection } from './index'
 import { arrayify } from '@ethersproject/bytes'
 import { buildLzReceiveExecutionPlan, LzReceiveParams } from '@layerzerolabs/lz-solana-sdk-v2/umi'
-import { EndpointProgram } from '@layerzerolabs/lz-solana-sdk-v2'
 import { base58 } from '@metaplex-foundation/umi/serializers'
-import { AddressLookupTableInput, publicKey } from '@metaplex-foundation/umi'
+import { publicKey } from '@metaplex-foundation/umi'
 import { simulateTransaction } from './utils'
-import { PublicKey } from '@solana/web3.js'
-import { Governance } from '../../src/governance'
-import { fetchAddressLookupTable } from '@metaplex-foundation/mpl-toolbox'
-import { fromWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
 
 interface Args {
     srcTxHash: string
 }
+
+const EXECUTOR_PROGRAM_ID = '6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn'
 
 task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 lzReceive instruction')
     .addParam('srcTxHash', 'The source transaction hash', undefined, hardhatTypes.string)
@@ -66,17 +63,6 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
             throw new Error('GOVERNANCE_PROGRAM_ID is not defined in the environment variables.')
         }
 
-        const endpointProgram = new EndpointProgram.Endpoint(new PublicKey('76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6')) // endpoint program id, mainnet and testnet are the same
-        const governance = new Governance(new PublicKey(process.env.GOVERNANCE_PROGRAM_ID), endpointProgram)
-        const lzReceiveTypesV2Accounts = await governance.getLzReceiveTypesAccounts(connection)
-
-        const altsKeys = lzReceiveTypesV2Accounts?.alts || [];
-        const addressLookupTableInputs: AddressLookupTableInput[] = [];
-        for (const alt of altsKeys) {
-            const addressLookupTableInput: AddressLookupTableInput = await fetchAddressLookupTable(umi, fromWeb3JsPublicKey(alt))
-            addressLookupTableInputs.push(addressLookupTableInput)
-        }
-
         const lzReceiveParams: LzReceiveParams = {
             srcEid: packet.srcEid,
             sender: arrayify(packet.sender),
@@ -86,7 +72,7 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
             callerParams: arrayify("0x"),
         }
 
-        const lzReceiveExecutionPlan = await buildLzReceiveExecutionPlan(umi.rpc, publicKey("6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn"), umiWalletKeyPair.publicKey, packet.receiver, publicKey(process.env.GOVERNANCE_PROGRAM_ID), lzReceiveParams)
+        const lzReceiveExecutionPlan = await buildLzReceiveExecutionPlan(umi.rpc, publicKey(EXECUTOR_PROGRAM_ID), umiWalletKeyPair.publicKey, packet.receiver, publicKey(process.env.GOVERNANCE_PROGRAM_ID), lzReceiveParams)
         console.log('lzReceiveExecutionPlan', lzReceiveExecutionPlan)
 
         const transaction = umi.transactions.create({
@@ -94,7 +80,7 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
             blockhash: (await umi.rpc.getLatestBlockhash()).blockhash,
             instructions: lzReceiveExecutionPlan.instructions,
             payer: umi.payer.publicKey,
-            addressLookupTables: addressLookupTableInputs,
+            addressLookupTables: lzReceiveExecutionPlan.addressLookupTables,
         })
         const signedTransaction = await umiWalletSigner.signTransaction(transaction)
 

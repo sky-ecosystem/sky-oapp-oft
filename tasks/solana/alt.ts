@@ -5,14 +5,14 @@ import { deriveConnection } from './index'
 import { arrayify } from '@ethersproject/bytes'
 import { buildLzReceiveExecutionPlan, LzReceiveParams } from '@layerzerolabs/lz-solana-sdk-v2/umi'
 import { publicKey } from '@metaplex-foundation/umi'
-import { AddressLookupTableAccount, AddressLookupTableProgram, Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
-import { EndpointProgram } from '@layerzerolabs/lz-solana-sdk-v2'
-import { Governance } from '../../src/governance'
+import { AddressLookupTableProgram, Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js'
 import { toWeb3JsKeypair, toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
 
 interface Args {
     srcTxHash: string
 }
+
+const EXECUTOR_PROGRAM_ID = '6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn'
 
 task('lz:oapp:solana:alt-prepare', 'Prepare the ALT for the message')
     .addParam('srcTxHash', 'The source transaction hash', undefined, hardhatTypes.string)
@@ -64,28 +64,6 @@ task('lz:oapp:solana:alt-prepare', 'Prepare the ALT for the message')
             throw new Error('GOVERNANCE_PROGRAM_ID is not defined in the environment variables.')
         }
 
-        const endpointProgram = new EndpointProgram.Endpoint(new PublicKey('76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6')) // endpoint program id, mainnet and testnet are the same
-        const governance = new Governance(new PublicKey(process.env.GOVERNANCE_PROGRAM_ID), endpointProgram)
-        const lzReceiveTypesV2Accounts = await governance.getLzReceiveTypesAccounts(connection)
-
-        const altsKeys = lzReceiveTypesV2Accounts?.alts || [];
-        console.log('Current accounts:', {
-            alts: altsKeys.map(alt => alt.toBase58()),
-        })
-
-        const alts: AddressLookupTableAccount[] = [];
-        for (const alt of altsKeys) {
-            const lookupTableAccount = (
-                await connection.getAddressLookupTable(alt)
-            ).value;
-
-            if (!lookupTableAccount) {
-                throw new Error("ALT not found");
-            }
-
-            alts.push(lookupTableAccount);
-        }
-
         const lzReceiveParams: LzReceiveParams = {
             srcEid: packet.srcEid,
             sender: arrayify(packet.sender),
@@ -95,11 +73,11 @@ task('lz:oapp:solana:alt-prepare', 'Prepare the ALT for the message')
             callerParams: arrayify("0x"),
         }
 
-        const lzReceiveExecutionPlan = await buildLzReceiveExecutionPlan(umi.rpc, publicKey("6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn"), umiWalletKeyPair.publicKey, packet.receiver, publicKey(process.env.GOVERNANCE_PROGRAM_ID), lzReceiveParams)
+        const lzReceiveExecutionPlan = await buildLzReceiveExecutionPlan(umi.rpc, publicKey(EXECUTOR_PROGRAM_ID), umiWalletKeyPair.publicKey, packet.receiver, publicKey(process.env.GOVERNANCE_PROGRAM_ID), lzReceiveParams)
 
         let accountsNotInALT: PublicKey[] = [];
         
-        if (alts.length === 0) {
+        if (lzReceiveExecutionPlan.addressLookupTables.length === 0) {
             accountsNotInALT = lzReceiveExecutionPlan.instructions[0].keys.map(key => toWeb3JsPublicKey(key.pubkey));
         }
 

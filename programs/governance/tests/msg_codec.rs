@@ -28,6 +28,7 @@ mod test_msg_codec {
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
     const FUJI_PEER_ADDRESS: &str = "0xc281a57873777D6646FDCA10de90F4De390604D9";
+    const BSC_PEER_ADDRESS: &str = "0xFcF2F7F9d8dE3cf7C3dec9FcB33BCc88c0B2f8CC";
     const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
@@ -516,8 +517,8 @@ mod test_msg_codec {
         instruction_data.extend_from_slice(&discriminator);
 
         let params = SetPeerConfigParams {
-            remote_eid: FUJI_EID,
-            config: PeerConfigParam::PeerAddress(evm_address_to_bytes32(FUJI_PEER_ADDRESS)),
+            remote_eid: BSC_EID,
+            config: PeerConfigParam::PeerAddress(evm_address_to_bytes32(BSC_PEER_ADDRESS)),
         };
 
         // Serialize the SendParams struct using Borsh
@@ -961,7 +962,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_init_send_library<'a>() {
+    fn test_init_send_library<'a>() {
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "init_send_library");
         // Add the discriminator
@@ -977,7 +978,7 @@ mod test_msg_codec {
 
         let params = InitSendLibraryParams {
             sender: OFT_STORE_ADDRESS,
-            eid: 777,
+            eid: BSC_EID,
         };
 
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
@@ -1030,7 +1031,7 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,

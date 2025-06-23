@@ -53,14 +53,6 @@ impl<'info> LzReceive<'info> {
             &[ctx.accounts.governance.bump],
         ];
 
-        let cpi_authority_seed: &[&[u8]] = &[   
-            CPI_AUTHORITY_SEED,
-            &ctx.accounts.governance.key().to_bytes(),
-            &params.src_eid.to_be_bytes(),
-            &GovernanceMessage::decode_origin_caller(&params.message).unwrap(),
-            &[ctx.bumps.cpi_authority],
-        ];
-
         // the first 9 accounts are for clear()
         let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];
         let _ = oapp::endpoint_cpi::clear(
@@ -77,9 +69,11 @@ impl<'info> LzReceive<'info> {
                 message: params.message.clone(),
             },
         )?;
-        // Decode governance message from LZ message
-        let gov_msg: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
-        let mut instruction: Instruction = gov_msg.into();
+
+        // Decode governance message from LayerZero message
+        let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
+        let origin_caller = governance_message.origin_caller;
+        let mut instruction: Instruction = governance_message.into();
 
         let (execution_context_addr, _) = Pubkey::find_program_address(
             &[
@@ -102,7 +96,13 @@ impl<'info> LzReceive<'info> {
         });
 
         solana_program::program::invoke_signed(&instruction, &ctx.remaining_accounts[Clear::MIN_ACCOUNTS_LEN..], &[
-            cpi_authority_seed,
+            &[   
+                CPI_AUTHORITY_SEED,
+                &ctx.accounts.governance.key().to_bytes(),
+                &params.src_eid.to_be_bytes(),
+                &origin_caller,
+                &[ctx.bumps.cpi_authority],
+            ]
         ])?;
 
         require!(
