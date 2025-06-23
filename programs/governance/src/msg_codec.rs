@@ -80,16 +80,11 @@ impl GovernanceMessage {
             });
         }
 
-        // &[u8] reader is behind the mutable reference, slice is trimmed to the remaining unconsumed part
-        // so we can read the remaining data into a vec
-        let mut data = vec![0u8; reader.len()];
-        reader.read_exact(&mut data)?;
-
         Ok(Self {
             origin_caller,
             program_id,
             accounts,
-            data,
+            data: reader.to_vec(),
         })
     }
 
