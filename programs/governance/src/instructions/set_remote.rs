@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::*;
+use crate::{error::GovernanceError, *};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(params: SetRemoteParams)]
 pub struct SetRemote<'info> {
-    #[account(mut, address = governance.admin)]
+    #[account(mut)]
     pub admin: Signer<'info>,
+
     #[account(
         init_if_needed,
         payer = admin,
@@ -15,8 +16,14 @@ pub struct SetRemote<'info> {
         bump
     )]
     pub remote: Account<'info, Remote>,
-    #[account(seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()], bump = governance.bump)]
+
+    #[account(
+        seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()],
+        bump = governance.bump,
+        has_one = admin @GovernanceError::Unauthorized
+    )]
     pub governance: Account<'info, Governance>,
+
     pub system_program: Program<'info, System>,
 }
 

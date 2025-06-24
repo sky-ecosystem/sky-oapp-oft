@@ -1677,7 +1677,7 @@ mod test_msg_codec {
     }
 
     fn get_governance_oapp_pda() -> (Pubkey, u8) {
-        let governance_id: u8 = 0;
+        let governance_id: u64 = 0;
         let (governance_oapp_address, bump_seed) = Pubkey::find_program_address(
             &[
                 GOVERNANCE_SEED,

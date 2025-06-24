@@ -40,7 +40,7 @@ impl InitGovernance<'_> {
         };
         let seeds: &[&[u8]] = &[
             GOVERNANCE_SEED,
-            &[ctx.accounts.governance.id],
+            &ctx.accounts.governance.id.to_be_bytes(),
             &[ctx.accounts.governance.bump],
         ];
         oapp::endpoint_cpi::register_oapp(
@@ -57,7 +57,7 @@ impl InitGovernance<'_> {
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct InitGovernanceParams {
-    pub id: u8,
+    pub id: u64,
     pub admin: Pubkey,
     pub lz_receive_alts: Vec<Pubkey>,
 }

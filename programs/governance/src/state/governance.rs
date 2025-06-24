@@ -4,7 +4,7 @@ use crate::*;
 #[account]
 #[derive(InitSpace)]
 pub struct Governance {
-    pub id: u8,
+    pub id: u64,
     pub admin: Pubkey,
     pub bump: u8,
 }

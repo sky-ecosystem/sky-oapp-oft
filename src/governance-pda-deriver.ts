@@ -1,8 +1,6 @@
 import { PublicKey } from '@solana/web3.js'
 import BN from 'bn.js'
 
-import { oappIDPDA } from '@layerzerolabs/lz-solana-sdk-v2'
-
 export const GOVERNANCE_SEED = 'Governance'
 export const REMOTE_SEED = 'Remote'
 export const LZ_RECEIVE_TYPES_SEED = 'LzReceiveTypes'
@@ -14,7 +12,10 @@ export class GovernancePDADeriver {
     ) {}
 
     governance(): [PublicKey, number] {
-        return oappIDPDA(this.program, GOVERNANCE_SEED, this.governanceId)
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from(GOVERNANCE_SEED), new BN(this.governanceId).toArrayLike(Buffer, 'be', 8)],
+            this.program
+        )
     }
 
     remote(dstChainId: number): [PublicKey, number] {
