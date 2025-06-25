@@ -83,10 +83,16 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         assertEq(bControlledContract.data(), dataBefore, "shouldn't be changed until lzReceive packet is verified");
 
         // STEP 2 & 3: Deliver packet to bGov manually.
-        verifyPackets(bEid, addressToBytes32(address(bGov)));
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
 
         // Asserting that the data variable has updated in the receiving OApp.
         assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
+
+        // Asserting that the origin caller and eid are reset after governed contract execution.
+        (uint32 originEid, bytes32 originCaller) = aGov.messageOrigin();
+
+        assertEq(originEid, 0);
+        assertEq(originCaller, bytes32(0));
     }
 
     function test_send_with_governed_contract_revert() public {
@@ -124,6 +130,9 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     }
 
     function test_send_with_allowlist() public {
+        assertEq(aGov.allowlistEnabled(), false);
+        assertEq(aGov.allowlist(address(this)), false);
+
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
         MockSpell spell = new MockSpell(bControlledContract);
@@ -138,19 +147,26 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
 
         aGov.enableAllowlist();
+        assertEq(aGov.allowlistEnabled(), true);
         vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
 
         aGov.disableAllowlist();
+        assertEq(aGov.allowlistEnabled(), false);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
 
         aGov.enableAllowlist();
         aGov.addToAllowlist(address(this));
+        assertEq(aGov.allowlistEnabled(), true);
+        assertEq(aGov.allowlist(address(this)), true);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
 
         aGov.removeFromAllowlist(address(this));
+        assertEq(aGov.allowlist(address(this)), false);
         vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        assertEq(aGov.allowlistEnabled(), true);
     }
 
     function test_allowlist_management() public {
@@ -167,6 +183,20 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
         vm.prank(NOT_OWNER);
         aGov.disableAllowlist();
+
+        vm.prank(NOT_OWNER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
+        aGov.addToAllowlist(address(0x123));
+
+        vm.prank(NOT_OWNER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
+        aGov.removeFromAllowlist(address(0x123));
+
+        aGov.addToAllowlist(address(0x123));
+        assertEq(aGov.allowlist(address(0x123)), true);
+
+        aGov.removeFromAllowlist(address(0x123));
+        assertEq(aGov.allowlist(address(0x123)), false);
     }
 
     function test_reentrancy_lz_receive() public {
@@ -240,7 +270,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         assertEq(bControlledContract.data(), dataBefore, "shouldn't be changed until lzReceive packet is verified");
 
         // STEP 2 & 3: Deliver packet to bGov manually.
-        verifyPackets(bEid, addressToBytes32(address(bGov)));
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
 
         // Asserting that the data variable has updated in the receiving OApp.
         assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
@@ -251,7 +281,6 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         MockSpell spell = new MockSpell(bControlledContract);
 
-        bytes32 originCaller = addressToBytes32(address(this));
         bytes32 originCallerWithGarbage = bytes32(abi.encodePacked(bytes12(type(uint96).max), address(this)));
         
         GovernanceMessageEVMCodec.GovernanceMessage memory messageWithGarbage = GovernanceMessageEVMCodec.GovernanceMessage({
@@ -269,7 +298,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
             dstEid: bEid,
-            originCaller: originCaller,
+            originCaller: bytes32(abi.encodePacked(bytes12(0), address(this))),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
@@ -294,7 +323,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
 
-        verifyPackets(bEid, addressToBytes32(address(bGov)));
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
 
         assertEq(address(fundsReceiver).balance, 1e10);
     }

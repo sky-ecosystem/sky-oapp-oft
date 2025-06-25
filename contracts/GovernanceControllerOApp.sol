@@ -55,6 +55,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         return _sendEVMAction(_message, _extraOptions, _fee, _refundAddress);
     }
 
+    // @dev This method disregards the allowlist check.
     function quoteEVMAction(
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         bytes calldata _extraOptions,
@@ -75,6 +76,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         return _sendRawBytesAction(_message, _extraOptions, _fee, _refundAddress);
     }
 
+    // @dev This method disregards the allowlist check.
     function quoteRawBytesAction(
         bytes calldata _message,
         bytes calldata _extraOptions,

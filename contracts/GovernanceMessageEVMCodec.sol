@@ -29,15 +29,10 @@ library GovernanceMessageEVMCodec {
 
     error InvalidAction(uint8 action);
     error InvalidMessageLength();
-    error PayloadTooLong(uint256 length);
 
     function encode(GovernanceMessage memory _message) internal pure returns (bytes memory encoded) {
         if (_message.action != uint8(GovernanceAction.EVM_CALL)) {
             revert InvalidAction(_message.action);
-        }
-
-        if (_message.callData.length > type(uint16).max) {
-            revert PayloadTooLong(_message.callData.length);
         }
 
         return abi.encodePacked(

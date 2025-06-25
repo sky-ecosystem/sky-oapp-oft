@@ -52,7 +52,7 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function test_invalid_action() public {
+    function test_invalid_action_encoding() public {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.UNDEFINED),
             dstEid: 1,
@@ -65,8 +65,17 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
         GovernanceMessageEVMCodec.encode(message);
     }
 
-    /// forge-config: default.allow_internal_expect_revert = true
-    function test_payload_too_long() public {
+    function test_invalid_action_decoding() public {
+        bytes memory message = new bytes(CALLDATA_OFFSET);
+        message[ACTION_OFFSET] = bytes1(uint8(GovernanceAction.UNDEFINED));
+        vm.expectRevert(abi.encodeWithSelector(GovernanceMessageEVMCodec.InvalidAction.selector, uint8(GovernanceAction.UNDEFINED)));
+        helper.decode(message);
+
+        message[ACTION_OFFSET] = bytes1(uint8(GovernanceAction.EVM_CALL));
+        helper.decode(message);
+    }
+
+    function test_payload_encoding() public {
         bytes memory callData = new bytes(uint32(type(uint16).max) + 1);
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
@@ -76,7 +85,6 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
             callData: callData
         });
 
-        vm.expectRevert(abi.encodeWithSelector(GovernanceMessageEVMCodec.PayloadTooLong.selector, callData.length));
         GovernanceMessageEVMCodec.encode(message);
     }
 
