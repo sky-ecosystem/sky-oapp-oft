@@ -159,7 +159,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
             revert InvalidGovernedContract(message.governedContract);
         }
 
-        if (messageOrigin.eid != 0 || messageOrigin.caller != bytes32(0)) {
+        if (messageOrigin.eid != 0) {
             revert GovernanceReentrantCall();
         }
 
