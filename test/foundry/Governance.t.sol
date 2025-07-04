@@ -6,8 +6,10 @@ import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/I
 import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
-import "forge-std/console.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC20Mock } from "@layerzerolabs/oft-evm/test/mocks/ERC20Mock.sol";
+import { ILayerZeroEndpointV2, Origin } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
 
 import { GovernanceControllerOApp } from "../../contracts/GovernanceControllerOApp.sol";
 import { GovernanceMessageEVMCodec } from "../../contracts/GovernanceMessageEVMCodec.sol";
@@ -16,8 +18,6 @@ import { MockControlledContract } from "../mocks/MockControlledContract.sol";
 import { MockGovernanceRelay } from "../mocks/MockGovernanceRelay.sol";
 import { MockSpell } from "../mocks/MockSpell.sol";
 import { TestHelperOz5WithRevertAssertions } from "./helpers/TestHelperOz5WithRevertAssertions.sol";
-import { ILayerZeroEndpointV2, Origin } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
 import { PacketBytesHelper } from "./helpers/PacketBytesHelper.sol";
 import { MockControlledContractNestedDelivery } from "../mocks/MockControlledContractNestedDelivery.sol";
 import { MockFundsReceiver } from "../mocks/MockFundsReceiver.sol";
@@ -38,6 +38,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     MockControlledContract bControlledContract;
 
     address NOT_OWNER = makeAddr("NOT_OWNER");
+    address THIEF = makeAddr("THIEF");
 
     /// @notice Calls setUp from TestHelper and initializes contract instances for testing.
     function setUp() public virtual override {
@@ -327,7 +328,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         assertEq(address(fundsReceiver).balance, 1e10);
     }
 
-    function test_revert_invalid_governed_contract() public {
+    function test_revert_invalid_governed_contract_endpoint() public {
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
@@ -343,4 +344,53 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodeWithSelector(GovernanceControllerOApp.InvalidGovernedContract.selector, address(endpoints[bEid])), "");
     }
+
+    function test_governed_contract_can_be_zero_address() public {
+        address lzToken = ILayerZeroEndpointV2(endpoints[bEid]).lzToken();
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(lzToken),
+            callData: ""
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
+    }
+
+    function test_revert_invalid_governed_contract_lz_token() public {
+        ILayerZeroEndpointV2 endpoint = ILayerZeroEndpointV2(endpoints[bEid]);
+
+        ERC20Mock lzTokenMock = new ERC20Mock("ZRO", "ZRO");
+        lzTokenMock.mint(address(this), 10 ether);
+
+        endpoint.setLzToken(address(lzTokenMock));
+        assertEq(endpoint.lzToken(), address(lzTokenMock));
+
+        lzTokenMock.approve(address(aGov), 10 ether);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(lzTokenMock),
+            callData: abi.encodeWithSelector(lzTokenMock.transferFrom.selector, address(this), THIEF, 10 ether)
+        });
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodeWithSelector(GovernanceControllerOApp.InvalidGovernedContract.selector, address(lzTokenMock)), "");
+
+        assertEq(lzTokenMock.balanceOf(THIEF), 0);
+    }
+
 }

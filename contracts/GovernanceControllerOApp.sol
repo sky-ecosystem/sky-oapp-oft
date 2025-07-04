@@ -176,7 +176,8 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     ) internal override {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.decode(payload);
 
-        if (message.governedContract == address(endpoint)) {
+        address lzToken = endpoint.lzToken();
+        if (message.governedContract == address(endpoint) || (lzToken != address(0) && message.governedContract == lzToken)) {
             revert InvalidGovernedContract(message.governedContract);
         }
 
