@@ -2,7 +2,6 @@
 pragma solidity ^0.8.22;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { OApp, MessagingFee, Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
@@ -12,7 +11,7 @@ import { GovernanceMessageEVMCodec } from "./GovernanceMessageEVMCodec.sol";
 import { GovernanceMessageGenericCodec } from "./GovernanceMessageGenericCodec.sol";
 import { IGovernanceController, GovernanceOrigin } from "./IGovernanceController.sol";
 
-contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceController, ReentrancyGuard {
+contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceController {
     // @notice Msg types that are used to identify the various OApp operations.
     // @dev This can be extended in child contracts for non-default OApp operations
     // @dev These values are used in things like combineOptions() in OAppOptionsType3.sol.
@@ -24,6 +23,8 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     error GovernanceCallFailed();
     error UnauthorizedOriginCaller();
     error NotAllowlisted();
+    error InvalidGovernedContract(address _governedContract);
+    error GovernanceReentrantCall();
 
     // flag to enable or disable allowlist enforcement; disabled by default
     bool public allowlistEnabled;
@@ -154,6 +155,8 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         MessagingFee calldata _fee,
         address _refundAddress
     ) internal virtual returns (MessagingReceipt memory msgReceipt) {
+        GovernanceMessageGenericCodec.assertValidMessageLength(_message);
+
         if (GovernanceMessageGenericCodec.originCaller(_message) != AddressCast.toBytes32(msg.sender)) {
             revert UnauthorizedOriginCaller();
         }
@@ -170,8 +173,16 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata payload,
         address /*_executor*/,
         bytes calldata /*_extraData*/
-    ) internal override nonReentrant {
+    ) internal override {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.decode(payload);
+
+        if (message.governedContract == address(endpoint)) {
+            revert InvalidGovernedContract(message.governedContract);
+        }
+
+        if (messageOrigin.eid != 0 || messageOrigin.caller != bytes32(0)) {
+            revert GovernanceReentrantCall();
+        }
 
         // @dev This is a temporary variable to store the origin caller and expose it to the governed contract.
         messageOrigin = GovernanceOrigin({ eid: origin.srcEid, caller: message.originCaller });

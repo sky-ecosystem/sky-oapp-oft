@@ -8,7 +8,6 @@ import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contract
 
 import { GovernanceMessageEVMCodec } from "../../contracts/GovernanceMessageEVMCodec.sol";
 import { GovernanceAction } from "../../contracts/IGovernanceController.sol";
-import { MockCodec } from "../mocks/MockCodec.sol";
 import { GovernanceEVMCodecLibraryHelper } from "./helpers/GovernanceEVMCodecLibraryHelper.sol";
 
 contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
@@ -18,7 +17,6 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     uint8 private constant GOVERNED_CONTRACT_OFFSET = ORIGIN_CALLER_OFFSET + 32;
     uint8 private constant CALLDATA_OFFSET = GOVERNED_CONTRACT_OFFSET + 20;
 
-    MockCodec mockCodec = new MockCodec();
     GovernanceEVMCodecLibraryHelper helper = new GovernanceEVMCodecLibraryHelper();
 
     function test_encoding() public {
@@ -37,7 +35,7 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
         bytes memory encoded = GovernanceMessageEVMCodec.encode(message);
         console.logBytes(encoded);
 
-        GovernanceMessageEVMCodec.GovernanceMessage memory decoded = mockCodec.decode(encoded);
+        GovernanceMessageEVMCodec.GovernanceMessage memory decoded = helper.decode(encoded);
         assertEq(decoded.action, message.action);
         assertEq(decoded.dstEid, message.dstEid);
         assertEq(decoded.originCaller, message.originCaller);

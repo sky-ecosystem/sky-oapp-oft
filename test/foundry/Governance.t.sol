@@ -18,7 +18,6 @@ import { MockSpell } from "../mocks/MockSpell.sol";
 import { TestHelperOz5WithRevertAssertions } from "./helpers/TestHelperOz5WithRevertAssertions.sol";
 import { ILayerZeroEndpointV2, Origin } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { PacketBytesHelper } from "./helpers/PacketBytesHelper.sol";
 import { MockControlledContractNestedDelivery } from "../mocks/MockControlledContractNestedDelivery.sol";
 import { MockFundsReceiver } from "../mocks/MockFundsReceiver.sol";
@@ -225,7 +224,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         (bytes32 guidOne, bytes memory messageOne) = new PacketBytesHelper().decodeGuidAndMessage(packetOneBytes);
 
         controllerNestedDelivery.setPacketBytes(packetTwoBytes);
-        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        vm.expectRevert(GovernanceControllerOApp.GovernanceReentrantCall.selector);
         ILayerZeroEndpointV2(endpoints[bEid]).lzReceive(Origin({ srcEid: aEid, sender: addressToBytes32(address(aGov)), nonce: 1 }), address(bGov), guidOne, messageOne, bytes(""));
     }
 
@@ -326,5 +325,22 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
 
         assertEq(address(fundsReceiver).balance, 1e10);
+    }
+
+    function test_revert_invalid_governed_contract() public {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(endpoints[bEid]),
+            callData: ""
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodeWithSelector(GovernanceControllerOApp.InvalidGovernedContract.selector, address(endpoints[bEid])), "");
     }
 }
