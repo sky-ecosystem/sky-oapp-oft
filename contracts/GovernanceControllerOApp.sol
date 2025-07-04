@@ -26,22 +26,16 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     error InvalidGovernedContract(address _governedContract);
     error GovernanceReentrantCall();
 
-    // flag to enable or disable allowlist enforcement; disabled by default
-    bool public allowlistEnabled;
-
     // allowlist of addresses allowed to send messages
     mapping(address => bool) public allowlist;
 
     event AllowlistAdded(address indexed _address);
     event AllowlistRemoved(address indexed _address);
 
-    event AllowlistEnabled();
-    event AllowlistDisabled();
-
     constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
 
     modifier onlyAllowlisted() {
-        if (allowlistEnabled && !allowlist[msg.sender]) revert NotAllowlisted();
+        if (!allowlist[msg.sender]) revert NotAllowlisted();
         _;
     }
 
@@ -106,22 +100,6 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     function removeFromAllowlist(address _address) external onlyOwner {
         allowlist[_address] = false;
         emit AllowlistRemoved(_address);
-    }
-
-    /**
-     * @notice Enable enforcement of the allowlist.
-     */
-    function enableAllowlist() external onlyOwner {
-        allowlistEnabled = true;
-        emit AllowlistEnabled();
-    }
-
-    /**
-     * @notice Disable enforcement of the allowlist.
-     */
-    function disableAllowlist() external onlyOwner {
-        allowlistEnabled = false;
-        emit AllowlistDisabled();
     }
 
     // [---- INTERNAL METHODS ----]

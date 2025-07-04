@@ -56,6 +56,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         aControlledContract = new MockControlledContract(address(aRelay));
         bControlledContract = new MockControlledContract(address(bRelay));
+
+        aGov.addToAllowlist(address(this));
     }
 
     function test_send() public {
@@ -130,7 +132,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     }
 
     function test_send_with_allowlist() public {
-        assertEq(aGov.allowlistEnabled(), false);
+        aGov.removeFromAllowlist(address(this));
         assertEq(aGov.allowlist(address(this)), false);
 
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
@@ -146,18 +148,10 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         });
         MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
 
-        aGov.enableAllowlist();
-        assertEq(aGov.allowlistEnabled(), true);
         vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
 
-        aGov.disableAllowlist();
-        assertEq(aGov.allowlistEnabled(), false);
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
-
-        aGov.enableAllowlist();
         aGov.addToAllowlist(address(this));
-        assertEq(aGov.allowlistEnabled(), true);
         assertEq(aGov.allowlist(address(this)), true);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
 
@@ -165,25 +159,9 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         assertEq(aGov.allowlist(address(this)), false);
         vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
-
-        assertEq(aGov.allowlistEnabled(), true);
     }
 
     function test_allowlist_management() public {
-        aGov.enableAllowlist();
-        assertEq(aGov.allowlistEnabled(), true);
-
-        aGov.disableAllowlist();
-        assertEq(aGov.allowlistEnabled(), false);
-
-        vm.prank(NOT_OWNER);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
-        aGov.enableAllowlist();
-
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
-        vm.prank(NOT_OWNER);
-        aGov.disableAllowlist();
-
         vm.prank(NOT_OWNER);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
         aGov.addToAllowlist(address(0x123));
