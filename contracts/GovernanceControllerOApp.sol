@@ -23,16 +23,34 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     error GovernanceCallFailed();
     error UnauthorizedOriginCaller();
     error NotAllowlisted();
+    error NotWhitelisted();
     error InvalidGovernedContract(address _governedContract);
     error GovernanceReentrantCall();
 
     // allowlist of addresses allowed to send messages
     mapping(address => bool) public allowlist;
 
+    // whitelist of origin callers allowed to call specific governed contracts
+    mapping(uint32 srcEid => mapping(bytes32 originCaller => mapping(address governedContract => bool allowed))) public whitelist;
+
     event AllowlistAdded(address indexed _address);
     event AllowlistRemoved(address indexed _address);
+    event WhitelistUpdated(uint32 indexed srcEid, bytes32 indexed originCaller, address indexed governedContract, bool allowed);
 
-    constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
+    constructor(
+        address _endpoint, 
+        address _delegate, 
+        bool _whitelistInitialPair,
+        uint32 _initialWhitelistedSrcEid,
+        bytes32 _initialWhitelistedOriginCaller,
+        address _initialWhitelistedGovernedContract
+    ) OApp(_endpoint, _delegate) Ownable(_delegate) {
+        if (_whitelistInitialPair) {
+            // Add the initial (pauseProxy, pauseProxy's relay) pair to the whitelist to avoid chicken-and-egg problem
+            whitelist[_initialWhitelistedSrcEid][_initialWhitelistedOriginCaller][_initialWhitelistedGovernedContract] = true;
+            emit WhitelistUpdated(_initialWhitelistedSrcEid, _initialWhitelistedOriginCaller, _initialWhitelistedGovernedContract, true);
+        }
+    }
 
     modifier onlyAllowlisted() {
         if (!allowlist[msg.sender]) revert NotAllowlisted();
@@ -102,6 +120,50 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         emit AllowlistRemoved(_address);
     }
 
+    // [---- WHITELIST MANAGEMENT ----]
+    /**
+     * @notice Updates the whitelist for a specific (srcEid, originCaller, governedContract) combination.
+     * @param _srcEid The source endpoint ID.
+     * @param _originCaller The origin caller address (as bytes32).
+     * @param _governedContract The governed contract address.
+     * @param _allowed Whether the combination is allowed.
+     */
+    function updateWhitelist(
+        uint32 _srcEid,
+        bytes32 _originCaller,
+        address _governedContract,
+        bool _allowed
+    ) external onlyOwner {
+        whitelist[_srcEid][_originCaller][_governedContract] = _allowed;
+        emit WhitelistUpdated(_srcEid, _originCaller, _governedContract, _allowed);
+    }
+
+    /**
+     * @notice Batch updates the whitelist for multiple combinations.
+     * @param _srcEids Array of source endpoint IDs.
+     * @param _originCallers Array of origin caller addresses (as bytes32).
+     * @param _governedContracts Array of governed contract addresses.
+     * @param _allowed Array of allowed status for each combination.
+     */
+    function batchUpdateWhitelist(
+        uint32[] calldata _srcEids,
+        bytes32[] calldata _originCallers,
+        address[] calldata _governedContracts,
+        bool[] calldata _allowed
+    ) external onlyOwner {
+        require(
+            _srcEids.length == _originCallers.length &&
+            _originCallers.length == _governedContracts.length &&
+            _governedContracts.length == _allowed.length,
+            "Array lengths must match"
+        );
+
+        for (uint256 i = 0; i < _srcEids.length; i++) {
+            whitelist[_srcEids[i]][_originCallers[i]][_governedContracts[i]] = _allowed[i];
+            emit WhitelistUpdated(_srcEids[i], _originCallers[i], _governedContracts[i], _allowed[i]);
+        }
+    }
+
     // [---- INTERNAL METHODS ----]
 
     function _sendEVMAction(
@@ -157,6 +219,10 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         address lzToken = endpoint.lzToken();
         if (message.governedContract == address(endpoint) || (lzToken != address(0) && message.governedContract == lzToken)) {
             revert InvalidGovernedContract(message.governedContract);
+        }
+
+        if (!whitelist[origin.srcEid][message.originCaller][message.governedContract]) {
+            revert NotWhitelisted();
         }
 
         if (messageOrigin.eid != 0) {

@@ -6,11 +6,11 @@ library GovernanceMessageGenericCodec {
     uint8 private constant DST_EID_OFFSET = ACTION_OFFSET + 1;
     uint8 private constant ORIGIN_CALLER_OFFSET = DST_EID_OFFSET + 4;
 
-    error InvalidMessageLength();
+    error InvalidGenericMessageLength();
 
     function assertValidMessageLength(bytes calldata _msg) internal pure {
         if (_msg.length < ORIGIN_CALLER_OFFSET + 32) {
-            revert InvalidMessageLength();
+            revert InvalidGenericMessageLength();
         }
     }
 

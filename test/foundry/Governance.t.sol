@@ -47,9 +47,27 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         // Setup function to initialize 2 Mock Endpoints with Mock MessageLib.
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
-        address[] memory sender = setupOApps(type(GovernanceControllerOApp).creationCode, 1, 2);
-        aGov = GovernanceControllerOApp(payable(sender[0]));
-        bGov = GovernanceControllerOApp(payable(sender[1]));
+        aGov = new GovernanceControllerOApp(
+            endpoints[aEid],
+            address(this), // delegate/owner
+            false, // whitelistInitialPair
+            0, // initialWhitelistedSrcEid
+            bytes32(0), // initialWhitelistedOriginCaller
+            address(0) // initialWhitelistedGovernedContract
+        );
+
+        bGov = new GovernanceControllerOApp(
+            endpoints[bEid],
+            address(this), // delegate/owner
+            false, // whitelistInitialPair
+            0, // initialWhitelistedSrcEid
+            bytes32(0), // initialWhitelistedOriginCaller
+            address(0) // initialWhitelistedGovernedContract
+        );
+
+        // Setup peers
+        aGov.setPeer(bEid, addressToBytes32(address(bGov)));
+        bGov.setPeer(aEid, addressToBytes32(address(aGov)));
 
         aRelay = new MockGovernanceRelay(aGov, addressToBytes32(address(this)), bEid);
         bRelay = new MockGovernanceRelay(bGov, addressToBytes32(address(this)), aEid);
@@ -58,6 +76,10 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         bControlledContract = new MockControlledContract(address(bRelay));
 
         aGov.addToAllowlist(address(this));
+
+        // Add necessary whitelist entries for the tests to pass
+        aGov.updateWhitelist(bEid, addressToBytes32(address(this)), address(aRelay), true);
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), true);
     }
 
     function test_send() public {
@@ -177,10 +199,118 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         assertEq(aGov.allowlist(address(0x123)), false);
     }
 
+    function test_whitelist_management() public {
+        uint32 srcEid = 123;
+        bytes32 originCaller = bytes32(uint256(uint160(address(0x456))));
+        address governedContract = address(0x789);
+
+        // Test unauthorized access
+        vm.prank(NOT_OWNER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
+        aGov.updateWhitelist(srcEid, originCaller, governedContract, true);
+
+        // Test initial state
+        assertEq(aGov.whitelist(srcEid, originCaller, governedContract), false);
+
+        // Test adding to whitelist
+        aGov.updateWhitelist(srcEid, originCaller, governedContract, true);
+        assertEq(aGov.whitelist(srcEid, originCaller, governedContract), true);
+
+        // Test removing from whitelist
+        aGov.updateWhitelist(srcEid, originCaller, governedContract, false);
+        assertEq(aGov.whitelist(srcEid, originCaller, governedContract), false);
+    }
+
+    function test_batch_whitelist_management() public {
+        uint32[] memory srcEids = new uint32[](2);
+        bytes32[] memory originCallers = new bytes32[](2);
+        address[] memory governedContracts = new address[](2);
+        bool[] memory allowed = new bool[](2);
+
+        srcEids[0] = 123;
+        srcEids[1] = 124;
+        originCallers[0] = bytes32(uint256(uint160(address(0x456))));
+        originCallers[1] = bytes32(uint256(uint160(address(0x457))));
+        governedContracts[0] = address(0x789);
+        governedContracts[1] = address(0x790);
+        allowed[0] = true;
+        allowed[1] = false;
+
+        // Test unauthorized access
+        vm.prank(NOT_OWNER);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
+        aGov.batchUpdateWhitelist(srcEids, originCallers, governedContracts, allowed);
+
+        // Test batch update
+        aGov.batchUpdateWhitelist(srcEids, originCallers, governedContracts, allowed);
+        assertEq(aGov.whitelist(srcEids[0], originCallers[0], governedContracts[0]), true);
+        assertEq(aGov.whitelist(srcEids[1], originCallers[1], governedContracts[1]), false);
+
+        // Test array length mismatch
+        uint32[] memory invalidSrcEids = new uint32[](1);
+        invalidSrcEids[0] = 123;
+        vm.expectRevert("Array lengths must match");
+        aGov.batchUpdateWhitelist(invalidSrcEids, originCallers, governedContracts, allowed);
+    }
+
+    function test_whitelist_enforcement() public {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
+
+        MockSpell spell = new MockSpell(bControlledContract);
+
+        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
+            action: uint8(GovernanceAction.EVM_CALL),
+            dstEid: bEid,
+            originCaller: addressToBytes32(address(this)),
+            governedContract: address(bRelay),
+            callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
+        });
+        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+
+        // Remove from whitelist
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), false);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        // Should fail due to whitelist check
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(GovernanceControllerOApp.NotWhitelisted.selector), "");
+
+        // Add back to whitelist
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), true);
+
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+
+        // Should succeed now
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
+        assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
+    }
+
+    function test_constructor_initializes_whitelist() public {
+        // Test that the constructor properly initializes the whitelist
+        bytes32 pauseProxy = addressToBytes32(address(this));
+        uint32 initialSrcEid = 999;
+        address delegate = address(0x123);
+
+        GovernanceControllerOApp testGov = new GovernanceControllerOApp(
+            endpoints[aEid],
+            delegate,
+            true, // whitelistInitialPair
+            initialSrcEid, // initialWhitelistedSrcEid
+            pauseProxy, // initialWhitelistedOriginCaller
+            address(0x123) // initialWhitelistedGovernedContract
+        );
+
+        // Check that the initial whitelist entry was created
+        assertEq(testGov.whitelist(initialSrcEid, pauseProxy, delegate), true);
+    }
+
     function test_reentrancy_lz_receive() public {
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
         MockControlledContractNestedDelivery controllerNestedDelivery = new MockControlledContractNestedDelivery(aGov, bGov, address(this));
+
+        // Add whitelist entry for the nested delivery contract
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(controllerNestedDelivery), true);
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
@@ -286,6 +416,9 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     function test_send_no_calldata_just_value() public {
         MockFundsReceiver fundsReceiver = new MockFundsReceiver();
 
+        // // Add whitelist entry for the funds receiver
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(fundsReceiver), true);
+
         assertEq(address(fundsReceiver).balance, 0);
 
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 1e10);
@@ -309,6 +442,9 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     function test_revert_invalid_governed_contract_endpoint() public {
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
+        // Add whitelist entry for the endpoint (though it should still revert)
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(endpoints[bEid]), true);
+
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
             dstEid: bEid,
@@ -325,6 +461,9 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
     function test_governed_contract_can_be_zero_address() public {
         address lzToken = ILayerZeroEndpointV2(endpoints[bEid]).lzToken();
+
+        // Add whitelist entry for the lzToken
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(lzToken), true);
 
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
@@ -352,6 +491,9 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         assertEq(endpoint.lzToken(), address(lzTokenMock));
 
         lzTokenMock.approve(address(aGov), 10 ether);
+
+        // Add whitelist entry for the lzToken (though it should still revert)
+        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(lzTokenMock), true);
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),

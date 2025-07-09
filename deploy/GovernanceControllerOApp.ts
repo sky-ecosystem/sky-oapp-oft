@@ -37,7 +37,11 @@ const deploy: DeployFunction = async (hre) => {
         from: deployer,
         args: [
             endpointV2Deployment.address, // LayerZero's EndpointV2 address
-            deployer, // owner
+            deployer, // owner & delegate
+            false, // whitelistInitialPair
+            0, // initialWhitelistedSrcEid
+            "0x0000000000000000000000000000000000000000000000000000000000000000", // initialWhitelistedOriginCaller
+            "0x0000000000000000000000000000000000000000" // initialWhitelistedGovernedContract
         ],
         log: true,
         skipIfAlreadyDeployed: false,

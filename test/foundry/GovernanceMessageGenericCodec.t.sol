@@ -19,7 +19,7 @@ contract GovernanceMessageGenericCodecTest is Test {
         helper.assertValidMessageLength(message);
 
         bytes memory messageTooShort = hex"020000000100000000000000000000000000000000000000000000000000000000000000";
-        vm.expectRevert(abi.encodeWithSelector(GovernanceMessageGenericCodec.InvalidMessageLength.selector));
+        vm.expectRevert(abi.encodeWithSelector(GovernanceMessageGenericCodec.InvalidGenericMessageLength.selector));
         helper.assertValidMessageLength(messageTooShort);
     }
 }
