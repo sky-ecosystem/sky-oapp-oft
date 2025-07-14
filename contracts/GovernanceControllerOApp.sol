@@ -207,6 +207,27 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         msgReceipt = _lzSend(dstEid, _message, options, _fee, _refundAddress);
     }
 
+    // ──────────────────────────────────────────────────────────────────────────────
+    // Receive business logic
+    //
+    // Override _lzReceive to decode the incoming bytes
+    // The base OAppReceiver.lzReceive ensures:
+    //   • Only the LayerZero Endpoint can call this method
+    //   • The sender is a registered peer (peers[srcEid] == origin.sender)
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    /// @notice Invoked when EndpointV2.lzReceive is called
+    /// @notice Can be called by anyone with any msg.value
+    /// message needs to be verified first by the Security Stack
+    /// msg.value (if used) should be validated by the governed contract
+    /// 
+    /// @notice this function is retryable but not replayable
+    ///
+    /// @dev   origin     Metadata (source chain, sender address, nonce)
+    /// @dev   _guid      Global unique ID for tracking this message
+    /// @param payload    Encoded bytes of GovernanceMessage
+    /// @dev   _executor  Executor address that delivered the message
+    /// @dev   _extraData Additional data from the Executor (unused here)
     function _lzReceive(
         Origin calldata origin,
         bytes32 /*_guid*/,
@@ -232,6 +253,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         // @dev This is a temporary variable to store the origin caller and expose it to the governed contract.
         messageOrigin = GovernanceOrigin({ eid: origin.srcEid, caller: message.originCaller });
 
+        // @dev Governed contract SHOULD validate the msg.value if its used
         (bool success, bytes memory returnData) = message.governedContract.call{ value: msg.value }(message.callData);
         if (!success) {
             if (returnData.length == 0) revert GovernanceCallFailed();
