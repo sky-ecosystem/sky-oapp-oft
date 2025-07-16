@@ -18,6 +18,7 @@ import { MockControlledContract } from "../mocks/MockControlledContract.sol";
 import { MockGovernanceRelay } from "../mocks/MockGovernanceRelay.sol";
 import { MockSpell } from "../mocks/MockSpell.sol";
 import { TestHelperOz5WithRevertAssertions } from "./helpers/TestHelperOz5WithRevertAssertions.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { PacketBytesHelper } from "./helpers/PacketBytesHelper.sol";
 import { MockControlledContractNestedDelivery } from "../mocks/MockControlledContractNestedDelivery.sol";
 import { MockFundsReceiver } from "../mocks/MockFundsReceiver.sol";
@@ -333,7 +334,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         (bytes32 guidOne, bytes memory messageOne) = new PacketBytesHelper().decodeGuidAndMessage(packetOneBytes);
 
         controllerNestedDelivery.setPacketBytes(packetTwoBytes);
-        vm.expectRevert(GovernanceControllerOApp.GovernanceReentrantCall.selector);
+        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
         ILayerZeroEndpointV2(endpoints[bEid]).lzReceive(Origin({ srcEid: aEid, sender: addressToBytes32(address(aGov)), nonce: 1 }), address(bGov), guidOne, messageOne, bytes(""));
     }
 
@@ -416,7 +417,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     function test_send_no_calldata_just_value() public {
         MockFundsReceiver fundsReceiver = new MockFundsReceiver();
 
-        // // Add whitelist entry for the funds receiver
+        // Add whitelist entry for the funds receiver
         bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(fundsReceiver), true);
 
         assertEq(address(fundsReceiver).balance, 0);
