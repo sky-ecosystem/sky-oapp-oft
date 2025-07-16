@@ -26,6 +26,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
     error NotAllowlisted();
     error NotWhitelisted();
     error InvalidGovernedContract(address _governedContract);
+    error InvalidWhitelistArrayLengths();
 
     // allowlist of addresses allowed to send messages
     mapping(address => bool) public allowlist;
@@ -46,7 +47,8 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         address _initialWhitelistedGovernedContract
     ) OApp(_endpoint, _delegate) Ownable(_delegate) {
         if (_whitelistInitialPair) {
-            // Add the initial (pauseProxy, pauseProxy's relay) pair to the whitelist to avoid chicken-and-egg problem
+            // @dev (Optional) Add the initial pair to the whitelist to avoid chicken-and-egg problem
+            // if the governance self-governs itself via governance messages
             whitelist[_initialWhitelistedSrcEid][_initialWhitelistedOriginCaller][_initialWhitelistedGovernedContract] = true;
             emit WhitelistUpdated(_initialWhitelistedSrcEid, _initialWhitelistedOriginCaller, _initialWhitelistedGovernedContract, true);
         }
@@ -151,12 +153,9 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         address[] calldata _governedContracts,
         bool[] calldata _allowed
     ) external onlyOwner {
-        require(
-            _srcEids.length == _originCallers.length &&
-            _originCallers.length == _governedContracts.length &&
-            _governedContracts.length == _allowed.length,
-            "Array lengths must match"
-        );
+        if (_srcEids.length != _originCallers.length || _originCallers.length != _governedContracts.length || _governedContracts.length != _allowed.length) {
+            revert InvalidWhitelistArrayLengths();
+        }
 
         for (uint256 i = 0; i < _srcEids.length; i++) {
             whitelist[_srcEids[i]][_originCallers[i]][_governedContracts[i]] = _allowed[i];

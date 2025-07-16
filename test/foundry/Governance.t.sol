@@ -250,8 +250,26 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         // Test array length mismatch
         uint32[] memory invalidSrcEids = new uint32[](1);
         invalidSrcEids[0] = 123;
-        vm.expectRevert("Array lengths must match");
+        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
         aGov.batchUpdateWhitelist(invalidSrcEids, originCallers, governedContracts, allowed);
+
+        // Test array length mismatch
+        bytes32[] memory invalidOriginCallers = new bytes32[](1);
+        invalidOriginCallers[0] = bytes32(uint256(uint160(address(0x456))));
+        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
+        aGov.batchUpdateWhitelist(srcEids, invalidOriginCallers, governedContracts, allowed);
+
+        // Test array length mismatch
+        address[] memory invalidGovernedContracts = new address[](1);
+        invalidGovernedContracts[0] = address(0x789);
+        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
+        aGov.batchUpdateWhitelist(srcEids, originCallers, invalidGovernedContracts, allowed);
+
+        // Test array length mismatch
+        bool[] memory invalidAllowed = new bool[](1);
+        invalidAllowed[0] = true;
+        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
+        aGov.batchUpdateWhitelist(srcEids, originCallers, governedContracts, invalidAllowed);
     }
 
     function test_whitelist_enforcement() public {
