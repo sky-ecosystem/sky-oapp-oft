@@ -53,7 +53,7 @@ impl<'info> LzReceive<'info> {
             &[ctx.accounts.governance.bump],
         ];
 
-        // the first 9 accounts are for clear()
+        // the first 8 accounts are for clear()
         let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];
         let _ = oapp::endpoint_cpi::clear(
             ENDPOINT_ID,

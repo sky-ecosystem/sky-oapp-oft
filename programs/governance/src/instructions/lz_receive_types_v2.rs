@@ -44,7 +44,7 @@ impl LzReceiveTypesV2<'_> {
 
         let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes(), &governance_message.origin_caller], ctx.program_id);
 
-        // accounts 0..4 (first 5 accounts)
+        // accounts indexes 0 to 4 inclusive (first 5 accounts)
         let mut accounts = vec![
             // payer
             AccountMetaRef {
@@ -73,7 +73,7 @@ impl LzReceiveTypesV2<'_> {
             },
         ];
 
-        // accounts 5..12 (8 accounts, last one #13)
+        // accounts indexes 5 to 12 inclusive (8 accounts, last one #13)
         // Add accounts required for LayerZero's Endpoint clear operation
         // These accounts handle the core message verification and processing
         let accounts_for_clear: Vec<AccountMetaRef> = get_accounts_for_clear(
@@ -85,7 +85,7 @@ impl LzReceiveTypesV2<'_> {
         );
         accounts.extend(accounts_for_clear);
 
-        // accounts 13..
+        // accounts indexes starting from 13
         // Governance message instruction accounts
         accounts.extend(
             governance_message
