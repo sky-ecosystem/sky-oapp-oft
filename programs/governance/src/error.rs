@@ -13,6 +13,8 @@ pub enum GovernanceError {
     InvalidGovernanceMessage,
     #[msg("InvalidGovernanceAction")]
     InvalidGovernanceAction,
+    #[msg("GovernedProgramIdMismatch")]
+    GovernedProgramIdMismatch,
     #[msg("Unauthorized")]
     Unauthorized,
 }

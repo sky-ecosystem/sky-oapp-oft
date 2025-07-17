@@ -9,6 +9,7 @@ import { publicKey } from '@metaplex-foundation/umi'
 import { simulateTransaction } from './utils'
 
 interface Args {
+    debug: boolean
     srcTxHash: string
 }
 
@@ -16,7 +17,8 @@ const EXECUTOR_PROGRAM_ID = '6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn'
 
 task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 lzReceive instruction')
     .addParam('srcTxHash', 'The source transaction hash', undefined, hardhatTypes.string)
-    .setAction(async ({ srcTxHash, }: Args) => {
+    .addOptionalParam('debug', '', false, hardhatTypes.boolean)
+    .setAction(async ({ debug, srcTxHash, }: Args) => {
         if (!process.env.SOLANA_PRIVATE_KEY) {
             throw new Error('SOLANA_PRIVATE_KEY is not defined in the environment variables.')
         }
@@ -83,6 +85,10 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
             addressLookupTables: lzReceiveExecutionPlan.addressLookupTables,
         })
         const signedTransaction = await umiWalletSigner.signTransaction(transaction)
+
+        if (debug) {
+            console.log('serializedMessage', base58.deserialize(signedTransaction.serializedMessage)[0])
+        }
 
         const simulation = await simulateTransaction(umi, signedTransaction, connection, { verifySignatures: true })
         console.log('simulation', simulation)

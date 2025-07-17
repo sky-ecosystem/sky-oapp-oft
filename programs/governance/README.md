@@ -41,14 +41,22 @@ pnpm generate:governance
 
 Double check generated file: `src/generated/governance/index.ts` - variable `PROGRAM_ADDRESS` - make sure it matches Governance Program ID.
 
-Deploy EVM side:
+Deploy EVM side, prepare .env variables first (change to your preferred values):
+```
+EVM_WHITELIST_INITIAL_PAIR=false
+EVM_INITIAL_WHITELISTED_SRC_EID=0
+EVM_INITIAL_WHITELISTED_ORIGIN_CALLER=0x0000000000000000000000000000000000000000000000000000000000000000
+EVM_INITIAL_WHITELISTED_GOVERNED_CONTRACT=0x0000000000000000000000000000000000000000
+```
+
+Run the actual command:
 ```
 pnpm hardhat lz:deploy
 
 ✔ Which deploy script tags would you like to use? … GovernanceControllerOApp
 ```
 
-Take the deployed EVM address and put it as `GOVERNANCE_CONTROLLER_ADDRESS` in .env. Also update `scripts/configGov.ts` - `remotePeers` and in `programs/governance/tests/msg_codec.rs` update: `FUJI_PEER_ADDRESS`.
+Take the deployed EVM address and put it as `GOVERNANCE_CONTROLLER_ADDRESS` in .env. Also update `programs/governance/tests/msg_codec.rs`: `FUJI_PEER_ADDRESS`.
 
 Verify EVM contract, eg. using:
 ```
@@ -78,8 +86,8 @@ This is definitely not required if you didn't modify Governance program source c
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/3mdQZ4KLLRo5YzsnRseZsMfQcZB56AjkhDxgHwhKZXRTDjZZtE8NrHwjsHzi8gX2ZyFm4kqgvtAWpjJKzWf6a1mK?cluster=devnet)
-2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2akuXRgaFyJHZAsZTejimaRJpjyncSNmWjEt1qVeEjgSNs6aRdczv2JvfHEsR9t5gURj7czEjHhJhNvm87W2mC2s?cluster=devnet)
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/2ANEd8VWqqCe3jm4KWGNFUY93Q8JeNTCcS2E4PY6DBjtQgXJQ5MFLACX115vz1iKP7ePikhugbbfYQJyKTmFTuWp?cluster=devnet)
+2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2B8hxAJkc2fRP4ckZVNw8Uz4FyaDqk9ZDd3sShy8AwJ4ZHtoMmjPCHMSbiAcVDgpe2fmePDBuiLcwLVAn2zxZUBm?cluster=devnet)
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet)
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet)
 5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet)

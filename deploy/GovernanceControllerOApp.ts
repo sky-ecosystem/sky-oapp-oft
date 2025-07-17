@@ -33,21 +33,39 @@ const deploy: DeployFunction = async (hre) => {
     // }
     const endpointV2Deployment = await hre.deployments.get('EndpointV2')
 
+    const whitelistInitialPair = readEnv('EVM_WHITELIST_INITIAL_PAIR') === 'true'
+    const initialWhitelistedSrcEid = readEnv('EVM_INITIAL_WHITELISTED_SRC_EID')
+    const initialWhitelistedOriginCaller = readEnv('EVM_INITIAL_WHITELISTED_ORIGIN_CALLER')
+    const initialWhitelistedGovernedContract = readEnv('EVM_INITIAL_WHITELISTED_GOVERNED_CONTRACT')
+
+    console.log(`Whitelist initial pair: ${whitelistInitialPair}`)
+    console.log(`Initial whitelisted src EID: ${initialWhitelistedSrcEid}`)
+    console.log(`Initial whitelisted origin caller: ${initialWhitelistedOriginCaller}`)
+    console.log(`Initial whitelisted governed contract: ${initialWhitelistedGovernedContract}`)
+
     const { address } = await deploy(contractName, {
         from: deployer,
         args: [
             endpointV2Deployment.address, // LayerZero's EndpointV2 address
             deployer, // owner & delegate
-            false, // whitelistInitialPair
-            0, // initialWhitelistedSrcEid
-            "0x0000000000000000000000000000000000000000000000000000000000000000", // initialWhitelistedOriginCaller
-            "0x0000000000000000000000000000000000000000" // initialWhitelistedGovernedContract
+            whitelistInitialPair, // whitelistInitialPair
+            initialWhitelistedSrcEid, // initialWhitelistedSrcEid
+            initialWhitelistedOriginCaller, // initialWhitelistedOriginCaller
+            initialWhitelistedGovernedContract // initialWhitelistedGovernedContract
         ],
         log: true,
         skipIfAlreadyDeployed: false,
     })
 
     console.log(`Deployed contract: ${contractName}, network: ${hre.network.name}, address: ${address}`)
+}
+
+function readEnv(name: string) {
+    const value = process.env[name]
+    if (!value) {
+        throw new Error(`Environment variable ${name} is not set`)
+    }
+    return value
 }
 
 deploy.tags = [contractName]
