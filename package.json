@@ -64,7 +64,7 @@
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "@openzeppelin/contracts": "^5.0.2",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@rushstack/eslint-patch": "^1.7.0",
     "@solana-developers/helpers": "~2.4.0",
     "@solana/spl-token": "^0.4.8",
