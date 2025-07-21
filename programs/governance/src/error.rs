@@ -7,8 +7,6 @@ pub enum GovernanceError {
     CpiAuthorityDataNotEmpty,
     #[msg("CpiAuthorityOwnerNotSystemProgram")]
     CpiAuthorityOwnerNotSystemProgram,
-    #[msg("InvalidGovernanceChain")]
-    InvalidGovernanceChain,
     #[msg("InvalidGovernanceMessage")]
     InvalidGovernanceMessage,
     #[msg("InvalidGovernanceAction")]
