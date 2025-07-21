@@ -12,9 +12,7 @@ import { GovernanceEVMCodecLibraryHelper } from "./helpers/GovernanceEVMCodecLib
 
 contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     uint8 private constant ACTION_OFFSET = 0;
-    uint8 private constant DST_EID_OFFSET = ACTION_OFFSET + 1;
-    uint8 private constant ORIGIN_CALLER_OFFSET = DST_EID_OFFSET + 4;
-    uint8 private constant GOVERNED_CONTRACT_OFFSET = ORIGIN_CALLER_OFFSET + 32;
+    uint8 private constant GOVERNED_CONTRACT_OFFSET = ACTION_OFFSET + 1;
     uint8 private constant CALLDATA_OFFSET = GOVERNED_CONTRACT_OFFSET + 20;
 
     GovernanceEVMCodecLibraryHelper helper = new GovernanceEVMCodecLibraryHelper();
@@ -22,12 +20,9 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     function test_encoding() public {
         address mintReceiver = makeAddr("mintReceiver");
         address governedContract = makeAddr("governedContract");
-        address originCaller = makeAddr("originCaller");
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: 1,
-            originCaller: addressToBytes32(originCaller),
             governedContract: governedContract,
             callData: abi.encodeWithSelector(ERC20Mock.mint.selector, mintReceiver, 100)
         });
@@ -37,14 +32,10 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory decoded = helper.decode(encoded);
         assertEq(decoded.action, message.action);
-        assertEq(decoded.dstEid, message.dstEid);
-        assertEq(decoded.originCaller, message.originCaller);
         assertEq(decoded.governedContract, message.governedContract);
         assertEq(decoded.callData, message.callData);
 
         console.log("decoded.action: %s", decoded.action);
-        console.log("decoded.dstEid: %s", decoded.dstEid);
-        console.log("decoded.originCaller: %s", vm.toString(decoded.originCaller));
         console.log("decoded.governedContract: %s", decoded.governedContract);
         console.log("decoded.callData: %s", vm.toString(abi.encode(decoded.callData)));
     }
@@ -53,8 +44,6 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     function test_invalid_action_encoding() public {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.UNDEFINED),
-            dstEid: 1,
-            originCaller: addressToBytes32(makeAddr("originCaller")),
             governedContract: makeAddr("governedContract"),
             callData: abi.encodeWithSelector(ERC20Mock.mint.selector, makeAddr("mintReceiver"), 100)
         });
@@ -77,8 +66,6 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
         bytes memory callData = new bytes(uint32(type(uint16).max) + 1);
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: 1,
-            originCaller: addressToBytes32(makeAddr("originCaller")),
             governedContract: makeAddr("governedContract"),
             callData: callData
         });
