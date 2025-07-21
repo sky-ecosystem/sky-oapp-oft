@@ -29,7 +29,6 @@ mod test_msg_codec {
     const BSC_EID: u32 = 40102;
     const FUJI_PEER_ADDRESS: &str = "0x2A581856Ae0c15daE76A2fb8F0e6399a0e009C66";
     const BSC_PEER_ADDRESS: &str = "0xFcF2F7F9d8dE3cf7C3dec9FcB33BCc88c0B2f8CC";
-    const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
@@ -42,7 +41,6 @@ mod test_msg_codec {
         // Anchor example hello world "Initialize" instruction data that logs "Greetings"
         let data = hex::decode("afaf6d1f0d989bed").unwrap();
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id,
             accounts,
             data,
@@ -61,11 +59,8 @@ mod test_msg_codec {
 
     #[test]
     fn test_governance_message_parse() {
-        let origin_caller_hex = "9876543210000000000000000000000000000000000000000000000001234567";
         let hex_string = format!(
-            "02{:08x}{}0000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
-            40168u32,
-            origin_caller_hex,
+            "020000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
         );
         let h = hex::decode(hex_string).unwrap();
 
@@ -84,9 +79,7 @@ mod test_msg_codec {
             },
         ];
         let data = vec![1, 2, 3, 4, 5];
-        let origin_caller = hex::decode(origin_caller_hex).unwrap().try_into().unwrap();
         let expected = GovernanceMessage {
-            origin_caller,
             program_id: Pubkey::try_from("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap(),
             accounts,
             data,
@@ -95,7 +88,6 @@ mod test_msg_codec {
         assert_eq!(actual, expected);
         let mut serialized = Vec::new();
         actual.encode(&mut serialized).unwrap();
-        assert_eq!(GovernanceMessage::decode_origin_caller(&serialized).unwrap(), origin_caller);
     }
 
     #[test]
@@ -156,7 +148,6 @@ mod test_msg_codec {
         .pack();
 
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: spl_token::id(),
             accounts: accounts.clone(),
             data: instruction_data,
@@ -236,7 +227,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: pubkey!("SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"),
             accounts: accounts.clone(),
             data: hex::decode("c208a15799a419ab").unwrap(),
@@ -258,7 +248,6 @@ mod test_msg_codec {
         let instruction = bpf_loader_upgradeable::upgrade(&oft::id(), &buffer_address, &CPI_AUTHORITY_PLACEHOLDER, &governance_oapp_address);
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: bpf_loader_upgradeable::id(),
             accounts: instruction.accounts.iter().map(|a| Acc {
                 pubkey: a.pubkey,
@@ -281,7 +270,6 @@ mod test_msg_codec {
         let instruction = bpf_loader_upgradeable::set_upgrade_authority(&oft::id(), &CPI_AUTHORITY_PLACEHOLDER, Some(&pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8")));
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: bpf_loader_upgradeable::id(),
             accounts: instruction.accounts.iter().map(|a| Acc {
                 pubkey: a.pubkey,
@@ -332,7 +320,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,
@@ -379,7 +366,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,
@@ -451,7 +437,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,
@@ -495,7 +480,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,
@@ -569,7 +553,6 @@ mod test_msg_codec {
         println!("Peer address: {:?}", peer_address);
 
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,
@@ -697,7 +680,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -819,7 +801,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -947,7 +928,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1031,7 +1011,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1115,7 +1094,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1208,7 +1186,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1302,7 +1279,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1397,7 +1373,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1476,7 +1451,6 @@ mod test_msg_codec {
         println!("Peer address: {:?}", peer_address);
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
             program_id: oft::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1579,7 +1553,6 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: endpoint::id(),
             accounts: accounts,
             data: instruction_data,
@@ -1657,7 +1630,7 @@ mod test_msg_codec {
 
     fn get_cpi_authority() -> Pubkey {
         let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
-            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &FUJI_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
+            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref()],
             &governance::id(),
         );
 

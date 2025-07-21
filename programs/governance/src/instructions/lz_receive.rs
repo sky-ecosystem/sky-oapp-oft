@@ -33,7 +33,7 @@ pub struct LzReceive<'info> {
     pub remote: Account<'info, Remote>,
 
     #[account(
-        seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes(), &params.src_eid.to_be_bytes(), &GovernanceMessage::decode_origin_caller(&params.message).unwrap()],
+        seeds = [CPI_AUTHORITY_SEED, &governance.key().to_bytes()],
         bump
     )]
     pub cpi_authority: AccountInfo<'info>,
@@ -79,7 +79,6 @@ impl<'info> LzReceive<'info> {
             GovernanceError::GovernedProgramIdMismatch
         );
 
-        let origin_caller = governance_message.origin_caller;
         let mut instruction: Instruction = governance_message.into();
 
         let (execution_context_addr, _) = Pubkey::find_program_address(
@@ -106,8 +105,6 @@ impl<'info> LzReceive<'info> {
             &[   
                 CPI_AUTHORITY_SEED,
                 &ctx.accounts.governance.key().to_bytes(),
-                &params.src_eid.to_be_bytes(),
-                &origin_caller,
                 &[ctx.bumps.cpi_authority],
             ]
         ])?;

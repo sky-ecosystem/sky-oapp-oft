@@ -12,10 +12,8 @@ name = "governance"
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-default = ["testnet"]
+default = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
-testnet = []
-mainnet = []
 
 [dependencies]
 anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }

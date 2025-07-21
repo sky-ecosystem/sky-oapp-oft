@@ -42,7 +42,7 @@ impl LzReceiveTypesV2<'_> {
 
         let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
 
-        let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes(), &governance_message.origin_caller], ctx.program_id);
+        let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes()], ctx.program_id);
 
         // accounts indexes 0 to 4 inclusive (first 5 accounts)
         let mut accounts = vec![

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::{error::GovernanceError, SOLANA_CHAIN_ID};
+use crate::error::GovernanceError;
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
@@ -10,8 +10,6 @@ use std::io::{self, Read, Write};
 /// | field           |                     size (bytes) | description                             |
 /// |-----------------+----------------------------------+-----------------------------------------|
 /// | ACTION          |                                1 | Governance action identifier            |
-/// | CHAIN           |                                4 | Chain identifier                        |
-/// | ORIGIN_CALLER   |                               32 | Origin caller address as bytes32        |
 /// |-----------------+----------------------------------+-----------------------------------------|
 /// | program_id      |                               32 | Program ID of the program to be invoked |
 /// | accounts_length |                                2 | Number of accounts                      |
@@ -20,7 +18,6 @@ use std::io::{self, Read, Write};
 ///
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GovernanceMessage {
-    pub origin_caller: [u8; 32],
     pub program_id: Pubkey,
     pub accounts: Vec<Acc>,
     pub data: Vec<u8>,
@@ -42,29 +39,17 @@ impl GovernanceMessage {
             ));
         }
 
-        let chain = Self::read_u32(reader)?;
-        if chain != SOLANA_CHAIN_ID {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                GovernanceError::InvalidGovernanceChain.to_string(),
-            ));
-        }
-
-        let origin_caller = Self::read_bytes32(reader)?;
-
-        Self::read_body(reader, origin_caller)
+        Self::read_body(reader)
     }
 
     /// Encode a full governance message (header + body).
     pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         Self::write_u8(writer, GovernanceAction::SolanaCall as u8)?;
-        Self::write_u32(writer, SOLANA_CHAIN_ID)?;
-        Self::write_bytes32(writer, &self.origin_caller)?;
         self.write_body(writer)
     }
 
     /// Reads ONLY the body of the message, not the header.
-    fn read_body(reader: &mut &[u8], origin_caller: [u8; 32]) -> io::Result<Self> {
+    fn read_body(reader: &mut &[u8]) -> io::Result<Self> {
         let program_id = Self::read_pubkey(reader)?;
         let accounts_len = Self::read_u16(reader)?;
         let mut accounts = Vec::with_capacity(accounts_len as usize);
@@ -81,7 +66,6 @@ impl GovernanceMessage {
         }
 
         Ok(Self {
-            origin_caller,
             program_id,
             accounts,
             data: reader.to_vec(),
@@ -101,20 +85,6 @@ impl GovernanceMessage {
 
         writer.write_all(&self.data)?;
         Ok(())
-    }
-
-    /// Decodes ONLY the origin caller from the message.
-    pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
-        let origin_caller_start = 1 + 4;
-        let origin_caller_end = origin_caller_start + 32;
-
-        if message.len() < origin_caller_end {
-            return Err(error!(GovernanceError::InvalidGovernanceMessage));
-        }
-        
-        let mut origin_caller = [0u8; 32];
-        origin_caller.copy_from_slice(&message[origin_caller_start..origin_caller_end]);
-        Ok(origin_caller)
     }
 
     // Helper methods for reading/writing primitive types
@@ -190,7 +160,6 @@ pub enum GovernanceAction {
 impl From<GovernanceMessage> for Instruction {
     fn from(val: GovernanceMessage) -> Self {
         let GovernanceMessage {
-            origin_caller: _,
             program_id,
             accounts,
             data,
@@ -215,7 +184,6 @@ impl From<Instruction> for GovernanceMessage {
         let accounts: Vec<Acc> = accounts.into_iter().map(|a| a.into()).collect();
 
         GovernanceMessage {
-            origin_caller: [0; 32],
             program_id,
             accounts,
             data,
