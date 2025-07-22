@@ -16,7 +16,7 @@ contract GovernanceMessageGenericCodecTest is Test {
         bytes memory message = abi.encodePacked(uint8(GovernanceAction.SOLANA_CALL), uint32(1), bytes32(0));
         helper.assertValidMessageLength(message);
 
-        bytes memory messageTooShort = hex"02000000";
+        bytes memory messageTooShort = hex"";
         vm.expectRevert(abi.encodeWithSelector(GovernanceMessageGenericCodec.InvalidGenericMessageLength.selector));
         helper.assertValidMessageLength(messageTooShort);
     }

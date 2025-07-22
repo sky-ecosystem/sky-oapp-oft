@@ -8,19 +8,20 @@ import { MessagingReceipt } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSen
 import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
 import { AddressCast } from "@layerzerolabs/lz-evm-protocol-v2/contracts/libs/AddressCast.sol";
 
+import { IGovernanceController } from "./IGovernanceController.sol";
 import { GovernanceMessageEVMCodec } from "./GovernanceMessageEVMCodec.sol";
 import { GovernanceMessageGenericCodec } from "./GovernanceMessageGenericCodec.sol";
 
-contract GovernanceControllerOApp is OApp, OAppOptionsType3, ReentrancyGuard {
+contract GovernanceControllerOApp is OApp, OAppOptionsType3, ReentrancyGuard, IGovernanceController {
     // @notice Msg types that are used to identify the various OApp operations.
     // @dev This can be extended in child contracts for non-default OApp operations
     // @dev These values are used in things like combineOptions() in OAppOptionsType3.sol.
     uint16 public constant SEND = 1;
 
+    address public immutable governedContract;
+
     error GovernanceCallFailed();
     error NotAllowlisted();
-    error InvalidGovernedContract(address _governedContract);
-    error InvalidWhitelistArrayLengths();
 
     // allowlist of addresses allowed to send messages
     mapping(address => bool) public allowlist;
@@ -28,7 +29,9 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, ReentrancyGuard {
     event AllowlistAdded(address indexed _address);
     event AllowlistRemoved(address indexed _address);
 
-    constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) Ownable(_delegate) {}
+    constructor(address _endpoint, address _delegate, address _governedContract) OApp(_endpoint, _delegate) Ownable(_delegate) {
+        governedContract = _governedContract;
+    }
 
     modifier onlyAllowlisted() {
         if (!allowlist[msg.sender]) revert NotAllowlisted();
@@ -168,13 +171,8 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, ReentrancyGuard {
     ) internal override nonReentrant {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.decode(payload);
 
-        address lzToken = endpoint.lzToken();
-        if (message.governedContract == address(endpoint) || (lzToken != address(0) && message.governedContract == lzToken)) {
-            revert InvalidGovernedContract(message.governedContract);
-        }
-
         // @dev Governed contract SHOULD validate the msg.value if its used
-        (bool success, bytes memory returnData) = message.governedContract.call{ value: msg.value }(message.callData);
+        (bool success, bytes memory returnData) = governedContract.call{ value: msg.value }(message.callData);
         if (!success) {
             if (returnData.length == 0) revert GovernanceCallFailed();
             assembly ("memory-safe") {

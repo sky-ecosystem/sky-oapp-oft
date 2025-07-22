@@ -47,25 +47,30 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         // Setup function to initialize 2 Mock Endpoints with Mock MessageLib.
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
+        aRelay = new MockGovernanceRelay(address(0));
+        bRelay = new MockGovernanceRelay(address(0));
+
+        aControlledContract = new MockControlledContract(address(aRelay));
+        bControlledContract = new MockControlledContract(address(bRelay));
+
         aGov = new GovernanceControllerOApp(
             endpoints[aEid],
-            address(this) // delegate/owner
+            address(this), // delegate/owner
+            address(aRelay)
         );
 
         bGov = new GovernanceControllerOApp(
             endpoints[bEid],
-            address(this) // delegate/owner
+            address(this), // delegate/owner
+            address(bRelay)
         );
+
+        aRelay.setMessenger(address(aGov));
+        bRelay.setMessenger(address(bGov));
 
         // Setup peers
         aGov.setPeer(bEid, addressToBytes32(address(bGov)));
         bGov.setPeer(aEid, addressToBytes32(address(aGov)));
-
-        aRelay = new MockGovernanceRelay(address(aGov));
-        bRelay = new MockGovernanceRelay(address(bGov));
-
-        aControlledContract = new MockControlledContract(address(aRelay));
-        bControlledContract = new MockControlledContract(address(bRelay));
 
         aGov.addToAllowlist(address(this));
     }
@@ -81,7 +86,6 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
         MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
@@ -104,7 +108,6 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.revertTest.selector)
         });
         MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
@@ -119,7 +122,6 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.revertTestNoData.selector)
         });
         MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
@@ -139,7 +141,6 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
         MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
@@ -182,7 +183,6 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
         bytes memory messageBytes = GovernanceMessageEVMCodec.encode(message);
@@ -199,85 +199,4 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         // Asserting that the data variable has updated in the receiving OApp.
         assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
     }
-
-    function test_send_no_calldata_just_value() public {
-        MockFundsReceiver fundsReceiver = new MockFundsReceiver();
-
-        assertEq(address(fundsReceiver).balance, 0);
-
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 1e10);
-
-        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
-            action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(fundsReceiver),
-            callData: ""
-        });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
-
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
-
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
-
-        assertEq(address(fundsReceiver).balance, 1e10);
-    }
-
-    function test_revert_invalid_governed_contract_endpoint() public {
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
-
-        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
-            action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(endpoints[bEid]),
-            callData: ""
-        });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
-
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
-
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodeWithSelector(GovernanceControllerOApp.InvalidGovernedContract.selector, address(endpoints[bEid])), "");
-    }
-
-    function test_governed_contract_can_be_zero_address() public {
-        address lzToken = ILayerZeroEndpointV2(endpoints[bEid]).lzToken();
-
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
-
-        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
-            action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(lzToken),
-            callData: ""
-        });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
-
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
-
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
-    }
-
-    function test_revert_invalid_governed_contract_lz_token() public {
-        ILayerZeroEndpointV2 endpoint = ILayerZeroEndpointV2(endpoints[bEid]);
-
-        ERC20Mock lzTokenMock = new ERC20Mock("ZRO", "ZRO");
-        lzTokenMock.mint(address(this), 10 ether);
-
-        endpoint.setLzToken(address(lzTokenMock));
-        assertEq(endpoint.lzToken(), address(lzTokenMock));
-
-        lzTokenMock.approve(address(aGov), 10 ether);
-
-        GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
-            action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: address(lzTokenMock),
-            callData: abi.encodeWithSelector(lzTokenMock.transferFrom.selector, address(this), THIEF, 10 ether)
-        });
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
-
-        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
-
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
-
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodeWithSelector(GovernanceControllerOApp.InvalidGovernedContract.selector, address(lzTokenMock)), "");
-
-        assertEq(lzTokenMock.balanceOf(THIEF), 0);
-    }
-
 }

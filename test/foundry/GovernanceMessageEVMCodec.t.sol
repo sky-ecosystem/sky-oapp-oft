@@ -12,18 +12,15 @@ import { GovernanceEVMCodecLibraryHelper } from "./helpers/GovernanceEVMCodecLib
 
 contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     uint8 private constant ACTION_OFFSET = 0;
-    uint8 private constant GOVERNED_CONTRACT_OFFSET = ACTION_OFFSET + 1;
-    uint8 private constant CALLDATA_OFFSET = GOVERNED_CONTRACT_OFFSET + 20;
+    uint8 private constant CALLDATA_OFFSET = ACTION_OFFSET + 1;
 
     GovernanceEVMCodecLibraryHelper helper = new GovernanceEVMCodecLibraryHelper();
 
     function test_encoding() public {
         address mintReceiver = makeAddr("mintReceiver");
-        address governedContract = makeAddr("governedContract");
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: governedContract,
             callData: abi.encodeWithSelector(ERC20Mock.mint.selector, mintReceiver, 100)
         });
 
@@ -32,11 +29,9 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory decoded = helper.decode(encoded);
         assertEq(decoded.action, message.action);
-        assertEq(decoded.governedContract, message.governedContract);
         assertEq(decoded.callData, message.callData);
 
         console.log("decoded.action: %s", decoded.action);
-        console.log("decoded.governedContract: %s", decoded.governedContract);
         console.log("decoded.callData: %s", vm.toString(abi.encode(decoded.callData)));
     }
 
@@ -44,7 +39,6 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
     function test_invalid_action_encoding() public {
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.UNDEFINED),
-            governedContract: makeAddr("governedContract"),
             callData: abi.encodeWithSelector(ERC20Mock.mint.selector, makeAddr("mintReceiver"), 100)
         });
 
@@ -62,11 +56,10 @@ contract GovernanceMessageEVMCodecTest is TestHelperOz5 {
         helper.decode(message);
     }
 
-    function test_payload_encoding() public {
+    function test_payload_encoding() public pure {
         bytes memory callData = new bytes(uint32(type(uint16).max) + 1);
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            governedContract: makeAddr("governedContract"),
             callData: callData
         });
 

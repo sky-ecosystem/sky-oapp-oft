@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 contract MockGovernanceRelay {
-    address public immutable messenger;
+    address public messenger;
 
     error DelegateCallFailed();
     error TestRevert();
@@ -10,6 +10,12 @@ contract MockGovernanceRelay {
     
     constructor(address _messenger) {
         messenger = _messenger;
+    }
+
+    function setMessenger(address _messenger) external {
+        if (messenger == address(0)) {
+            messenger = _messenger;
+        }
     }
 
     modifier onlyAuthorized() {

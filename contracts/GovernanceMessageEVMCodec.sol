@@ -5,19 +5,16 @@ import { GovernanceAction } from "./IGovernanceController.sol";
 
 library GovernanceMessageEVMCodec {
     uint8 private constant ACTION_OFFSET = 0;
-    uint8 private constant GOVERNED_CONTRACT_OFFSET = ACTION_OFFSET + 1;
-    uint8 private constant CALLDATA_OFFSET = GOVERNED_CONTRACT_OFFSET + 20;
+    uint8 private constant CALLDATA_OFFSET = ACTION_OFFSET + 1;
 
     /*
      * @dev General purpose governance message to call arbitrary methods on a governed EVM smart contract.
      *      The wire format for this message is:
      *      - action - 1 byte
-     *      - governedContract - 20 bytes
-     *      - callData - remaining bytes
+     *      - callData - bytes for the function call
      */
     struct GovernanceMessage {
         uint8 action;
-        address governedContract;
         bytes callData;
     }
 
@@ -31,7 +28,6 @@ library GovernanceMessageEVMCodec {
 
         return abi.encodePacked(
             _message.action,
-            _message.governedContract,
             _message.callData
         );
     }
@@ -42,9 +38,7 @@ library GovernanceMessageEVMCodec {
             revert InvalidAction(uint8(_msg[ACTION_OFFSET]));
         }
         
-        message.action = uint8(_msg[ACTION_OFFSET]);
-        message.governedContract = address(uint160(bytes20(_msg[GOVERNED_CONTRACT_OFFSET:CALLDATA_OFFSET])));
-        
+        message.action = uint8(_msg[ACTION_OFFSET]);        
         message.callData = _msg[CALLDATA_OFFSET:];
     }
 }
