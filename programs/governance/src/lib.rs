@@ -57,8 +57,9 @@ pub mod governance {
 
     pub fn lz_receive_types_info(
         ctx: Context<LzReceiveTypesInfo>,
+        params: LzReceiveParams,
     ) -> Result<(u8, oapp::lz_receive_types_v2::LzReceiveTypesV2Accounts)> {
-        LzReceiveTypesInfo::apply(&ctx)
+        LzReceiveTypesInfo::apply(&ctx, &params)
     }
 
     pub fn lz_receive_types_v2(
