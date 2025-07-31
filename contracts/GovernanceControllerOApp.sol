@@ -253,7 +253,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         // @dev This is a temporary variable to store the origin caller and expose it to the governed contract.
         messageOrigin = GovernanceOrigin({ eid: origin.srcEid, caller: message.originCaller });
 
-        // @dev Governed contract SHOULD validate the msg.value if its used
+        // @dev Governed contract SHOULD validate the msg.value if it's used
         (bool success, bytes memory returnData) = message.governedContract.call{ value: msg.value }(message.callData);
         if (!success) {
             if (returnData.length == 0) revert GovernanceCallFailed();
