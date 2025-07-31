@@ -23,39 +23,39 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
 
     error GovernanceCallFailed();
     error UnauthorizedOriginCaller();
-    error NotAllowlisted();
-    error NotWhitelisted();
+    error InvalidCaller();
     error InvalidGovernedContract(address _governedContract);
-    error InvalidWhitelistArrayLengths();
+    error InvalidTarget();
 
-    // allowlist of addresses allowed to send messages
-    mapping(address => bool) public allowlist;
+    // addresses allowed to send messages
+    mapping(address => bool) public validCallers;
 
-    // whitelist of origin callers allowed to call specific governed contracts
-    mapping(uint32 srcEid => mapping(bytes32 originCaller => mapping(address governedContract => bool allowed))) public whitelist;
+    // origin callers allowed to call specific governed contracts
+    mapping(uint32 srcEid => mapping(bytes32 originCaller => mapping(address governedContract => bool allowed))) public validTargets;
 
-    event AllowlistAdded(address indexed _address);
-    event AllowlistRemoved(address indexed _address);
-    event WhitelistUpdated(uint32 indexed srcEid, bytes32 indexed originCaller, address indexed governedContract, bool allowed);
+    event ValidCallerAdded(address indexed _address);
+    event ValidCallerRemoved(address indexed _address);
+    event ValidTargetAdded(uint32 indexed srcEid, bytes32 indexed originCaller, address indexed governedContract);
+    event ValidTargetRemoved(uint32 indexed srcEid, bytes32 indexed originCaller, address indexed governedContract);
 
     constructor(
         address _endpoint, 
         address _delegate, 
-        bool _whitelistInitialPair,
-        uint32 _initialWhitelistedSrcEid,
-        bytes32 _initialWhitelistedOriginCaller,
-        address _initialWhitelistedGovernedContract
+        bool _addInitialValidTarget,
+        uint32 _initialValidTargetSrcEid,
+        bytes32 _initialValidTargetOriginCaller,
+        address _initialValidTargetGovernedContract
     ) OApp(_endpoint, _delegate) Ownable(_delegate) {
-        if (_whitelistInitialPair) {
-            // @dev (Optional) Add the initial pair to the whitelist to avoid chicken-and-egg problem
+        if (_addInitialValidTarget) {
+            // @dev (Optional) Add the initial pair to the valid targets to avoid chicken-and-egg problem
             // if the governance self-governs itself via governance messages
-            whitelist[_initialWhitelistedSrcEid][_initialWhitelistedOriginCaller][_initialWhitelistedGovernedContract] = true;
-            emit WhitelistUpdated(_initialWhitelistedSrcEid, _initialWhitelistedOriginCaller, _initialWhitelistedGovernedContract, true);
+            validTargets[_initialValidTargetSrcEid][_initialValidTargetOriginCaller][_initialValidTargetGovernedContract] = true;
+            emit ValidTargetAdded(_initialValidTargetSrcEid, _initialValidTargetOriginCaller, _initialValidTargetGovernedContract);
         }
     }
 
-    modifier onlyAllowlisted() {
-        if (!allowlist[msg.sender]) revert NotAllowlisted();
+    modifier onlyValidCaller() {
+        if (!validCallers[msg.sender]) revert InvalidCaller();
         _;
     }
 
@@ -67,11 +67,11 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
-    ) external payable onlyAllowlisted returns (MessagingReceipt memory receipt) {
+    ) external payable onlyValidCaller returns (MessagingReceipt memory receipt) {
         return _sendEVMAction(_message, _dstEid, _extraOptions, _fee, _refundAddress);
     }
 
-    // @dev This method disregards the allowlist check.
+    // @dev This method disregards the valid callers check.
     function quoteEVMAction(
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
         uint32 _dstEid,
@@ -90,11 +90,11 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
-    ) external payable onlyAllowlisted returns (MessagingReceipt memory receipt) {
+    ) external payable onlyValidCaller returns (MessagingReceipt memory receipt) {
         return _sendRawBytesAction(_message, _dstEid, _extraOptions, _fee, _refundAddress);
     }
 
-    // @dev This method disregards the allowlist check.
+    // @dev This method disregards the valid callers check.
     function quoteRawBytesAction(
         bytes calldata _message,
         uint32 _dstEid,
@@ -106,64 +106,55 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
         return _quote(_dstEid, _message, options, _payInLzToken);
     }
 
-    // [---- ALLOWLIST MANAGEMENT ----]
+    // [---- VALID CALLER MANAGEMENT ----]
     /**
-     * @notice Adds an address to the allowlist.
-     * @param _address The address to add to the allowlist.
+     * @notice Adds an address to the valid caller list.
+     * @param _address The address to add to the valid caller list.
      */
-    function addToAllowlist(address _address) external onlyOwner {
-        allowlist[_address] = true;
-        emit AllowlistAdded(_address);
+    function addValidCaller(address _address) external onlyOwner {
+        validCallers[_address] = true;
+        emit ValidCallerAdded(_address);
     }
 
     /**
-     * @notice Removes an address from the allowlist.
-     * @param _address The address to remove from the allowlist.
+     * @notice Removes an address from the valid caller list.
+     * @param _address The address to remove from the valid caller list.
      */
-    function removeFromAllowlist(address _address) external onlyOwner {
-        allowlist[_address] = false;
-        emit AllowlistRemoved(_address);
+    function removeValidCaller(address _address) external onlyOwner {
+        validCallers[_address] = false;
+        emit ValidCallerRemoved(_address);
     }
 
-    // [---- WHITELIST MANAGEMENT ----]
+    // [---- VALID TARGET MANAGEMENT ----]
+
     /**
-     * @notice Updates the whitelist for a specific (srcEid, originCaller, governedContract) combination.
+     * @notice Adds a specific (srcEid, originCaller, governedContract) combination to the valid target list.
      * @param _srcEid The source endpoint ID.
      * @param _originCaller The origin caller address (as bytes32).
      * @param _governedContract The governed contract address.
-     * @param _allowed Whether the combination is allowed.
      */
-    function updateWhitelist(
+    function addValidTarget(
         uint32 _srcEid,
         bytes32 _originCaller,
-        address _governedContract,
-        bool _allowed
+        address _governedContract
     ) external onlyOwner {
-        whitelist[_srcEid][_originCaller][_governedContract] = _allowed;
-        emit WhitelistUpdated(_srcEid, _originCaller, _governedContract, _allowed);
+        validTargets[_srcEid][_originCaller][_governedContract] = true;
+        emit ValidTargetAdded(_srcEid, _originCaller, _governedContract);
     }
 
     /**
-     * @notice Batch updates the whitelist for multiple combinations.
-     * @param _srcEids Array of source endpoint IDs.
-     * @param _originCallers Array of origin caller addresses (as bytes32).
-     * @param _governedContracts Array of governed contract addresses.
-     * @param _allowed Array of allowed status for each combination.
+     * @notice Removes a specific (srcEid, originCaller, governedContract) combination from the valid target list.
+     * @param _srcEid The source endpoint ID.
+     * @param _originCaller The origin caller address (as bytes32).
+     * @param _governedContract The governed contract address.
      */
-    function batchUpdateWhitelist(
-        uint32[] calldata _srcEids,
-        bytes32[] calldata _originCallers,
-        address[] calldata _governedContracts,
-        bool[] calldata _allowed
+    function removeValidTarget(
+        uint32 _srcEid,
+        bytes32 _originCaller,
+        address _governedContract
     ) external onlyOwner {
-        if (_srcEids.length != _originCallers.length || _originCallers.length != _governedContracts.length || _governedContracts.length != _allowed.length) {
-            revert InvalidWhitelistArrayLengths();
-        }
-
-        for (uint256 i = 0; i < _srcEids.length; i++) {
-            whitelist[_srcEids[i]][_originCallers[i]][_governedContracts[i]] = _allowed[i];
-            emit WhitelistUpdated(_srcEids[i], _originCallers[i], _governedContracts[i], _allowed[i]);
-        }
+        validTargets[_srcEid][_originCaller][_governedContract] = false;
+        emit ValidTargetRemoved(_srcEid, _originCaller, _governedContract);
     }
 
     // [---- INTERNAL METHODS ----]
@@ -246,8 +237,8 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
             revert InvalidGovernedContract(message.governedContract);
         }
 
-        if (!whitelist[origin.srcEid][message.originCaller][message.governedContract]) {
-            revert NotWhitelisted();
+        if (!validTargets[origin.srcEid][message.originCaller][message.governedContract]) {
+            revert InvalidTarget();
         }
 
         // @dev This is a temporary variable to store the origin caller and expose it to the governed contract.

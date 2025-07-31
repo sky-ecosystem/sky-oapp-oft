@@ -51,19 +51,19 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         aGov = new GovernanceControllerOApp(
             endpoints[aEid],
             address(this), // delegate/owner
-            false, // whitelistInitialPair
-            0, // initialWhitelistedSrcEid
-            bytes32(0), // initialWhitelistedOriginCaller
-            address(0) // initialWhitelistedGovernedContract
+            false, // addInitialValidTarget
+            0, // initialValidTargetSrcEid
+            bytes32(0), // initialValidTargetOriginCaller
+            address(0) // initialValidTargetGovernedContract
         );
 
         bGov = new GovernanceControllerOApp(
             endpoints[bEid],
             address(this), // delegate/owner
-            false, // whitelistInitialPair
-            0, // initialWhitelistedSrcEid
-            bytes32(0), // initialWhitelistedOriginCaller
-            address(0) // initialWhitelistedGovernedContract
+            false, // addInitialValidTarget
+            0, // initialValidTargetSrcEid
+            bytes32(0), // initialValidTargetOriginCaller
+            address(0) // initialValidTargetGovernedContract
         );
 
         // Setup peers
@@ -76,11 +76,11 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         aControlledContract = new MockControlledContract(address(aRelay));
         bControlledContract = new MockControlledContract(address(bRelay));
 
-        aGov.addToAllowlist(address(this));
+        aGov.addValidCaller(address(this));
 
-        // Add necessary whitelist entries for the tests to pass
-        aGov.updateWhitelist(bEid, addressToBytes32(address(this)), address(aRelay), true);
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), true);
+        // Add necessary valid target entries for the tests to pass
+        aGov.addValidTarget(bEid, addressToBytes32(address(this)), address(aRelay));
+        bGov.addValidTarget(aEid, addressToBytes32(address(this)), address(bRelay));
     }
 
     function test_send() public {
@@ -151,9 +151,9 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(GovernanceControllerOApp.GovernanceCallFailed.selector), "");
     }
 
-    function test_send_with_allowlist() public {
-        aGov.removeFromAllowlist(address(this));
-        assertEq(aGov.allowlist(address(this)), false);
+    function test_send_with_valid_caller_enforcement() public {
+        aGov.removeValidCaller(address(this));
+        assertEq(aGov.validCallers(address(this)), false);
 
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
@@ -167,36 +167,36 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         });
         MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
+        vm.expectRevert(GovernanceControllerOApp.InvalidCaller.selector);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
-        aGov.addToAllowlist(address(this));
-        assertEq(aGov.allowlist(address(this)), true);
+        aGov.addValidCaller(address(this));
+        assertEq(aGov.validCallers(address(this)), true);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
-        aGov.removeFromAllowlist(address(this));
-        assertEq(aGov.allowlist(address(this)), false);
-        vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
+        aGov.removeValidCaller(address(this));
+        assertEq(aGov.validCallers(address(this)), false);
+        vm.expectRevert(GovernanceControllerOApp.InvalidCaller.selector);
         aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
     }
 
-    function test_allowlist_management() public {
+    function test_valid_caller_management() public {
         vm.prank(NOT_OWNER);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
-        aGov.addToAllowlist(address(0x123));
+        aGov.addValidCaller(address(0x123));
 
         vm.prank(NOT_OWNER);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
-        aGov.removeFromAllowlist(address(0x123));
+        aGov.removeValidCaller(address(0x123));
 
-        aGov.addToAllowlist(address(0x123));
-        assertEq(aGov.allowlist(address(0x123)), true);
+        aGov.addValidCaller(address(0x123));
+        assertEq(aGov.validCallers(address(0x123)), true);
 
-        aGov.removeFromAllowlist(address(0x123));
-        assertEq(aGov.allowlist(address(0x123)), false);
+        aGov.removeValidCaller(address(0x123));
+        assertEq(aGov.validCallers(address(0x123)), false);
     }
 
-    function test_whitelist_management() public {
+    function test_valid_target_management() public {
         uint32 srcEid = 123;
         bytes32 originCaller = bytes32(uint256(uint160(address(0x456))));
         address governedContract = address(0x789);
@@ -204,71 +204,21 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         // Test unauthorized access
         vm.prank(NOT_OWNER);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
-        aGov.updateWhitelist(srcEid, originCaller, governedContract, true);
+        aGov.addValidTarget(srcEid, originCaller, governedContract);
 
         // Test initial state
-        assertEq(aGov.whitelist(srcEid, originCaller, governedContract), false);
+        assertEq(aGov.validTargets(srcEid, originCaller, governedContract), false);
 
-        // Test adding to whitelist
-        aGov.updateWhitelist(srcEid, originCaller, governedContract, true);
-        assertEq(aGov.whitelist(srcEid, originCaller, governedContract), true);
+        // Test adding to valid target list
+        aGov.addValidTarget(srcEid, originCaller, governedContract);
+        assertEq(aGov.validTargets(srcEid, originCaller, governedContract), true);
 
-        // Test removing from whitelist
-        aGov.updateWhitelist(srcEid, originCaller, governedContract, false);
-        assertEq(aGov.whitelist(srcEid, originCaller, governedContract), false);
+        // Test removing from valid target list
+        aGov.removeValidTarget(srcEid, originCaller, governedContract);
+        assertEq(aGov.validTargets(srcEid, originCaller, governedContract), false);
     }
 
-    function test_batch_whitelist_management() public {
-        uint32[] memory srcEids = new uint32[](2);
-        bytes32[] memory originCallers = new bytes32[](2);
-        address[] memory governedContracts = new address[](2);
-        bool[] memory allowed = new bool[](2);
-
-        srcEids[0] = 123;
-        srcEids[1] = 124;
-        originCallers[0] = bytes32(uint256(uint160(address(0x456))));
-        originCallers[1] = bytes32(uint256(uint160(address(0x457))));
-        governedContracts[0] = address(0x789);
-        governedContracts[1] = address(0x790);
-        allowed[0] = true;
-        allowed[1] = false;
-
-        // Test unauthorized access
-        vm.prank(NOT_OWNER);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, NOT_OWNER));
-        aGov.batchUpdateWhitelist(srcEids, originCallers, governedContracts, allowed);
-
-        // Test batch update
-        aGov.batchUpdateWhitelist(srcEids, originCallers, governedContracts, allowed);
-        assertEq(aGov.whitelist(srcEids[0], originCallers[0], governedContracts[0]), true);
-        assertEq(aGov.whitelist(srcEids[1], originCallers[1], governedContracts[1]), false);
-
-        // Test array length mismatch
-        uint32[] memory invalidSrcEids = new uint32[](1);
-        invalidSrcEids[0] = 123;
-        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
-        aGov.batchUpdateWhitelist(invalidSrcEids, originCallers, governedContracts, allowed);
-
-        // Test array length mismatch
-        bytes32[] memory invalidOriginCallers = new bytes32[](1);
-        invalidOriginCallers[0] = bytes32(uint256(uint160(address(0x456))));
-        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
-        aGov.batchUpdateWhitelist(srcEids, invalidOriginCallers, governedContracts, allowed);
-
-        // Test array length mismatch
-        address[] memory invalidGovernedContracts = new address[](1);
-        invalidGovernedContracts[0] = address(0x789);
-        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
-        aGov.batchUpdateWhitelist(srcEids, originCallers, invalidGovernedContracts, allowed);
-
-        // Test array length mismatch
-        bool[] memory invalidAllowed = new bool[](1);
-        invalidAllowed[0] = true;
-        vm.expectRevert(GovernanceControllerOApp.InvalidWhitelistArrayLengths.selector);
-        aGov.batchUpdateWhitelist(srcEids, originCallers, governedContracts, invalidAllowed);
-    }
-
-    function test_whitelist_enforcement() public {
+    function test_valid_target_enforcement() public {
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
         MockSpell spell = new MockSpell(bControlledContract);
@@ -281,16 +231,16 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         });
         MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        // Remove from whitelist
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), false);
+        // Remove from valid target list
+        bGov.removeValidTarget(aEid, addressToBytes32(address(this)), address(bRelay));
 
         aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
-        // Should fail due to whitelist check
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(GovernanceControllerOApp.NotWhitelisted.selector), "");
+        // Should fail due to valid target check
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(GovernanceControllerOApp.InvalidTarget.selector), "");
 
-        // Add back to whitelist
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), true);
+        // Add back to valid target list
+        bGov.addValidTarget(aEid, addressToBytes32(address(this)), address(bRelay));
 
         aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
@@ -299,8 +249,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         assertEq(bControlledContract.data(), "test message", "lzReceive data assertion failure");
     }
 
-    function test_constructor_initializes_whitelist() public {
-        // Test that the constructor properly initializes the whitelist
+    function test_constructor_initializes_valid_target_list() public {
+        // Test that the constructor properly initializes the valid target list
         bytes32 pauseProxy = addressToBytes32(address(this));
         uint32 initialSrcEid = 999;
         address delegate = address(0x123);
@@ -308,14 +258,14 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         GovernanceControllerOApp testGov = new GovernanceControllerOApp(
             endpoints[aEid],
             delegate,
-            true, // whitelistInitialPair
-            initialSrcEid, // initialWhitelistedSrcEid
-            pauseProxy, // initialWhitelistedOriginCaller
-            address(0x123) // initialWhitelistedGovernedContract
+            true, // addInitialValidTarget
+            initialSrcEid, // initialValidSrcEid
+            pauseProxy, // initialValidOriginCaller
+            address(0x123) // initialValidGovernedContract
         );
 
-        // Check that the initial whitelist entry was created
-        assertEq(testGov.whitelist(initialSrcEid, pauseProxy, delegate), true);
+        // Check that the initial valid target entry was created
+        assertEq(testGov.validTargets(initialSrcEid, pauseProxy, delegate), true);
     }
 
     function test_reentrancy_lz_receive() public {
@@ -323,8 +273,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         MockControlledContractNestedDelivery controllerNestedDelivery = new MockControlledContractNestedDelivery(aGov, bGov, address(this));
 
-        // Add whitelist entry for the nested delivery contract
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(controllerNestedDelivery), true);
+        // Add valid target entry for the nested delivery contract
+        bGov.addValidTarget(aEid, addressToBytes32(address(this)), address(controllerNestedDelivery));
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
@@ -442,8 +392,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     function test_send_no_calldata_just_value() public {
         MockFundsReceiver fundsReceiver = new MockFundsReceiver();
 
-        // Add whitelist entry for the funds receiver
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(fundsReceiver), true);
+        // Add valid target entry for the funds receiver
+        bGov.addValidTarget(aEid, addressToBytes32(address(this)), address(fundsReceiver));
 
         assertEq(address(fundsReceiver).balance, 0);
 
@@ -467,8 +417,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     function test_revert_invalid_governed_contract_endpoint() public {
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
-        // Add whitelist entry for the endpoint (though it should still revert)
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(endpoints[bEid]), true);
+        // Add valid target entry for the endpoint (though it should still revert)
+        bGov.addValidTarget(aEid, addressToBytes32(address(this)), address(endpoints[bEid]));
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
@@ -486,8 +436,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
     function test_governed_contract_can_be_zero_address() public {
         address lzToken = ILayerZeroEndpointV2(endpoints[bEid]).lzToken();
 
-        // Add whitelist entry for the lzToken
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(lzToken), true);
+        // Add valid target entry for the lzToken
+        bGov.addValidTarget(aEid, addressToBytes32(address(this)), address(lzToken));
 
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
@@ -515,8 +465,8 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         lzTokenMock.approve(address(aGov), 10 ether);
 
-        // Add whitelist entry for the lzToken (though it should still revert)
-        bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(lzTokenMock), true);
+        // Add valid target entry for the lzToken (though it should still revert)
+        bGov.addValidTarget(aEid, addressToBytes32(address(this)), address(lzTokenMock));
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),

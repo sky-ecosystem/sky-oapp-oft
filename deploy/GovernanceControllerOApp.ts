@@ -33,25 +33,25 @@ const deploy: DeployFunction = async (hre) => {
     // }
     const endpointV2Deployment = await hre.deployments.get('EndpointV2')
 
-    const whitelistInitialPair = readEnv('EVM_WHITELIST_INITIAL_PAIR') === 'true'
-    const initialWhitelistedSrcEid = readEnv('EVM_INITIAL_WHITELISTED_SRC_EID')
-    const initialWhitelistedOriginCaller = readEnv('EVM_INITIAL_WHITELISTED_ORIGIN_CALLER')
-    const initialWhitelistedGovernedContract = readEnv('EVM_INITIAL_WHITELISTED_GOVERNED_CONTRACT')
+    const addInitialValidTarget = readEnv('EVM_ADD_INITIAL_VALID_TARGET') === 'true'
+    const initialValidTargetSrcEid = readEnv('EVM_INITIAL_VALID_TARGET_SRC_EID')
+    const initialValidTargetOriginCaller = readEnv('EVM_INITIAL_VALID_TARGET_ORIGIN_CALLER')
+    const initialValidTargetGovernedContract = readEnv('EVM_INITIAL_VALID_TARGET_GOVERNED_CONTRACT')
 
-    console.log(`Whitelist initial pair: ${whitelistInitialPair}`)
-    console.log(`Initial whitelisted src EID: ${initialWhitelistedSrcEid}`)
-    console.log(`Initial whitelisted origin caller: ${initialWhitelistedOriginCaller}`)
-    console.log(`Initial whitelisted governed contract: ${initialWhitelistedGovernedContract}`)
+    console.log(`Add initial valid target: ${addInitialValidTarget}`)
+    console.log(`Initial valid target src EID: ${initialValidTargetSrcEid}`)
+    console.log(`Initial valid target origin caller: ${initialValidTargetOriginCaller}`)
+    console.log(`Initial valid target governed contract: ${initialValidTargetGovernedContract}`)
 
     const { address } = await deploy(contractName, {
         from: deployer,
         args: [
             endpointV2Deployment.address, // LayerZero's EndpointV2 address
             deployer, // owner & delegate
-            whitelistInitialPair, // whitelistInitialPair
-            initialWhitelistedSrcEid, // initialWhitelistedSrcEid
-            initialWhitelistedOriginCaller, // initialWhitelistedOriginCaller
-            initialWhitelistedGovernedContract // initialWhitelistedGovernedContract
+            addInitialValidTarget, // addInitialValidTarget
+            initialValidTargetSrcEid, // initialValidTargetSrcEid
+            initialValidTargetOriginCaller, // initialValidTargetOriginCaller
+            initialValidTargetGovernedContract // initialValidTargetGovernedContract
         ],
         log: true,
         skipIfAlreadyDeployed: false,
