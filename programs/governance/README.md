@@ -86,8 +86,8 @@ This is definitely not required if you didn't modify Governance program source c
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/2ANEd8VWqqCe3jm4KWGNFUY93Q8JeNTCcS2E4PY6DBjtQgXJQ5MFLACX115vz1iKP7ePikhugbbfYQJyKTmFTuWp?cluster=devnet) | CPI depth = 1
-2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/5DX87ib1wRV5nH25X42Xr8wiAfuc2WpXMwLPS9oVTTMpzvzgRyqajnTkeg1LjTEr61Y14ohe3ZyGhReTbMkGxAwf?cluster=devnet) | CPI depth = 1
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/2YHTAq1638mBQjfFSJdShfaJRShF2jvLyGEzfzmzCH9pr6hDv72k1J4RmzM59Lv75KHLktrx9FhZo5WMitqKgKJn?cluster=devnet) | CPI depth = 1
+2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2r4gjfJz9LHuzXkmsC8J6SX7dR28c5xEqFf6GrhNqhsmewtzcuPpbSbkvx37QdyjAc4LCtuXSXdMkGyeU92Tu9TW?cluster=devnet) | CPI depth = 1
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet) | CPI depth = 1
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet) | CPI depth = 1
 5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet) | CPI depth = 1
@@ -152,11 +152,13 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 
 ## Sending transactions
 
+Before sending: Make sure your address is added as valid caller.
+
 1. Obtain serialized governance message
 2. Replace value of: `bytes memory messageBytes = hex"";` in scripts/SendRawBytes.s.sol
-3. Run:
+3. Run (in case you are sending to 40168 - Solana Devnet):
 ```
-forge script scripts/SendRawBytes.s.sol --rpc-url https://api.avax-test.network/ext/bc/C/rpc --broadcast --force
+forge script scripts/SendRawBytes.s.sol -s "run(uint32)" 40168 --rpc-url https://api.avax-test.network/ext/bc/C/rpc --broadcast
 ```
 
 ## Configuring ALTs
