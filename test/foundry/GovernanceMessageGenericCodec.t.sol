@@ -9,8 +9,7 @@ import { GovernanceGenericCodecLibraryHelper } from "./helpers/GovernanceGeneric
 
 contract GovernanceMessageGenericCodecTest is Test {
     uint8 private constant ACTION_OFFSET = 0;
-    uint8 private constant DST_EID_OFFSET = ACTION_OFFSET + 1;
-    uint8 private constant ORIGIN_CALLER_OFFSET = DST_EID_OFFSET + 4;
+    uint8 private constant ORIGIN_CALLER_OFFSET = ACTION_OFFSET + 1;
 
     GovernanceGenericCodecLibraryHelper helper = new GovernanceGenericCodecLibraryHelper();
 
@@ -18,7 +17,7 @@ contract GovernanceMessageGenericCodecTest is Test {
         bytes memory message = abi.encodePacked(uint8(GovernanceAction.SOLANA_CALL), uint32(1), bytes32(0));
         helper.assertValidMessageLength(message);
 
-        bytes memory messageTooShort = hex"020000000100000000000000000000000000000000000000000000000000000000000000";
+        bytes memory messageTooShort = hex"0200000001000000000000000000000000000000000000000000000000000000";
         vm.expectRevert(abi.encodeWithSelector(GovernanceMessageGenericCodec.InvalidGenericMessageLength.selector));
         helper.assertValidMessageLength(messageTooShort);
     }

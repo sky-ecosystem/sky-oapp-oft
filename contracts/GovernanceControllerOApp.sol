@@ -63,44 +63,47 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
 
     function sendEVMAction(
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
+        uint32 _dstEid,
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
     ) external payable onlyAllowlisted returns (MessagingReceipt memory receipt) {
-        return _sendEVMAction(_message, _extraOptions, _fee, _refundAddress);
+        return _sendEVMAction(_message, _dstEid, _extraOptions, _fee, _refundAddress);
     }
 
     // @dev This method disregards the allowlist check.
     function quoteEVMAction(
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
+        uint32 _dstEid,
         bytes calldata _extraOptions,
         bool _payInLzToken
     ) external view returns (MessagingFee memory fee) {
-        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
+        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _dstEid, _extraOptions);
 
-        return _quote(_message.dstEid, message, options, _payInLzToken);
+        return _quote(_dstEid, message, options, _payInLzToken);
     }
 
     // @notice This method can be used when compiling and serializing governance message offchain
     function sendRawBytesAction(
         bytes calldata _message,
+        uint32 _dstEid,
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
     ) external payable onlyAllowlisted returns (MessagingReceipt memory receipt) {
-        return _sendRawBytesAction(_message, _extraOptions, _fee, _refundAddress);
+        return _sendRawBytesAction(_message, _dstEid, _extraOptions, _fee, _refundAddress);
     }
 
     // @dev This method disregards the allowlist check.
     function quoteRawBytesAction(
         bytes calldata _message,
+        uint32 _dstEid,
         bytes calldata _extraOptions,
         bool _payInLzToken
     ) external view returns (MessagingFee memory fee) {
-        uint32 dstEid = GovernanceMessageGenericCodec.dstEid(_message);
-        bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
+        bytes memory options = combineOptions(_dstEid, SEND, _extraOptions);
 
-        return _quote(dstEid, _message, options, _payInLzToken);
+        return _quote(_dstEid, _message, options, _payInLzToken);
     }
 
     // [---- ALLOWLIST MANAGEMENT ----]
@@ -167,6 +170,7 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
 
     function _sendEVMAction(
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
+        uint32 _dstEid,
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
@@ -175,21 +179,23 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
             revert UnauthorizedOriginCaller();
         }
 
-        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _extraOptions);
+        (bytes memory message, bytes memory options) = _buildMsgAndOptionsEVMAction(_message, _dstEid, _extraOptions);
 
-        msgReceipt = _lzSend(_message.dstEid, message, options, _fee, _refundAddress);
+        msgReceipt = _lzSend(_dstEid, message, options, _fee, _refundAddress);
     }
 
     function _buildMsgAndOptionsEVMAction(
         GovernanceMessageEVMCodec.GovernanceMessage calldata _message,
+        uint32 _dstEid,
         bytes calldata _extraOptions
     ) internal view virtual returns (bytes memory message, bytes memory options) {
         message = GovernanceMessageEVMCodec.encode(_message);
-        options = combineOptions(_message.dstEid, SEND, _extraOptions);
+        options = combineOptions(_dstEid, SEND, _extraOptions);
     }
 
     function _sendRawBytesAction(
         bytes calldata _message,
+        uint32 _dstEid,
         bytes calldata _extraOptions,
         MessagingFee calldata _fee,
         address _refundAddress
@@ -200,10 +206,9 @@ contract GovernanceControllerOApp is OApp, OAppOptionsType3, IGovernanceControll
             revert UnauthorizedOriginCaller();
         }
 
-        uint32 dstEid = GovernanceMessageGenericCodec.dstEid(_message);
-        bytes memory options = combineOptions(dstEid, SEND, _extraOptions);
+        bytes memory options = combineOptions(_dstEid, SEND, _extraOptions);
 
-        msgReceipt = _lzSend(dstEid, _message, options, _fee, _refundAddress);
+        msgReceipt = _lzSend(_dstEid, _message, options, _fee, _refundAddress);
     }
 
     // ──────────────────────────────────────────────────────────────────────────────

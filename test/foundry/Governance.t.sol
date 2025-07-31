@@ -94,15 +94,14 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
         // STEP 1: Sending a message via the _lzSend() method.
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         // Asserting that the receiving OApps have NOT had data manipulated.
         assertEq(bControlledContract.data(), dataBefore, "shouldn't be changed until lzReceive packet is verified");
@@ -125,14 +124,13 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.revertTest.selector)
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(MockGovernanceRelay.TestRevert.selector), "");
     }
@@ -142,14 +140,13 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.revertTestNoData.selector)
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(GovernanceControllerOApp.GovernanceCallFailed.selector), "");
     }
@@ -164,24 +161,23 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
         vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         aGov.addToAllowlist(address(this));
         assertEq(aGov.allowlist(address(this)), true);
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         aGov.removeFromAllowlist(address(this));
         assertEq(aGov.allowlist(address(this)), false);
         vm.expectRevert(GovernanceControllerOApp.NotAllowlisted.selector);
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
     }
 
     function test_allowlist_management() public {
@@ -279,17 +275,16 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
         // Remove from whitelist
         bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         // Should fail due to whitelist check
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodePacked(GovernanceControllerOApp.NotWhitelisted.selector), "");
@@ -297,7 +292,7 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         // Add back to whitelist
         bGov.updateWhitelist(aEid, addressToBytes32(address(this)), address(bRelay), true);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         // Should succeed now
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
@@ -333,18 +328,34 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(controllerNestedDelivery),
             callData: abi.encodeWithSelector(controllerNestedDelivery.deliverNestedPacket.selector)
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
-        
-        bytes memory packetOneBytes = hex"01000000000000000100000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e624af70d91a3ee419f51a2d4f11f114a1e0da3511966904b1c7871ff00eee176f01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b17aba9f80";
-        bytes memory packetTwoBytes = hex"01000000000000000200000001000000000000000000000000756e0562323adcda4430d6cb456d9151f605290b000000020000000000000000000000001af7f588a501ea2b5bb3feefa744892aa2cf00e65c4ff3a57f16ea1239276ac9bbd90e50a4a5e5d3d9accc0906f4c26c785ad31c01000000020000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e149692a6649fdcc044da968d94202465578a9371c7b17aba9f80";
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
+
+        bytes32 packetOneGuid = keccak256(abi.encodePacked(uint64(1), uint32(aEid), addressToBytes32(address(aGov)), uint32(bEid), addressToBytes32(address(bGov))));
+        bytes memory packetOneBytes = abi.encodePacked(
+            hex"01000000000000000100000001000000000000000000000000",
+            address(aGov),
+            hex"00000002000000000000000000000000",
+            address(bGov),
+            packetOneGuid,
+            GovernanceMessageEVMCodec.encode(message)
+        );
+
+        bytes32 packetTwoGuid = keccak256(abi.encodePacked(uint64(2), uint32(aEid), addressToBytes32(address(aGov)), uint32(bEid), addressToBytes32(address(bGov))));
+        bytes memory packetTwoBytes = abi.encodePacked(
+            hex"01000000000000000200000001000000000000000000000000",
+            address(aGov),
+            hex"00000002000000000000000000000000",
+            address(bGov),
+            packetTwoGuid,
+            GovernanceMessageEVMCodec.encode(message)
+        );
         
         TestHelperOz5WithRevertAssertions(payable(address(this))).validatePacket(packetOneBytes);
         TestHelperOz5WithRevertAssertions(payable(address(this))).validatePacket(packetTwoBytes);
@@ -363,15 +374,14 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(0xdead)),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
         vm.expectRevert(GovernanceControllerOApp.UnauthorizedOriginCaller.selector);
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
     }
 
     function test_send_raw_bytes() public {
@@ -383,15 +393,14 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
         bytes memory messageBytes = GovernanceMessageEVMCodec.encode(message);
-        MessagingFee memory fee = aGov.quoteRawBytesAction(messageBytes, options, false);
+        MessagingFee memory fee = aGov.quoteRawBytesAction(messageBytes, bEid, options, false);
 
-        aGov.sendRawBytesAction{ value: fee.nativeFee }(messageBytes, options, fee, address(this));
+        aGov.sendRawBytesAction{ value: fee.nativeFee }(messageBytes, bEid, options, fee, address(this));
 
         // Asserting that the receiving OApps have NOT had data manipulated.
         assertEq(bControlledContract.data(), dataBefore, "shouldn't be changed until lzReceive packet is verified");
@@ -412,24 +421,22 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
         
         GovernanceMessageEVMCodec.GovernanceMessage memory messageWithGarbage = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: originCallerWithGarbage,
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(messageWithGarbage, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(messageWithGarbage, bEid, options, false);
 
         vm.expectRevert(GovernanceControllerOApp.UnauthorizedOriginCaller.selector);
-        aGov.sendEVMAction{ value: fee.nativeFee }(messageWithGarbage, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(messageWithGarbage, bEid, options, fee, address(this));
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: bytes32(abi.encodePacked(bytes12(0), address(this))),
             governedContract: address(bRelay),
             callData: abi.encodeWithSelector(bRelay.relay.selector, address(spell), abi.encodeWithSelector(spell.cast.selector))
         });
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
     }
 
     function test_send_no_calldata_just_value() public {
@@ -444,14 +451,13 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(fundsReceiver),
             callData: ""
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
 
@@ -466,14 +472,13 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(endpoints[bEid]),
             callData: ""
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodeWithSelector(GovernanceControllerOApp.InvalidGovernedContract.selector, address(endpoints[bEid])), "");
     }
@@ -488,14 +493,13 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(lzToken),
             callData: ""
         });
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)));
     }
@@ -516,16 +520,15 @@ contract GovernanceControllerOAppTest is TestHelperOz5WithRevertAssertions {
 
         GovernanceMessageEVMCodec.GovernanceMessage memory message = GovernanceMessageEVMCodec.GovernanceMessage({
             action: uint8(GovernanceAction.EVM_CALL),
-            dstEid: bEid,
             originCaller: addressToBytes32(address(this)),
             governedContract: address(lzTokenMock),
             callData: abi.encodeWithSelector(lzTokenMock.transferFrom.selector, address(this), THIEF, 10 ether)
         });
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150000, 0);
 
-        MessagingFee memory fee = aGov.quoteEVMAction(message, options, false);
+        MessagingFee memory fee = aGov.quoteEVMAction(message, bEid, options, false);
 
-        aGov.sendEVMAction{ value: fee.nativeFee }(message, options, fee, address(this));
+        aGov.sendEVMAction{ value: fee.nativeFee }(message, bEid, options, fee, address(this));
 
         verifyAndExecutePackets(bEid, addressToBytes32(address(bGov)), 1, address(0), abi.encodeWithSelector(GovernanceControllerOApp.InvalidGovernedContract.selector, address(lzTokenMock)), "");
 
