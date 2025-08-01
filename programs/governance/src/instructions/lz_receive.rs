@@ -37,9 +37,6 @@ pub struct LzReceive<'info> {
         bump
     )]
     pub cpi_authority: AccountInfo<'info>,
-
-    #[account(executable)]
-    pub program: UncheckedAccount<'info>,
 }
 
 impl<'info> LzReceive<'info> {
@@ -70,25 +67,36 @@ impl<'info> LzReceive<'info> {
             },
         )?;
 
-        // Decode governance message from LayerZero message
-        let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
+        let message = GovernanceMessage::from_bytes(&params.message)?;
 
+        let mut remaining_accounts_read_index = Clear::MIN_ACCOUNTS_LEN;
+        for mut instruction in message.instructions.into_iter().map(|ix| Instruction::from(ix.clone())) {
+            let cpi_accounts = &ctx.remaining_accounts[remaining_accounts_read_index + 1..remaining_accounts_read_index + 1 + instruction.accounts.len()];
+            Self::execute_instruction(ctx, &mut instruction, params.src_eid, &message.origin_caller, &ctx.remaining_accounts[remaining_accounts_read_index], cpi_accounts)?;
+            remaining_accounts_read_index += 1 + instruction.accounts.len();
+        }
+
+        require!(
+            ctx.accounts.cpi_authority.owner.key() == system_program::ID,
+            GovernanceError::CpiAuthorityOwnerNotSystemProgram
+        );
+        require!(ctx.accounts.cpi_authority.data_is_empty(), GovernanceError::CpiAuthorityDataNotEmpty);
+       
+        Ok(())
+    }
+
+    pub fn execute_instruction(
+        ctx: &mut Context<'_, '_, '_, 'info, Self>,
+        instruction: &mut Instruction,
+        src_eid: u32,
+        origin_caller: &[u8; 32],
+        program_account: &AccountInfo<'info>,
+        cpi_accounts: &[AccountInfo<'info>],
+    ) -> Result<()> {
         // Assert supplied program id matches the governed program id from the message
         require!(
-            governance_message.program_id == ctx.accounts.program.key(),
+            instruction.program_id == program_account.key(),
             GovernanceError::GovernedProgramIdMismatch
-        );
-
-        let origin_caller = governance_message.origin_caller;
-        let mut instruction: Instruction = governance_message.into();
-
-        let (execution_context_addr, _) = Pubkey::find_program_address(
-            &[
-                EXECUTION_CONTEXT_SEED,
-                &ctx.accounts.payer.key.to_bytes(),
-                &[EXECUTION_CONTEXT_VERSION_1],
-            ],
-            &EXECUTOR_ID,
         );
 
         // Replace placeholder accounts
@@ -98,26 +106,27 @@ impl<'info> LzReceive<'info> {
             } else if acc.pubkey == PAYER_PLACEHOLDER {
                 acc.pubkey = ctx.accounts.payer.key();
             } else if acc.pubkey == CONTEXT_PLACEHOLDER {
+                let (execution_context_addr, _) = Pubkey::find_program_address(
+                    &[
+                        EXECUTION_CONTEXT_SEED,
+                        &ctx.accounts.payer.key.to_bytes(),
+                        &[EXECUTION_CONTEXT_VERSION_1],
+                    ],
+                    &EXECUTOR_ID,
+                );
                 acc.pubkey = execution_context_addr;
             }
         });
 
-        solana_program::program::invoke_signed(&instruction, &ctx.remaining_accounts[Clear::MIN_ACCOUNTS_LEN..], &[
-            &[   
+        solana_program::program::invoke_signed(&instruction, cpi_accounts, &[
+            &[
                 CPI_AUTHORITY_SEED,
                 &ctx.accounts.governance.key().to_bytes(),
-                &params.src_eid.to_be_bytes(),
-                &origin_caller,
+                &src_eid.to_be_bytes(),
+                origin_caller,
                 &[ctx.bumps.cpi_authority],
             ]
         ])?;
-
-        require!(
-            ctx.accounts.cpi_authority.owner.key() == system_program::ID,
-            GovernanceError::CpiAuthorityOwnerNotSystemProgram
-        );
-        require!(ctx.accounts.cpi_authority.data_is_empty(), GovernanceError::CpiAuthorityDataNotEmpty);
-
         Ok(())
     }
 }

@@ -44,7 +44,7 @@ impl LzReceiveTypesV2<'_> {
 
         let (cpi_authority, _) = Pubkey::find_program_address(&[CPI_AUTHORITY_SEED, &governance.to_bytes(), &params.src_eid.to_be_bytes(), &governance_message.origin_caller], ctx.program_id);
 
-        // accounts indexes 0 to 4 inclusive (first 5 accounts)
+        // accounts indexes 0 to 3 inclusive (first 4 accounts)
         let mut accounts = vec![
             // payer
             AccountMetaRef {
@@ -66,14 +66,9 @@ impl LzReceiveTypesV2<'_> {
                 pubkey: cpi_authority.into(),
                 is_writable: false,
             },
-            // program
-            AccountMetaRef {
-                pubkey: governance_message.program_id.into(),
-                is_writable: false,
-            },
         ];
 
-        // accounts indexes 5 to 12 inclusive (8 accounts, last one #13)
+        // accounts indexes 4 to 11 inclusive (8 accounts, last one #12)
         // Add accounts required for LayerZero's Endpoint clear operation
         // These accounts handle the core message verification and processing
         let accounts_for_clear: Vec<AccountMetaRef> = get_accounts_for_clear(
@@ -85,25 +80,34 @@ impl LzReceiveTypesV2<'_> {
         );
         accounts.extend(accounts_for_clear);
 
-        // accounts indexes starting from 13
-        // Governance message instruction accounts
-        accounts.extend(
-            governance_message
-                .accounts
-                .iter()
-                .map(|acc| AccountMetaRef {
-                    pubkey: if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
-                        cpi_authority.into()
-                    } else if acc.pubkey == PAYER_PLACEHOLDER {
-                        AddressLocator::Payer
-                    } else if acc.pubkey == CONTEXT_PLACEHOLDER {
-                        AddressLocator::Context
-                    } else {
-                        acc.pubkey.into()
-                    },
-                    is_writable: acc.is_writable,
-                }),
-        );
+        // accounts indexes starting from 12
+        // custom CPI accounts for each instruction including program accounts
+        for instruction in governance_message.instructions {
+            // Governance message instruction program account
+            accounts.push(AccountMetaRef {
+                pubkey: instruction.program_id.into(),
+                is_writable: false,
+            });
+            
+            // Governance message instruction accounts
+            accounts.extend(
+                instruction
+                    .accounts
+                    .iter()
+                    .map(|acc| AccountMetaRef {
+                        pubkey: if acc.pubkey == CPI_AUTHORITY_PLACEHOLDER {
+                            cpi_authority.into()
+                        } else if acc.pubkey == PAYER_PLACEHOLDER {
+                            AddressLocator::Payer
+                        } else if acc.pubkey == CONTEXT_PLACEHOLDER {
+                            AddressLocator::Context
+                        } else {
+                            acc.pubkey.into()
+                        },
+                        is_writable: acc.is_writable,
+                    }),
+            );
+        }
 
         // Return the complete execution plan with ALTs and instructions
         Ok(LzReceiveTypesV2Result {

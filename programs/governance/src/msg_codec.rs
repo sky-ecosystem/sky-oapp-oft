@@ -1,25 +1,39 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::error::GovernanceError;
+use crate::{error::GovernanceError, primitive_types_helper};
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use std::io::{self, Read, Write};
 
-/// General purpose governance message to call arbitrary instructions on a governed program.
-/// The wire format for this message is:
+/// General purpose governance message to call arbitrary instructions on a governed programs.
+/// Batch governance message wire format for multiple instructions:
+/// | field              |                     size (bytes) | description                             |
+/// |--------------------|-----------------------------------|----------------------------------------|
+/// | ACTION             |                                1 | Governance action identifier            |
+/// | ORIGIN_CALLER      |                               32 | Origin caller address as bytes32        |
+/// | instructions_count |                                2 | Number of instructions in batch         |
+/// | instructions       |                         variable | Array of instruction bodies             |
+///
+/// Each instruction body format:
 /// | field           |                     size (bytes) | description                             |
-/// |-----------------+----------------------------------+-----------------------------------------|
-/// | ACTION          |                                1 | Governance action identifier            |
-/// | ORIGIN_CALLER   |                               32 | Origin caller address as bytes32        |
 /// |-----------------+----------------------------------+-----------------------------------------|
 /// | program_id      |                               32 | Program ID of the program to be invoked |
 /// | accounts_length |                                2 | Number of accounts                      |
 /// | accounts        | `accounts_length` * (32 + 1 + 1) | Accounts to be passed to the program    |
-/// | data            |                        remaining | Data to be passed to the program        |
+/// | data_length     |                                4 | Length of instruction data              |
+/// | data            |                  `data_length`   | Data to be passed to the program        |
 ///
+
+/// Batch governance message for executing multiple instructions atomically
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GovernanceMessage {
     pub origin_caller: [u8; 32],
+    pub instructions: Vec<GovernanceInstruction>,
+}
+
+/// Individual instruction within a batch message
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GovernanceInstruction {
     pub program_id: Pubkey,
     pub accounts: Vec<Acc>,
     pub data: Vec<u8>,
@@ -31,9 +45,9 @@ impl GovernanceMessage {
             .map_err(|_| error!(GovernanceError::InvalidGovernanceMessage))
     }
 
-    /// Decode a full governance message (header + body).
+    /// Decode a full governance batch message (header + body).
     pub fn decode(reader: &mut &[u8]) -> io::Result<Self> {
-        let action: u8 = Self::read_u8(reader)?;
+        let action: u8 = primitive_types_helper::read_u8(reader)?;
         if action != GovernanceAction::SolanaCall as u8 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -41,59 +55,67 @@ impl GovernanceMessage {
             ));
         }
 
-        let origin_caller = Self::read_bytes32(reader)?;
+        let origin_caller = primitive_types_helper::read_bytes32(reader)?;
+        let instructions_count = primitive_types_helper::read_u16(reader)?;
+        let mut instructions = Vec::with_capacity(instructions_count as usize);
 
-        Self::read_body(reader, origin_caller)
-    }
+        for _ in 0..instructions_count {
+            let program_id = primitive_types_helper::read_pubkey(reader)?;
+            let accounts_len = primitive_types_helper::read_u16(reader)?;
+            let mut accounts = Vec::with_capacity(accounts_len as usize);
 
-    /// Encode a full governance message (header + body).
-    pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        Self::write_u8(writer, GovernanceAction::SolanaCall as u8)?;
-        Self::write_bytes32(writer, &self.origin_caller)?;
-        self.write_body(writer)
-    }
+            for _ in 0..accounts_len {
+                let pubkey = primitive_types_helper::read_pubkey(reader)?;
+                let is_signer = primitive_types_helper::read_u8(reader)? != 0;
+                let is_writable = primitive_types_helper::read_u8(reader)? != 0;
+                accounts.push(Acc {
+                    pubkey,
+                    is_signer,
+                    is_writable,
+                });
+            }
 
-    /// Reads ONLY the body of the message, not the header.
-    fn read_body(reader: &mut &[u8], origin_caller: [u8; 32]) -> io::Result<Self> {
-        let program_id = Self::read_pubkey(reader)?;
-        let accounts_len = Self::read_u16(reader)?;
-        let mut accounts = Vec::with_capacity(accounts_len as usize);
+            let data_len = primitive_types_helper::read_u32(reader)?;
+            let mut data = vec![0u8; data_len as usize];
+            reader.read_exact(&mut data)?;
 
-        for _ in 0..accounts_len {
-            let pubkey = Self::read_pubkey(reader)?;
-            let is_signer = Self::read_u8(reader)? != 0;
-            let is_writable = Self::read_u8(reader)? != 0;
-            accounts.push(Acc {
-                pubkey,
-                is_signer,
-                is_writable,
+            instructions.push(GovernanceInstruction {
+                program_id,
+                accounts,
+                data,
             });
         }
 
         Ok(Self {
             origin_caller,
-            program_id,
-            accounts,
-            data: reader.to_vec(),
+            instructions,
         })
     }
 
-    /// Writes ONLY the body of the message, not the header.
-    fn write_body<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        Self::write_pubkey(writer, &self.program_id)?;
-        Self::write_u16(writer, self.accounts.len() as u16)?;
+    /// Encode a full governance batch message (header + body).
+    pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        primitive_types_helper::write_u8(writer, GovernanceAction::SolanaCall as u8)?;
+        primitive_types_helper::write_bytes32(writer, &self.origin_caller)?;
+        primitive_types_helper::write_u16(writer, self.instructions.len() as u16)?;
 
-        for acc in &self.accounts {
-            Self::write_pubkey(writer, &acc.pubkey)?;
-            Self::write_u8(writer, acc.is_signer as u8)?;
-            Self::write_u8(writer, acc.is_writable as u8)?;
+        for instruction in &self.instructions {
+            primitive_types_helper::write_pubkey(writer, &instruction.program_id)?;
+            primitive_types_helper::write_u16(writer, instruction.accounts.len() as u16)?;
+
+            for acc in &instruction.accounts {
+                primitive_types_helper::write_pubkey(writer, &acc.pubkey)?;
+                primitive_types_helper::write_u8(writer, acc.is_signer as u8)?;
+                primitive_types_helper::write_u8(writer, acc.is_writable as u8)?;
+            }
+
+            primitive_types_helper::write_u32(writer, instruction.data.len() as u32)?;
+            writer.write_all(&instruction.data)?;
         }
 
-        writer.write_all(&self.data)?;
         Ok(())
     }
 
-    /// Decodes ONLY the origin caller from the message.
+    /// Decodes ONLY the origin caller from the batch message.
     pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
         let origin_caller_start = 1;
         let origin_caller_end = origin_caller_start + 32;
@@ -105,47 +127,6 @@ impl GovernanceMessage {
         let mut origin_caller = [0u8; 32];
         origin_caller.copy_from_slice(&message[origin_caller_start..origin_caller_end]);
         Ok(origin_caller)
-    }
-
-    // Helper methods for reading/writing primitive types
-    fn read_u8<R: Read>(reader: &mut R) -> io::Result<u8> {
-        let mut buf = [0u8; 1];
-        reader.read_exact(&mut buf)?;
-        Ok(buf[0])
-    }
-
-    fn read_u16<R: Read>(reader: &mut R) -> io::Result<u16> {
-        let mut buf = [0u8; 2];
-        reader.read_exact(&mut buf)?;
-        Ok(u16::from_be_bytes(buf))
-    }
-
-    fn read_pubkey<R: Read>(reader: &mut R) -> io::Result<Pubkey> {
-        let mut buf = [0u8; 32];
-        reader.read_exact(&mut buf)?;
-        Ok(Pubkey::new_from_array(buf))
-    }
-
-    fn read_bytes32<R: Read>(reader: &mut R) -> io::Result<[u8; 32]> {
-        let mut buf = [0u8; 32];
-        reader.read_exact(&mut buf)?;
-        Ok(buf)
-    }
-
-    fn write_u8<W: Write>(writer: &mut W, value: u8) -> io::Result<()> {
-        writer.write_all(&[value])
-    }
-
-    fn write_u16<W: Write>(writer: &mut W, value: u16) -> io::Result<()> {
-        writer.write_all(&value.to_be_bytes())
-    }
-
-    fn write_pubkey<W: Write>(writer: &mut W, pubkey: &Pubkey) -> io::Result<()> {
-        writer.write_all(&pubkey.to_bytes())
-    }
-
-    fn write_bytes32<W: Write>(writer: &mut W, bytes: &[u8; 32]) -> io::Result<()> {
-        writer.write_all(bytes)
     }
 }
 
@@ -165,42 +146,6 @@ pub enum GovernanceAction {
     // Undefined = 0, // unused
     // EvmCall = 1, // unused
     SolanaCall = 2,
-}
-
-impl From<GovernanceMessage> for Instruction {
-    fn from(val: GovernanceMessage) -> Self {
-        let GovernanceMessage {
-            origin_caller: _,
-            program_id,
-            accounts,
-            data,
-        } = val;
-        let accounts: Vec<AccountMeta> = accounts.into_iter().map(|a| a.into()).collect();
-        Instruction {
-            program_id,
-            accounts,
-            data,
-        }
-    }
-}
-
-impl From<Instruction> for GovernanceMessage {
-    fn from(instruction: Instruction) -> GovernanceMessage {
-        let Instruction {
-            program_id,
-            accounts,
-            data,
-        } = instruction;
-
-        let accounts: Vec<Acc> = accounts.into_iter().map(|a| a.into()).collect();
-
-        GovernanceMessage {
-            origin_caller: [0; 32],
-            program_id,
-            accounts,
-            data,
-        }
-    }
 }
 
 /// A copy of [`solana_program::instruction::AccountMeta`] with
@@ -239,6 +184,55 @@ impl From<AccountMeta> for Acc {
             pubkey,
             is_signer,
             is_writable,
+        }
+    }
+}
+
+impl From<GovernanceMessage> for Vec<Instruction> {
+    fn from(val: GovernanceMessage) -> Self {
+        val.instructions.into_iter().map(|inst| inst.into()).collect()
+    }
+}
+
+impl From<Vec<Instruction>> for GovernanceMessage {
+    fn from(instructions: Vec<Instruction>) -> Self {
+        GovernanceMessage {
+            origin_caller: [0; 32],
+            instructions: instructions.into_iter().map(|inst| inst.into()).collect(),
+        }
+    }
+}
+
+impl From<GovernanceInstruction> for Instruction {
+    fn from(val: GovernanceInstruction) -> Self {
+        let GovernanceInstruction {
+            program_id,
+            accounts,
+            data,
+        } = val;
+        let accounts: Vec<AccountMeta> = accounts.into_iter().map(|a| a.into()).collect();
+        Instruction {
+            program_id,
+            accounts,
+            data,
+        }
+    }
+}
+
+impl From<Instruction> for GovernanceInstruction {
+    fn from(instruction: Instruction) -> Self {
+        let Instruction {
+            program_id,
+            accounts,
+            data,
+        } = instruction;
+
+        let accounts: Vec<Acc> = accounts.into_iter().map(|a| a.into()).collect();
+
+        GovernanceInstruction {
+            program_id,
+            accounts,
+            data,
         }
     }
 }

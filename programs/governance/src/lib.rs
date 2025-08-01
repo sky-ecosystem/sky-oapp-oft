@@ -4,6 +4,7 @@ mod state;
 
 pub mod error;
 pub mod msg_codec;
+pub mod primitive_types_helper;
 
 use anchor_lang::prelude::*;
 use instructions::*;
