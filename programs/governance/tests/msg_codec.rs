@@ -11,7 +11,7 @@ mod test_msg_codec {
     use spl_token::instruction::TokenInstruction;
 
     use governance::{
-        msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, CPI_AUTHORITY_PLACEHOLDER, PAYER_PLACEHOLDER
+        msg_codec::{Acc, GovernanceInstruction, GovernanceMessage}, CPI_AUTHORITY_PLACEHOLDER, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER
     };
     use uln::state::{ExecutorConfig, UlnConfig};
 
@@ -43,9 +43,11 @@ mod test_msg_codec {
         let data = hex::decode("afaf6d1f0d989bed").unwrap();
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id,
-            accounts,
-            data,
+            instructions: vec![GovernanceInstruction {
+                program_id,
+                accounts,
+                data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -60,45 +62,7 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_governance_message_parse() {
-        let origin_caller_hex = "9876543210000000000000000000000000000000000000000000000001234567";
-        let hex_string = format!(
-            "02{}0000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
-            origin_caller_hex,
-        );
-        let h = hex::decode(hex_string).unwrap();
-
-        let actual = GovernanceMessage::decode(&mut h.as_slice()).unwrap();
-
-        let accounts = vec![
-            Acc {
-                pubkey: Pubkey::try_from("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh").unwrap(),
-                is_signer: true,
-                is_writable: true,
-            },
-            Acc {
-                pubkey: Pubkey::try_from("11111112D1oxKts8YPdTJRG5FzxTNpMtWmq8hkVx3").unwrap(),
-                is_signer: false,
-                is_writable: true,
-            },
-        ];
-        let data = vec![1, 2, 3, 4, 5];
-        let origin_caller = hex::decode(origin_caller_hex).unwrap().try_into().unwrap();
-        let expected = GovernanceMessage {
-            origin_caller,
-            program_id: Pubkey::try_from("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap(),
-            accounts,
-            data,
-        };
-
-        assert_eq!(actual, expected);
-        let mut serialized = Vec::new();
-        actual.encode(&mut serialized).unwrap();
-        assert_eq!(GovernanceMessage::decode_origin_caller(&serialized).unwrap(), origin_caller);
-    }
-
-    #[test]
-    fn test_spl_token_transfer() {
+    fn test_hello_world_and_spl_token_transfer() {
         let mint_pubkey = pubkey!("HC8D1rWMtAifPRhUYD7PwKHMtMVLtwCjarfNVvcN3SGK");
         let mint_account = Acc {
             pubkey: mint_pubkey,
@@ -156,9 +120,20 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: spl_token::id(),
-            accounts: accounts.clone(),
-            data: instruction_data,
+            instructions: vec![
+                // hello world
+                GovernanceInstruction {
+                    program_id: pubkey!("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg"),
+                    accounts: vec![],
+                    data: hex::decode("afaf6d1f0d989bed").unwrap(),
+                },
+                // token transfer
+                GovernanceInstruction {
+                    program_id: spl_token::id(),
+                    accounts: accounts.clone(),
+                    data: instruction_data,
+                }
+            ],
         };
 
         let mut buf = Vec::new();
@@ -236,9 +211,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: pubkey!("SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"),
-            accounts: accounts.clone(),
-            data: hex::decode("c208a15799a419ab").unwrap(),
+            instructions: vec![GovernanceInstruction {
+                program_id: pubkey!("SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"),
+                accounts: accounts.clone(),
+                data: hex::decode("c208a15799a419ab").unwrap(),
+            }],
         };
 
         let mut buf = Vec::new();
@@ -258,13 +235,15 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: bpf_loader_upgradeable::id(),
-            accounts: instruction.accounts.iter().map(|a| Acc {
-                pubkey: a.pubkey,
-                is_signer: a.is_signer,
-                is_writable: a.is_writable,
-            }).collect(),
-            data: instruction.data.clone(),
+            instructions: vec![GovernanceInstruction {
+                program_id: bpf_loader_upgradeable::id(),
+                accounts: instruction.accounts.iter().map(|a| Acc {
+                    pubkey: a.pubkey,
+                    is_signer: a.is_signer,
+                    is_writable: a.is_writable,
+                }).collect(),
+                data: instruction.data.clone(),
+            }],
         };
 
         let mut buf = Vec::new();
@@ -281,13 +260,15 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: bpf_loader_upgradeable::id(),
-            accounts: instruction.accounts.iter().map(|a| Acc {
-                pubkey: a.pubkey,
-                is_signer: a.is_signer,
-                is_writable: a.is_writable,
-            }).collect(),
-            data: instruction.data.clone(),
+            instructions: vec![GovernanceInstruction {
+                program_id: bpf_loader_upgradeable::id(),
+                accounts: instruction.accounts.iter().map(|a| Acc {
+                    pubkey: a.pubkey,
+                    is_signer: a.is_signer,
+                        is_writable: a.is_writable,
+                    }).collect(),
+                data: instruction.data.clone(),
+            }],
         };
 
         let mut buf = Vec::new();
@@ -332,9 +313,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: oft::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: oft::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -379,9 +362,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: oft::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: oft::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -451,9 +436,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: oft::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: oft::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -495,9 +482,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: oft::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: oft::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -569,9 +558,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: oft::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: oft::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -697,9 +688,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -819,9 +812,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -947,9 +942,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1031,9 +1028,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1115,9 +1114,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1208,9 +1209,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1302,9 +1305,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1397,9 +1402,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1476,9 +1483,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
-            program_id: oft::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: oft::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1579,9 +1588,11 @@ mod test_msg_codec {
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: endpoint::id(),
-            accounts: accounts,
-            data: instruction_data,
+            instructions: vec![GovernanceInstruction {
+                program_id: endpoint::id(),
+                accounts: accounts,
+                data: instruction_data,
+            }],
         };
 
         let mut buf = Vec::new();
@@ -1632,22 +1643,24 @@ mod test_msg_codec {
         use solana_sdk::transaction::Transaction;
         use solana_sdk::instruction::Instruction;
 
+        let instructions: Vec<Instruction> = message.instructions.iter().map(|ix| Instruction {
+            program_id: ix.program_id,
+            accounts: ix.accounts.iter().map(|a| AccountMeta {
+                pubkey: if a.pubkey == CPI_AUTHORITY_PLACEHOLDER {
+                    get_cpi_authority()
+                } else if a.pubkey == PAYER_PLACEHOLDER {
+                    PAYER
+                } else {
+                    a.pubkey
+                },
+                is_signer: a.is_signer,
+                is_writable: a.is_writable,
+            }).collect(),
+            data: ix.data.clone(),
+        }).collect();
+
         let tx = Transaction::new_with_payer(
-            &[Instruction {
-                program_id: message.program_id,
-                accounts: message.accounts.iter().map(|a| AccountMeta {
-                    pubkey: if a.pubkey == CPI_AUTHORITY_PLACEHOLDER {
-                        get_cpi_authority()
-                    } else if a.pubkey == PAYER_PLACEHOLDER {
-                        PAYER
-                    } else {
-                        a.pubkey
-                    },
-                    is_signer: a.is_signer,
-                    is_writable: a.is_writable,
-                }).collect(),
-                data: message.data.clone(),
-            }],
+            &instructions,
             Some(&PAYER),
         );
     
