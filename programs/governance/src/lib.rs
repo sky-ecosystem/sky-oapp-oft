@@ -14,7 +14,7 @@ use oapp::LzReceiveParams;
 
 declare_id!(Pubkey::new_from_array(program_id_from_env!(
     "GOVERNANCE_ID",
-    "EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3"
+    "Hfet6nReAywVVhYLQGJNKUnZvcBvjTrTunHuJNSBHTUy"
 )));
 
 pub const EXECUTOR_ID: Pubkey = pubkey!("6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn");

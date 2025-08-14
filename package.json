@@ -9,6 +9,7 @@
     "compile:forge": "forge build",
     "compile:hardhat": "hardhat compile",
     "config:governance": "ts-node scripts/configGov.ts",
+    "scripts:sendTx": "ts-node scripts/sendTx.ts",
     "generate:governance": "ts-node scripts/generateGovernance.ts",
     "lint": "$npm_execpath run lint:js && $npm_execpath run lint:sol",
     "lint:fix": "eslint --fix '**/*.{js,ts,json}' && prettier --write . && solhint 'contracts/**/*.sol' --fix --noPrompt",

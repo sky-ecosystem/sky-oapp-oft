@@ -968,8 +968,10 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
+ "oft",
  "solana-helper",
  "solana-program",
+ "uln",
 ]
 
 [[package]]
@@ -1038,6 +1040,7 @@ dependencies = [
  "anchor-spl",
  "base64 0.22.1",
  "bincode",
+ "external-multicall",
  "hex",
  "oapp 0.2.0",
  "oft",

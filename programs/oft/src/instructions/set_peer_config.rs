@@ -96,4 +96,5 @@ pub enum PeerConfigParam {
 pub struct RateLimitParams {
     pub refill_per_second: Option<u64>,
     pub capacity: Option<u64>,
+    pub rate_limiter_type: Option<RateLimiterType>,
 }

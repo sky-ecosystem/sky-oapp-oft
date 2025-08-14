@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 #[cfg(test)]
 mod test_msg_codec {
+    use std::str::FromStr;
+
     use anchor_lang::prelude::*;
     use base64::Engine;
+    use bincode::serialize;
     use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, InitConfigParams, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
     use oft::{instructions::{PeerConfigParam, SetOFTConfigParams, SetPauseParams, SetPeerConfigParams}, PEER_SEED};
     use solana_program::pubkey::Pubkey;
     use solana_program::bpf_loader_upgradeable;
-    use solana_sdk::pubkey;
+    use solana_sdk::{hash::Hash, pubkey, signature::Keypair};
     use spl_token::instruction::TokenInstruction;
 
     use governance::{
         msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, CPI_AUTHORITY_PLACEHOLDER, PAYER_PLACEHOLDER
     };
-    use uln::state::{ExecutorConfig, UlnConfig};
+    use uln::{state::{ExecutorConfig, UlnConfig}, RECEIVE_CONFIG_SEED, SEND_CONFIG_SEED};
 
     #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
     pub struct InitNonceParams {
@@ -22,13 +25,13 @@ mod test_msg_codec {
         pub remote_oapp: [u8; 32],
     }
     
-    const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
+    const OFT_STORE_ADDRESS: Pubkey = pubkey!("Dbn1xDUs5yRSSgWWreMnVyznBfmvcMLdhwJdCx51RLoD");
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
-    const FUJI_PEER_ADDRESS: &str = "0xC61B038bC91f3Ad9f87A562daAfa0Df3E6987779";
-    const BSC_PEER_ADDRESS: &str = "0xFcF2F7F9d8dE3cf7C3dec9FcB33BCc88c0B2f8CC";
+    const FUJI_PEER_ADDRESS: &str = "0x9c1ac29EFd26c5f72Afe15f84aC60C24d3eED12C";
+    const BSC_PEER_ADDRESS: &str = "0x3D264fA63CB361F65Caf5eA04A853601E74a53eF";
     const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
@@ -1490,19 +1493,22 @@ mod test_msg_codec {
     }
 
     #[test]
-    fn test_endpoint_init_config<'a>() {
+    fn test_external_multicall<'a>() {
         let mut instruction_data = Vec::new();
-        let discriminator = sighash("global", "init_config");
+        let discriminator = sighash("global", "execute_multicall");
         // Add the discriminator
         instruction_data.extend_from_slice(&discriminator);
 
-        let params = InitConfigParams {
+        let OFT_PROGRAM_ID = pubkey!("Dt42AqkaCyiXY9srP4mCUaBe4QB8LSj5dQmpDJ3RuqHq");
+
+        let params = external_multicall::instructions::ExecuteMulticallParams {
             oapp: OFT_STORE_ADDRESS,
             eid: BSC_EID,
+            peer_address: evm_address_to_bytes32(BSC_PEER_ADDRESS),
         };
 
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
-            .expect("Failed to serialize InitConfigParams");
+            .expect("Failed to serialize ExecuteMulticall");
 
         println!("Instruction data (hex): {}", hex::encode(&instruction_data));
 
@@ -1521,6 +1527,107 @@ mod test_msg_codec {
             ],
             &endpoint::id(),
         );
+
+        let (peer_address, _bump_seed) = Pubkey::find_program_address(
+            &[
+                PEER_SEED,
+                &OFT_STORE_ADDRESS.to_bytes(),
+                &params.eid.to_be_bytes(),
+            ],
+            &OFT_PROGRAM_ID,
+        );
+
+        let (send_library_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                SEND_LIBRARY_CONFIG_SEED,
+                &params.oapp.to_bytes(),
+                &params.eid.to_be_bytes()
+            ],
+            &endpoint::id(),
+        );
+
+        let (receive_library_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                RECEIVE_LIBRARY_CONFIG_SEED,
+                &params.oapp.to_bytes(),
+                &params.eid.to_be_bytes()
+            ],
+            &endpoint::id(),
+        );
+
+        let (send_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                SEND_CONFIG_SEED,
+                &params.eid.to_be_bytes(),
+                &params.oapp.to_bytes(),
+            ],
+            &uln::id(),
+        );
+
+        let (receive_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                RECEIVE_CONFIG_SEED,
+                &params.eid.to_be_bytes(),
+                &params.oapp.to_bytes(),
+            ],
+            &uln::id(),
+        );
+
+        let (default_send_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                SEND_CONFIG_SEED,
+                &params.eid.to_be_bytes(),
+            ],
+            &uln::id(),
+        );
+
+        let (default_receive_config, _bump_seed) = Pubkey::find_program_address(
+            &[
+                RECEIVE_CONFIG_SEED,
+                &params.eid.to_be_bytes(),
+            ],
+            &uln::id(),
+        );
+
+        let (endpoint_event_authority, _bump_seed) = Pubkey::find_program_address(
+            &[
+                "__event_authority".as_bytes(),
+            ],
+            &endpoint::id(),
+        );
+
+        let (uln_event_authority, _bump_seed) = Pubkey::find_program_address(
+            &[
+                "__event_authority".as_bytes(),
+            ],
+            &uln::id(),
+        );
+
+        let (nonce, _bump_seed) = Pubkey::find_program_address(
+            &[
+                NONCE_SEED,
+                &params.oapp.to_bytes(),
+                &params.eid.to_be_bytes(),
+                &params.peer_address
+            ],
+            &endpoint::id(),
+        );
+
+        let (pending_inbound_nonce, _bump_seed) = Pubkey::find_program_address(
+            &[
+                PENDING_NONCE_SEED,
+                &params.oapp.to_bytes(),
+                &params.eid.to_be_bytes(),
+                &params.peer_address
+            ],
+            &endpoint::id(),
+        );
+
+        println!("endpoint_event_authority: {:?}", endpoint_event_authority);
+        println!("send_library_config: {:?}", send_library_config);
+        println!("receive_library_config: {:?}", receive_library_config);
+        println!("send_config: {:?}", send_config);
+        println!("receive_config: {:?}", receive_config);
 
         let accounts = vec![
             // The PDA of the OApp or delegate
@@ -1545,41 +1652,107 @@ mod test_msg_codec {
                 is_signer: false,
                 is_writable: false,
             },
+            // send config
             Acc {
-                pubkey: uln::id(),
+                pubkey: send_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            // receive config
+            Acc {
+                pubkey: receive_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            // send library config
+            Acc {
+                pubkey: send_library_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            // receive library config
+            Acc {
+                pubkey: receive_library_config,
+                is_signer: false,
+                is_writable: true,
+            },
+            // oft store
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: true,
+            },
+            // peer
+            Acc {
+                pubkey: peer_address,
+                is_signer: false,
+                is_writable: true,
+            },
+            // endpoint event authority account
+            Acc {
+                pubkey: endpoint_event_authority,
                 is_signer: false,
                 is_writable: false,
             },
+            // uln event authority account
             Acc {
-                pubkey: CPI_AUTHORITY_PLACEHOLDER,
-                is_signer: true,
-                is_writable: true,
-            },
-            Acc {
-                pubkey: MSG_LIB_KEY,
+                pubkey: uln_event_authority,
                 is_signer: false,
                 is_writable: false,
             },
+            // default send config
             Acc {
-                pubkey: pubkey!("2NfYFUCZnjPgNos7FxxnvzMdN6EM9KDnXpLQ1FptZmNy"),
+                pubkey: default_send_config,
+                is_signer: false,
+                is_writable: false,
+            },
+            // default receive config
+            Acc {
+                pubkey: default_receive_config,
+                is_signer: false,
+                is_writable: false,
+            },
+            // nonce
+            Acc {
+                pubkey: nonce,
                 is_signer: false,
                 is_writable: true,
             },
+            // pending inbound nonce
             Acc {
-                pubkey: pubkey!("7wrvBobvSNGswuyLxQZKG4tvE2qrkzjEUAzrFmosg9oS"),
+                pubkey: pending_inbound_nonce,
                 is_signer: false,
                 is_writable: true,
             },
+            // system program
             Acc {
                 pubkey: solana_program::system_program::ID,
                 is_signer: false,
                 is_writable: false,
             },
+            // endpoint program
+            Acc {
+                pubkey: endpoint::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+            // message lib program
+            Acc {
+                pubkey: uln::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+            // oft program
+            Acc {
+                pubkey: OFT_PROGRAM_ID,
+                is_signer: false,
+                is_writable: false,
+            },            
         ];
 
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
-            program_id: endpoint::id(),
+            program_id: pubkey!("7Ackc8DwwpRvEAZsR12Ru27swgk1ifWuEmHQ3g3Q6tbj"),
             accounts: accounts,
             data: instruction_data,
         };
@@ -1591,7 +1764,6 @@ mod test_msg_codec {
 
         prepare_governance_message_simulation(&msg);
     }
-
 
     pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
         let preimage = format!("{}:{}", namespace, name);
@@ -1633,7 +1805,10 @@ mod test_msg_codec {
         use solana_sdk::instruction::Instruction;
 
         let tx = Transaction::new_with_payer(
-            &[Instruction {
+            &[
+                solana_sdk::compute_budget::ComputeBudgetInstruction::set_compute_unit_limit(1_000_000),
+                solana_sdk::compute_budget::ComputeBudgetInstruction::request_heap_frame(48 * 1024),
+                Instruction {
                 program_id: message.program_id,
                 accounts: message.accounts.iter().map(|a| AccountMeta {
                     pubkey: if a.pubkey == CPI_AUTHORITY_PLACEHOLDER {
@@ -1650,8 +1825,17 @@ mod test_msg_codec {
             }],
             Some(&PAYER),
         );
-    
-        println!("\n{}", base64::engine::general_purpose::STANDARD.encode(tx.message_data()));
+
+        // let ser = serialize(&tx).unwrap();
+        // println!("tx send base64");
+        // println!("\n\n\n");
+        // println!("tx: {:?}", base64::engine::general_purpose::STANDARD.encode(ser));
+        // println!("\n\n\n");
+
+        println!(
+            "\n{}",
+            base64::engine::general_purpose::STANDARD.encode(tx.message_data())
+        );
     }
 
     fn get_cpi_authority() -> Pubkey {

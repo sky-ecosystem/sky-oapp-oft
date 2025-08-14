@@ -7,6 +7,8 @@ import { buildLzReceiveExecutionPlan, LzReceiveParams } from '@layerzerolabs/lz-
 import { base58 } from '@metaplex-foundation/umi/serializers'
 import { publicKey } from '@metaplex-foundation/umi'
 import { simulateTransaction } from './utils'
+import { ComputeBudgetProgram } from '@solana/web3.js'
+import { setComputeUnitLimit } from '@metaplex-foundation/mpl-toolbox'
 
 interface Args {
     debug: boolean
@@ -77,13 +79,21 @@ task('lz:oapp:solana:clear-v2', 'Clear a stored payload on Solana using the v2 l
         const lzReceiveExecutionPlan = await buildLzReceiveExecutionPlan(umi.rpc, publicKey(EXECUTOR_PROGRAM_ID), umiWalletKeyPair.publicKey, packet.receiver, publicKey(process.env.GOVERNANCE_PROGRAM_ID), lzReceiveParams)
         console.log('lzReceiveExecutionPlan', lzReceiveExecutionPlan)
 
+        console.log(lzReceiveExecutionPlan.instructions[0].keys)
+
         const transaction = umi.transactions.create({
             version: 0,
             blockhash: (await umi.rpc.getLatestBlockhash()).blockhash,
-            instructions: lzReceiveExecutionPlan.instructions,
+            instructions: [
+                setComputeUnitLimit(umi, { units: 1_000_000 }).getInstructions()[0],
+                ...lzReceiveExecutionPlan.instructions,
+            ],
             payer: umi.payer.publicKey,
             addressLookupTables: lzReceiveExecutionPlan.addressLookupTables,
         })
+
+        console.log('transaction', transaction)
+
         const signedTransaction = await umiWalletSigner.signTransaction(transaction)
 
         if (debug) {
