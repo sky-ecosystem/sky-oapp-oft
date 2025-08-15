@@ -66,6 +66,8 @@ impl Send<'_> {
 
         if let Some(rate_limiter) = ctx.accounts.peer.outbound_rate_limiter.as_mut() {
             rate_limiter.try_consume(amount_received_ld)?;
+        } else {
+            return Err(error!(OFTError::RateLimitExceeded))
         }
 
         if let Some(rate_limiter) = ctx.accounts.peer.inbound_rate_limiter.as_mut() {
