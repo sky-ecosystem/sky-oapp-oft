@@ -58,14 +58,6 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     }
 
     /**
-     * @notice Migrates all locked tokens to a specified address.
-     * @param _to The address to which the locked tokens will be migrated.
-     *
-     * @dev This function is intended to be called by the owner to migrate all locked tokens
-     * from this contract to another address, effectively allowing for a migration of the contract's state.
-     * @dev It resets the fee balance to zero before migration. Effectively withdrawing all fees at the same time.
-     */
-    /**
      * @notice Migrates all locked tokens to a specified address, less the accumulated fees.
      * @param _to The address to which the locked tokens will be migrated.
      *
@@ -77,14 +69,8 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         // @dev Block sending directly to the zero address.
         if (_to == address(0)) revert InvalidAddressZero();
 
-        // TODO pick one of these implementations, either exclude fees from tokens that can migrate OR also withdraw fees.
-
-        // @dev Reset the fee balance to zero before migration.
-        feeBalance = 0;
-        uint256 balance = innerToken.balanceOf(address(this));
-
-//        // @dev Do not include the fee balance in the migration.
-//        uint256 balance = innerToken.balanceOf(address(this)) - feeBalance;
+        // @dev Do not include the fee balance in the migration.
+        uint256 balance = innerToken.balanceOf(address(this)) - feeBalance;
 
         innerToken.safeTransfer(_to, balance);
         emit LockedTokensMigrated(_to, balance);
@@ -144,13 +130,8 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         // @dev Check and update the rate limit based on the source endpoint ID (srcEid).
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);
 
-        // @dev If recipient is the zero address or the inner token, we will reroute this to the contract as a 'fee'.
-        // @dev The owner is able to theoretically rescue these otherwise burned/lost tokens.
-        if (_to == address(0) || _to == token()) {
-            _to = address(this);
-            // @dev Increment the fee balance if the recipient is the zero address or the inner token address.
-            feeBalance += _amountLD;
-        }
+        // @dev If recipient is the zero address or the inner token, reroute to the dead address.
+        if (_to == address(0) || _to == token()) _to = address(0xdead);
         
         // @dev Unlock the tokens and transfer to the recipient.
         innerToken.safeTransfer(_to, _amountLD);

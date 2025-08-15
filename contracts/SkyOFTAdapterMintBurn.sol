@@ -113,11 +113,8 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
         // @dev Check and update the rate limit based on the source endpoint ID (srcEid).
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);
 
-        // @dev If recipient is the zero address or the inner token, we will reroute this to the contract as a 'fee'.
-        // @dev The owner is able to theoretically rescue these otherwise burned/lost tokens.
-        if (_to == address(0) || _to == token()) {
-            _to = address(this);
-        }
+        // @dev If recipient is the zero address or the inner token, reroute to the dead address.
+        if (_to == address(0) || _to == token())_to = address(0xdead);
 
         // @dev Mints the tokens to the recipient.
         IMintBurnVoidReturn(token()).mint(_to, _amountLD);
