@@ -71,7 +71,7 @@ contract GovernanceOAppSender is OAppSender, OAppOptionsType3, IGovernanceOAppSe
         MessagingFee calldata _fee,
         address _refundAddress
     ) external payable returns (MessagingReceipt memory msgReceipt) {
-        if (!canCallTarget[msg.sender][_params.dstEid][_params.dstTarget]) revert InvalidCall();
+        if (!canCallTarget[msg.sender][_params.dstEid][_params.dstTarget]) revert CannotCallTarget();
 
         (bytes memory message, bytes memory options) = _buildMsgAndOptions(_params);
 
