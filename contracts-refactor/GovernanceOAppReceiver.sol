@@ -20,15 +20,33 @@ contract GovernanceOAppReceiver is OAppReceiver, ReentrancyGuard, IGovernanceOAp
 
     /**
      * @dev Constructor to initialize the GovernanceOAppReceiver contract
+     * @param _governanceOAppSenderEid The GovernanceOAppSender endpoint ID
+     * @param _governanceOAppSenderAddress The GovernanceOAppSender address
      * @param _endpoint The LayerZero endpoint address
-     * @param _owner The owner address for the OApp
+     * @param _owner The initial owner address (will be transferred to address(this) later)
      */
-    constructor(address _endpoint, address _owner) OAppCore(_endpoint, _owner) Ownable(_owner) {
-        // TODO need to set this thing up to be the owner of itself, AND the delegate
-        // TODO MUST set peer to Ethereum before it transfers ownership to itself, because otherwise it cant receive msg. Also means 
-        // if ethereum is EVER removed as a peer, it CANT be set back to itself. 
-        // TODO potentially DONT allow removing remote peer from the list because it will brick itself
-        // TODO what is the initial setup for this? in terms of validTargets, so the app cant brick itself etc.
+    constructor(
+        uint32 _governanceOAppSenderEid, 
+        bytes32 _governanceOAppSenderAddress, 
+        address _endpoint, 
+        address _owner
+    ) OAppCore(_endpoint, _owner) Ownable(_owner) {
+        // Set the peer on the GovernanceOAppReceiver contract to the GovernanceOAppSender contract
+        _setPeer(_governanceOAppSenderEid, _governanceOAppSenderAddress);
+
+        // Deployment steps:
+        // 1. Deploy the GovernanceOAppSender on a given chain.
+        // 2. Deploy the GovernanceOAppReceiver on all the dst chains with eid, and addresses generated from step 1.
+        // 3. Transfer ownership of all the GovernanceOAppReceivers to itself (address(this)).
+        // 4. Set the peers on the GovernanceOAppSender contract for all of the receivers deployed in step 2.
+        //
+        // IMPORTANT!!!!: Since the GovernanceOAppReceiver's lzReceive is gated by valid peers. 
+        // If you remove the GovernanceOAppSender as a peer on the GovernanceOAppReceiver contracts, 
+        // the GovernanceOAppReceiver will no longer be able to receive/execute messages from the GovernanceOAppSender. 
+        // This will brick the system!!! So be very careful when removing a peer.
+
+        // TODO Alternatively to this, you could make setting a peer immutable, and then you cannot accidently brick it.
+        // However you then cannot change them later, and a full migration of ownership would be required.
     }
 
     /**
