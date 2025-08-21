@@ -31,7 +31,7 @@ interface IGovernanceOAppSender {
     /**
      * @dev Thrown when a sender attempts to call a target they don't have permission for
      */
-    error InvalidCall();
+    error CannotCallTarget();
 
     /**
      * @dev Emitted when a governance call is successfully sent to a remote chain
