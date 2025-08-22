@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #[cfg(test)]
 mod test_msg_codec {
+    use std::str::FromStr;
     use anchor_lang::prelude::*;
     use base64::Engine;
     use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, InitConfigParams, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
@@ -21,7 +22,7 @@ mod test_msg_codec {
         pub remote_eid: u32,
         pub remote_oapp: [u8; 32],
     }
-    
+
     const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
@@ -49,11 +50,12 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
-        let msg2 = GovernanceMessage::decode(&mut buf.as_slice()).unwrap();
+        let msg2 = GovernanceMessage::read_body(&mut buf.as_slice(), msg.origin_caller, msg.program_id).unwrap();
         assert_eq!(msg, msg2);
 
         prepare_governance_message_simulation(&msg);
@@ -63,7 +65,7 @@ mod test_msg_codec {
     fn test_governance_message_parse() {
         let origin_caller_hex = "9876543210000000000000000000000000000000000000000000000001234567";
         let hex_string = format!(
-            "02{}0000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
+            "{}0000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
             origin_caller_hex,
         );
         let h = hex::decode(hex_string).unwrap();
@@ -162,9 +164,10 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized governance message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
         prepare_governance_message_simulation(&msg);
     }
@@ -1654,10 +1657,10 @@ mod test_msg_codec {
         println!("\n{}", base64::engine::general_purpose::STANDARD.encode(tx.message_data()));
     }
 
-    fn get_cpi_authority() -> Pubkey {
+    fn get_cpi_authority() -> Pubkey {        
         let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
             &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &FUJI_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
-            &governance::id(),
+            &get_governance_program_id(),
         );
 
         cpi_authority
@@ -1682,9 +1685,16 @@ mod test_msg_codec {
                 GOVERNANCE_SEED,
                 &governance_id.to_be_bytes()
             ],
-            &governance::id(),
+            &get_governance_program_id(),
         );
 
         (governance_oapp_address, bump_seed)
+    }
+
+    fn get_governance_program_id() -> Pubkey {
+        std::env::var("GOVERNANCE_ID")
+            .ok()
+            .and_then(|s| Pubkey::from_str(&s).ok())
+            .unwrap_or_else(|| governance::id())
     }
 }

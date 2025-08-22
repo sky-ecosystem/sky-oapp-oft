@@ -68,6 +68,7 @@ async function initGovernance(connection: Connection, payer: Keypair, admin: Key
     const [governance] = governanceProgram.idPDA()
     console.log('governancePDA base58', governance.toBase58());
     console.log('governancePDA hex', '0x' + governance.toBuffer().toString('hex'));
+    console.log('governance program id hex', '0x' + governanceProgram.program.toBuffer().toString('hex'));
     
     let current = false
     try {

@@ -9,8 +9,6 @@ pub enum GovernanceError {
     CpiAuthorityOwnerNotSystemProgram,
     #[msg("InvalidGovernanceMessage")]
     InvalidGovernanceMessage,
-    #[msg("InvalidGovernanceAction")]
-    InvalidGovernanceAction,
     #[msg("GovernedProgramIdMismatch")]
     GovernedProgramIdMismatch,
     #[msg("Unauthorized")]
