@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 // Mock imports
+import { ERC20Mock } from "@layerzerolabs/oft-evm/test/mocks/ERC20Mock.sol";
 import { OFTComposerMock } from "@layerzerolabs/oft-evm/test/mocks/OFTComposerMock.sol";
 import { MintBurnERC20Mock } from "@layerzerolabs/oft-evm/test/mocks/MintBurnERC20Mock.sol";
 
@@ -10,8 +11,9 @@ import { IOAppOptionsType3, EnforcedOptionParam } from "@layerzerolabs/oapp-evm/
 import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
 // OFT imports
-import { MABAOFTDSRLFee } from "../../contracts/oft-dsrl/MABAOFTDSRLFee.sol";
-import { DoubleSidedRateLimiter } from "../../contracts/oft-dsrl/DoubleSidedRateLimiter.sol";
+import { SkyOFTAdapter } from "../../../contracts/SkyOFTAdapter.sol";
+import { SkyRateLimiter, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
+import { ISkyRateLimiter } from "../../../contracts/interfaces/ISkyRateLimiter.sol";
 import { IOFT, SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { MessagingFee, MessagingReceipt, Origin } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
 import { OFTMsgCodec } from "@layerzerolabs/oft-evm/contracts/libs/OFTMsgCodec.sol";
@@ -19,19 +21,18 @@ import { OFTComposeMsgCodec } from "@layerzerolabs/oft-evm/contracts/libs/OFTCom
 import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ISendLib.sol";
 import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messagelib/libs/PacketV1Codec.sol";
 import { DoubleEndedQueue } from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
-import { MintAndBurnOFTAdapter } from "../../contracts/MintAndBurnOFTAdapter.sol";
-import { OFTAdapterDSRLFeeBase } from "../../contracts/oft-dsrl/OFTAdapterDSRLFeeBase.sol";
+import { SkyOFTCore } from "../../../contracts/SkyOFTCore.sol";
+import { ISkyOFT } from "../../../contracts/interfaces/ISkyOFT.sol";
 
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 // DevTools imports
-import { TestHelperOz5WithRevertAssertions } from "./helpers/TestHelperOz5WithRevertAssertions.sol";
+import { TestHelperOz5WithRevertAssertions } from "../helpers/TestHelperOz5WithRevertAssertions.sol";
 
-contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
+contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
     using OptionsBuilder for bytes;
     using PacketV1Codec for bytes;
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
@@ -44,9 +45,9 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
     IERC20 bToken;
     IERC20 cToken;
 
-    MABAOFTDSRLFee aOFT;
-    MABAOFTDSRLFee bOFT;
-    MABAOFTDSRLFee cOFT;
+    SkyOFTAdapter aOFT;
+    SkyOFTAdapter bOFT;
+    SkyOFTAdapter cOFT;
 
     address public userA = address(0x1);
     address public userB = address(0x2);
@@ -59,50 +60,47 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         vm.deal(userC, 1000 ether);
         
         // The outbound (send) rate limits for OFT A.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        aOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 10 ether, window: 60 seconds});
+        RateLimitConfig[] memory aOutboundConfigs = new RateLimitConfig[](1);
+        aOutboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 10 ether, window: 60 seconds});
 
         // The inbound (receive) rate limits for OFT A.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aInboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        aInboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 10 ether, window: 60 seconds});
+        RateLimitConfig[] memory aInboundConfigs = new RateLimitConfig[](1);
+        aInboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 10 ether, window: 60 seconds});
 
         // The outbound (send) rate limits for OFT B.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory bOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        bOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
+        RateLimitConfig[] memory bOutboundConfigs = new RateLimitConfig[](1);
+        bOutboundConfigs[0] = RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
 
         // The inbound (receive) rate limits for OFT B.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory bInboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        bInboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
+        RateLimitConfig[] memory bInboundConfigs = new RateLimitConfig[](1);
+        bInboundConfigs[0] = RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
 
         // The outbound (send) rate limits for OFT C (only limits to A).
-        DoubleSidedRateLimiter.RateLimitConfig[] memory cOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        cOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
+        RateLimitConfig[] memory cOutboundConfigs = new RateLimitConfig[](1);
+        cOutboundConfigs[0] = RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
         
         // The inbound (receive) rate limits for OFT C (only limits from A).
-        DoubleSidedRateLimiter.RateLimitConfig[] memory cInboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        cInboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
+        RateLimitConfig[] memory cInboundConfigs = new RateLimitConfig[](1);
+        cInboundConfigs[0] = RateLimitConfig({eid: aEid, limit: 10 ether, window: 60 seconds});
 
         super.setUp();
         setUpEndpoints(3, LibraryType.UltraLightNode);
         setUpTokens();
-
-        aOFT = MABAOFTDSRLFee(
-            _deployOApp(type(MintAndBurnOFTAdapter).creationCode, abi.encode(address(aToken), address(endpoints[aEid]), address(this)))
+        
+        aOFT = SkyOFTAdapter(
+            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(aToken), address(endpoints[aEid]), address(this)))
         );
-        aOFT.setRateLimits(aOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
-        aOFT.setRateLimits(aInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
+        aOFT.setRateLimits(aInboundConfigs, aOutboundConfigs);
 
-        bOFT = MABAOFTDSRLFee(
-            _deployOApp(type(MintAndBurnOFTAdapter).creationCode, abi.encode(address(bToken), address(endpoints[bEid]), address(this)))
+        bOFT = SkyOFTAdapter(
+            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(bToken), address(endpoints[bEid]), address(this)))
         );
-        bOFT.setRateLimits(bOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
-        bOFT.setRateLimits(bInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
+        bOFT.setRateLimits(bInboundConfigs, bOutboundConfigs);
 
-        cOFT = MABAOFTDSRLFee(
-            _deployOApp(type(MintAndBurnOFTAdapter).creationCode, abi.encode(address(cToken), address(endpoints[cEid]), address(this)))
+        cOFT = SkyOFTAdapter(
+            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(cToken), address(endpoints[cEid]), address(this)))
         );
-        cOFT.setRateLimits(cOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
-        cOFT.setRateLimits(cInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
+        cOFT.setRateLimits(cInboundConfigs, cOutboundConfigs);
 
         // config and wire the ofts
         address[] memory ofts = new address[](3);
@@ -111,12 +109,16 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         ofts[2] = address(cOFT);
         this.wireOApps(ofts);
 
-        assignMintingRights();
-
         // mint tokens
         deal(address(aToken), userA, initialBalance);
         deal(address(bToken), userB, initialBalance);
         deal(address(cToken), userC, initialBalance);
+
+        // mint tokens to the B and C adapter lockboxes
+        // this is not needed in production, only for testing
+        // because there is more than one lockbox in the testing mesh
+        deal(address(bToken), address(bOFT), initialBalance);
+        deal(address(cToken), address(cOFT), initialBalance);
     }
 
     function setUpTokens() public virtual {
@@ -124,8 +126,6 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         bToken = new MintBurnERC20Mock("bToken", "bToken");
         cToken = new MintBurnERC20Mock("cToken", "cToken");
     }
-
-    function assignMintingRights() public virtual {}
 
     function test_constructor() public view {
         assertEq(aOFT.owner(), address(this));
@@ -143,9 +143,10 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
 
     function test_set_rates() public {
         // The outbound (send) rate limits for OFT A.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aNewOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        aNewOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 1.9 ether, window: 59 seconds});
-        aOFT.setRateLimits(aNewOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        RateLimitConfig[] memory aNewOutboundConfigs = new RateLimitConfig[](1);
+        aNewOutboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 1.9 ether, window: 59 seconds});
+        RateLimitConfig[] memory aEmptyInboundConfigs = new RateLimitConfig[](0);
+        aOFT.setRateLimits(aEmptyInboundConfigs, aNewOutboundConfigs);
 
         uint256 tokensToSend = 2 ether;
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
@@ -165,7 +166,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
 
         // User A call send two times within the allowed outbound window.
         vm.startPrank(userA);
-        vm.expectRevert(DoubleSidedRateLimiter.RateLimitExceeded.selector);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
         aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
     }
 
@@ -174,14 +175,16 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(cToken.balanceOf(userC), initialBalance);
         
         // The outbound (send) rate limits for OFT A only allows to send 2.5 tokens every 60 seconds.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aNewOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        aNewOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 2.5 ether, window: 60 seconds});
-        aOFT.setRateLimits(aNewOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        RateLimitConfig[] memory aNewOutboundConfigs = new RateLimitConfig[](1);
+        aNewOutboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 2.5 ether, window: 60 seconds});
+        RateLimitConfig[] memory aEmptyInboundConfigs = new RateLimitConfig[](0);
+        aOFT.setRateLimits(aEmptyInboundConfigs, aNewOutboundConfigs);
 
         // The inbound (receive) rate limits for OFT B allows for 5 tokens to be received every 60 seconds..
-        DoubleSidedRateLimiter.RateLimitConfig[] memory bNewInboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        bNewInboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: aEid, limit: 5 ether, window: 60 seconds});
-        bOFT.setRateLimits(bNewInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
+        RateLimitConfig[] memory bNewInboundConfigs = new RateLimitConfig[](1);
+        bNewInboundConfigs[0] = RateLimitConfig({eid: aEid, limit: 5 ether, window: 60 seconds});
+        RateLimitConfig[] memory bEmptyOutboundConfigs = new RateLimitConfig[](0);
+        bOFT.setRateLimits(bNewInboundConfigs, bEmptyOutboundConfigs);
 
         uint256 tokensToSend = 2.5 ether;
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
@@ -217,10 +220,11 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(cToken.balanceOf(userC), initialBalance);
 
         // The outbound (send) rate limits for OFT A.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aNewOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](2);
-        aNewOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 1.9 ether, window: 59 seconds});
-        aNewOutboundConfigs[1] = DoubleSidedRateLimiter.RateLimitConfig({eid: cEid, limit: 2 ether, window: 60 seconds});
-        aOFT.setRateLimits(aNewOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        RateLimitConfig[] memory aNewOutboundConfigs = new RateLimitConfig[](2);
+        aNewOutboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 1.9 ether, window: 59 seconds});
+        aNewOutboundConfigs[1] = RateLimitConfig({eid: cEid, limit: 2 ether, window: 60 seconds});
+        RateLimitConfig[] memory aEmptyInboundConfigs = new RateLimitConfig[](0);
+        aOFT.setRateLimits(aEmptyInboundConfigs, aNewOutboundConfigs);
 
         uint256 tokensToSend = 2 ether;
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
@@ -257,7 +261,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         // User A call send within the allowed outbound window and limit.
         vm.startPrank(userA);
         aToken.approve(address(aOFT), tokensToSend);
-        vm.expectRevert(DoubleSidedRateLimiter.RateLimitExceeded.selector);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
         aOFT.send{ value: feeB.nativeFee }(sendParamToEndpointB, feeB, payable(address(this)));
         vm.stopPrank();
     }
@@ -267,15 +271,16 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bOFT.owner(), address(this));
 
         // The outbound (send) rate limits for OFT A.
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aNewOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        aNewOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 1.9 ether, window: 59 seconds});
+        RateLimitConfig[] memory aNewOutboundConfigs = new RateLimitConfig[](1);
+        aNewOutboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 1.9 ether, window: 59 seconds});
+        RateLimitConfig[] memory aEmptyInboundConfigs = new RateLimitConfig[](0);
 
         vm.prank(userB);
 
         vm.expectRevert(
             abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, userB)
         );
-        aOFT.setRateLimits(aNewOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        aOFT.setRateLimits(aEmptyInboundConfigs, aNewOutboundConfigs);
     }
 
     function test_send_oft() public {
@@ -296,13 +301,8 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bToken.balanceOf(userB), initialBalance);
 
         vm.startPrank(userA);
-
         aToken.approve(address(aOFT), tokensToSend);
-        
-        vm.expectEmit();
-        emit IERC20.Transfer(userA, address(0), tokensToSend);
         aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
-
         vm.stopPrank();
 
         verifyPackets(bEid, addressToBytes32(address(bOFT)));
@@ -331,7 +331,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         vm.startPrank(userA);
         aToken.approve(address(aOFT), tokensToSend);
         aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
-        vm.expectRevert(DoubleSidedRateLimiter.RateLimitExceeded.selector);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
         aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
         vm.stopPrank();
     }
@@ -419,10 +419,11 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0));
 
         // Packet 2 fails and must wait at least 60 seconds.
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(DoubleSidedRateLimiter.RateLimitExceeded.selector), "");
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
     }
 
     function test_receive_oft_succeeds_after_waiting_limit() public {
+
         uint256 tokensToSend = 10 ether;
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
         SendParam memory sendParam = SendParam(
@@ -557,7 +558,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         // Packet 2 waits at least 30 seconds.
         // Because the decay is 60 seconds, with a limit of 10 tokens, only 5 tokens should be free to send after 30 seconds of decay.
         skip(30 seconds);
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(DoubleSidedRateLimiter.RateLimitExceeded.selector), "");
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
 
         assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend - tokensToSendAfterDecay);
         assertEq(bToken.balanceOf(userB), initialBalance + tokensToSend);
@@ -638,12 +639,12 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
     function test_net_rate_limiting() public {
         // 1. Set the ORL on aEid to bEid to 20 eth/min.  The inbound rate limit on bEid from
         // aEid remains the same (10 eth/min).
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        aOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 20 ether, window: 60 seconds});
-        aOFT.setRateLimits(aOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
-        DoubleSidedRateLimiter.RateLimitConfig[] memory aInboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        aInboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({eid: bEid, limit: 20 ether, window: 60 seconds});
-        aOFT.setRateLimits(aInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
+        RateLimitConfig[] memory aOutboundConfigs = new RateLimitConfig[](1);
+        aOutboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 20 ether, window: 60 seconds});
+        RateLimitConfig[] memory aInboundConfigs = new RateLimitConfig[](1);
+        aInboundConfigs[0] = RateLimitConfig({eid: bEid, limit: 20 ether, window: 60 seconds});
+        aOFT.setRateLimits(aInboundConfigs, aOutboundConfigs);
+        
         uint256 amountCanBeSent;
         uint256 amountCanBeReceived;
 
@@ -691,7 +692,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
 
         // 6. Expect the packet delivery to revert, as the IRL is exhausted.  This packet is now in flight until the IRL
         // allows another 10 ether to be received.
-        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(DoubleSidedRateLimiter.RateLimitExceeded.selector), "");
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
 
         // 7. userB sends back the 10 ether to userA on aEid, resetting the amountCanBeReceived on bEid from aEID to 10
         // ether.  The packet from #6 can now be delivered without violating the IRL.
@@ -725,7 +726,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
 
         vm.startPrank(userB);
         bToken.approve(address(bOFT), tokensToSend);
-        vm.expectRevert(DoubleSidedRateLimiter.RateLimitExceeded.selector);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
         bOFT.send{ value: fee.nativeFee }(bToASendParam, fee, payable(address(this)));
         vm.stopPrank();
 
@@ -782,20 +783,20 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         // Reset the rate limits
         uint32[] memory eids = new uint32[](1);
         eids[0] = bEid;
-        aOFT.resetRateLimits(eids, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        aOFT.resetRateLimits(new uint32[](0), eids);
 
         (amountInFlight, amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
         assertEq(amountInFlight, 0 ether);
         assertEq(amountCanBeSent, 10 ether);
 
         // Verify the rate limits are reset
-        DoubleSidedRateLimiter.RateLimitConfig[] memory newOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        newOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({
+        RateLimitConfig[] memory newOutboundConfigs = new RateLimitConfig[](1);
+        newOutboundConfigs[0] = RateLimitConfig({
             eid: bEid,
             limit: 20 ether,  // Double the previous limit
             window: 30 seconds // Half the previous window
         });
-        aOFT.setRateLimits(newOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        aOFT.setRateLimits(new RateLimitConfig[](0), newOutboundConfigs);
 
         // Verify the new limits are in effect
         (amountInFlight, amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
@@ -832,21 +833,19 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
 
     function test_reset_rate_limits_and_change_to_gross_accounting() public {
         // override B rate limits
-        DoubleSidedRateLimiter.RateLimitConfig[] memory newBOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        newBOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({
+        RateLimitConfig[] memory newBOutboundConfigs = new RateLimitConfig[](1);
+        newBOutboundConfigs[0] = RateLimitConfig({
             eid: aEid,
             limit: 30 ether,
             window: 60 seconds
         });
-        bOFT.setRateLimits(newBOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
-
-        DoubleSidedRateLimiter.RateLimitConfig[] memory newBInboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        newBInboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({
+        RateLimitConfig[] memory newBInboundConfigs = new RateLimitConfig[](1);
+        newBInboundConfigs[0] = RateLimitConfig({
             eid: aEid,
             limit: 60 ether,
             window: 60 seconds
         });
-        bOFT.setRateLimits(newBInboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Inbound);
+        bOFT.setRateLimits(newBInboundConfigs, newBOutboundConfigs);
 
         // Initial setup - send tokens to hit the rate limit
         uint256 tokensToSend = 10 ether;
@@ -874,21 +873,21 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(amountCanBeSent, 0);
 
         // Change accounting type
-        aOFT.setRateLimitAccountingType(DoubleSidedRateLimiter.RateLimitAccountingType.Gross);
+        aOFT.setRateLimitAccountingType(RateLimitAccountingType.Gross);
 
         // Reset the rate limits
         uint32[] memory eids = new uint32[](1);
         eids[0] = bEid;
-        aOFT.resetRateLimits(eids, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        aOFT.resetRateLimits(new uint32[](0), eids);
 
         // Set new rate limits with Gross accounting
-        DoubleSidedRateLimiter.RateLimitConfig[] memory newOutboundConfigs = new DoubleSidedRateLimiter.RateLimitConfig[](1);
-        newOutboundConfigs[0] = DoubleSidedRateLimiter.RateLimitConfig({
+        RateLimitConfig[] memory newOutboundConfigs = new RateLimitConfig[](1);
+        newOutboundConfigs[0] = RateLimitConfig({
             eid: bEid,
             limit: 20 ether,  // Double the previous limit
             window: 30 seconds // Half the previous window
         });
-        aOFT.setRateLimits(newOutboundConfigs, DoubleSidedRateLimiter.RateLimitDirection.Outbound);
+        aOFT.setRateLimits(new RateLimitConfig[](0), newOutboundConfigs);
 
         // Send tokens in one direction
         uint256 firstSend = 15 ether;
@@ -967,29 +966,42 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         );
         MessagingFee memory protocolFee = aOFT.quoteSend(sendParam, false);
 
+        assertEq(aToken.balanceOf(address(aOFT)), 0);
         assertEq(aToken.balanceOf(userA), initialBalance);
         assertEq(bToken.balanceOf(userB), initialBalance);
 
         vm.startPrank(userA);
-
         aToken.approve(address(aOFT), tokensToSend);
-
-        vm.expectEmit();
-        emit IERC20.Transfer(userA, address(aOFT), tokenFee);
-        vm.expectEmit();
-        emit IERC20.Transfer(userA, address(0), tokensToSend - tokenFee);
         aOFT.send{ value: protocolFee.nativeFee }(sendParam, protocolFee, payable(address(this)));
-
         vm.stopPrank();
 
         verifyPackets(bEid, addressToBytes32(address(bOFT)));
 
         assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend);
+        assertEq(aToken.balanceOf(address(aOFT)), tokensToSend);
         assertEq(bToken.balanceOf(userB), initialBalance + minAmountToCreditLD);
-        assertEq(aToken.balanceOf(address(aOFT)), tokenFee);
-        assertEq(bToken.balanceOf(address(bOFT)), 0);
+        assertEq(bToken.balanceOf(address(bOFT)), initialBalance - minAmountToCreditLD);
         assertEq(aOFT.feeBalance(), tokenFee);
         assertEq(bOFT.feeBalance(), 0);
+    }
+
+    function test_migrate_locked_tokens() public {
+        vm.prank(userA);
+        aToken.transfer(address(aOFT), initialBalance);
+
+        assertEq(aToken.balanceOf(address(this)), 0);
+        assertEq(aToken.balanceOf(address(aOFT)), initialBalance);
+
+        // not owner
+        vm.prank(userB);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, userB));
+        aOFT.migrateLockedTokens(address(this));
+
+        // migrate locked tokens
+        aOFT.migrateLockedTokens(address(this));
+
+        assertEq(aToken.balanceOf(address(this)), initialBalance);
+        assertEq(aToken.balanceOf(address(aOFT)), 0);
     }
 
     function test_setPauser() public {
@@ -1006,13 +1018,13 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertFalse(aOFT.pausers(userA));
         
         vm.expectEmit(true, true, true, true);
-        emit OFTAdapterDSRLFeeBase.PauserStatusChange(userA, true);
+        emit ISkyOFT.PauserSet(userA, true);
         aOFT.setPauser(userA, true);
     }
 
     function test_pause() public {
         vm.prank(userB);
-        vm.expectRevert(OFTAdapterDSRLFeeBase.NotPauser.selector);
+        vm.expectRevert(abi.encodeWithSelector(ISkyOFT.OnlyPauser.selector, userB));
         aOFT.pause();
         
         aOFT.setPauser(userA, true);
@@ -1041,7 +1053,7 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         vm.startPrank(userA);
         aToken.approve(address(aOFT), tokensToSend);
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+        aOFT.send{ value: dummyNativeFee }(sendParam, fee, payable(address(this)));
         vm.stopPrank();
     }
 
@@ -1106,6 +1118,34 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertFalse(aOFT.pausers(userB));
     }
 
+    function test_send_oft_to_null_address() public {
+        uint256 tokensToSend = 1 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(address(0)),
+            tokensToSend,
+            tokensToSend,
+            options,
+            "",
+            ""
+        );
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+
+        assertEq(aToken.balanceOf(userA), initialBalance);
+        assertEq(bToken.balanceOf(address(0xdead)), 0);
+
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
+        vm.stopPrank();
+
+        verifyPackets(bEid, addressToBytes32(address(bOFT)));
+
+        assertEq(aToken.balanceOf(userA), initialBalance - tokensToSend);
+        assertEq(bToken.balanceOf(address(0xdead)), tokensToSend);
+    }
+
     function test_send_oft_to_inner_token_address() public {
         uint256 tokensToSend = 1 ether;
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
@@ -1124,13 +1164,8 @@ contract MABAOFTTest is TestHelperOz5WithRevertAssertions {
         assertEq(bToken.balanceOf(address(0xdead)), 0);
 
         vm.startPrank(userA);
-
         aToken.approve(address(aOFT), tokensToSend);
-        
-        vm.expectEmit();
-        emit IERC20.Transfer(userA, address(0), tokensToSend);
         aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(address(this)));
-
         vm.stopPrank();
 
         verifyPackets(bEid, addressToBytes32(address(bOFT)));
