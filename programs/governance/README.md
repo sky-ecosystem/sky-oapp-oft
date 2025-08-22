@@ -69,7 +69,7 @@ Note: If for some reason you modified Governance program and want to re-generate
 pnpm generate:governance
 ```
 
-This is definitely not required if you didn't modify Governance program source code.
+Note: You may need to remove "target" directory completely before running "cargo test", because sometimes GOVERNANCE_ID is cached and outdated.
 
 ## Scenarios
 
@@ -77,7 +77,7 @@ The Governance program includes support for Solana and the current repository he
 
 Tested scenarios include:
 1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/5Jj9pF38FQnL9k3X1MHTp783SS9bVXeK51veG1keztEtbqHSmBJyZHmh8R5HXQTTCWcyvKYXizsDBmQ5C3Ut89jy?cluster=devnet) | CPI depth = 1
-2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2r4gjfJz9LHuzXkmsC8J6SX7dR28c5xEqFf6GrhNqhsmewtzcuPpbSbkvx37QdyjAc4LCtuXSXdMkGyeU92Tu9TW?cluster=devnet) | CPI depth = 1
+2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2sbHPSYeFEXhWXTANybsuv362YkwZp53BTPzgZensFUtUvHcpGf2D9LHc9qpLySPvvEx6KzS9F3eGqEyJvrDfvoK?cluster=devnet) | CPI depth = 1
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet) | CPI depth = 1
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet) | CPI depth = 1
 5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet) | CPI depth = 1
@@ -143,6 +143,11 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 ## Sending transactions
 
 Before sending: Make sure your address is added as valid caller.
+
+Adding valid caller example:
+```
+cast send 0xe978282De8e7D14DFBf44A3f7CaCE5aD5D37BC96 --rpc-url https://api.avax-test.network/ext/bc/C/rpc --private-key $PRIVATE_KEY "setCanCallTarget(address,uint32,bytes32,bool)" 0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8 40168 0x06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9 true
+```
 
 1. Obtain serialized governance message calldata
 2. Run (in case you are sending to 40168 - Solana Devnet):

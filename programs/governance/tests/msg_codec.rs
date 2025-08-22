@@ -51,7 +51,7 @@ mod test_msg_codec {
         let mut buf = Vec::new();
         msg.write_body(&mut buf).unwrap();
 
-        println!("dstTarget: {:?}", hex::encode(&program_id));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
         println!("dstCallData: {:?}", hex::encode(&buf));
 
         let msg2 = GovernanceMessage::read_body(&mut buf.as_slice(), msg.origin_caller, msg.program_id).unwrap();
@@ -163,9 +163,10 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized governance message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
         prepare_governance_message_simulation(&msg);
     }
@@ -1655,7 +1656,7 @@ mod test_msg_codec {
         println!("\n{}", base64::engine::general_purpose::STANDARD.encode(tx.message_data()));
     }
 
-    fn get_cpi_authority() -> Pubkey {
+    fn get_cpi_authority() -> Pubkey {        
         let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
             &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &FUJI_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
             &governance::id(),
