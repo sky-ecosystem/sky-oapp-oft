@@ -41,19 +41,11 @@ pnpm generate:governance
 
 Double check generated file: `src/generated/governance/index.ts` - variable `PROGRAM_ADDRESS` - make sure it matches Governance Program ID.
 
-Deploy EVM side, prepare .env variables first (change to your preferred values):
-```
-EVM_ADD_INITIAL_VALID_TARGET=false
-EVM_INITIAL_VALID_TARGET_SRC_EID=0
-EVM_INITIAL_VALID_TARGET_ORIGIN_CALLER=0x0000000000000000000000000000000000000000000000000000000000000000
-EVM_INITIAL_VALID_TARGET_GOVERNED_CONTRACT=0x0000000000000000000000000000000000000000
-```
-
-Run the actual command:
+Deploy EVM side:
 ```
 pnpm hardhat lz:deploy
 
-✔ Which deploy script tags would you like to use? … GovernanceControllerOApp
+✔ Which deploy script tags would you like to use? … GovernanceOAppSender
 ```
 
 Take the deployed EVM address and put it as `GOVERNANCE_CONTROLLER_ADDRESS` in .env. Also update `programs/governance/tests/msg_codec.rs`: `FUJI_PEER_ADDRESS`.
@@ -62,8 +54,6 @@ Verify EVM contract, eg. using:
 ```
 npx @layerzerolabs/verify-contract@latest -d deployments -n avalanche-testnet
 ```
-
-Note: if you get error about conflicting NPM dependency, then `cd ..` and change flag: `-d <YOUR_PROJECT_DIR>/deployments`. 
 
 Now run:
 ```
@@ -86,7 +76,7 @@ This is definitely not required if you didn't modify Governance program source c
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/2YHTAq1638mBQjfFSJdShfaJRShF2jvLyGEzfzmzCH9pr6hDv72k1J4RmzM59Lv75KHLktrx9FhZo5WMitqKgKJn?cluster=devnet) | CPI depth = 1
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/5Jj9pF38FQnL9k3X1MHTp783SS9bVXeK51veG1keztEtbqHSmBJyZHmh8R5HXQTTCWcyvKYXizsDBmQ5C3Ut89jy?cluster=devnet) | CPI depth = 1
 2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2r4gjfJz9LHuzXkmsC8J6SX7dR28c5xEqFf6GrhNqhsmewtzcuPpbSbkvx37QdyjAc4LCtuXSXdMkGyeU92Tu9TW?cluster=devnet) | CPI depth = 1
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet) | CPI depth = 1
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet) | CPI depth = 1
@@ -148,17 +138,16 @@ Authority: 3qsePQwjm5kABtgHoq5ksNj2JbYQ8sczff25Q7gqX74a
 cargo test --package governance --test msg_codec -- test_msg_codec::test_governance_message_upgrade_program --exact --show-output
 ```
 
-5. Send the governance message eg using SendRawBytes Foundry script.
+5. Send the governance message using SendGovernanceMessage Foundry script.
 
 ## Sending transactions
 
 Before sending: Make sure your address is added as valid caller.
 
-1. Obtain serialized governance message
-2. Replace value of: `bytes memory messageBytes = hex"";` in scripts/SendRawBytes.s.sol
-3. Run (in case you are sending to 40168 - Solana Devnet):
+1. Obtain serialized governance message calldata
+2. Run (in case you are sending to 40168 - Solana Devnet):
 ```
-forge script scripts/SendRawBytes.s.sol -s "run(uint32)" 40168 --rpc-url https://api.avax-test.network/ext/bc/C/rpc --broadcast
+forge script scripts/SendGovernanceMessage.s.sol --rpc-url https://api.avax-test.network/ext/bc/C/rpc -s "run(uint32,bytes32,bytes)" 40168 0x2c43318f0f99dfd8c0ebc65b0b23cc661fcd1df64af6aef33b7b83eca8e58197 0x0000afaf6d1f0d989bed --broadcast
 ```
 
 ## Configuring ALTs

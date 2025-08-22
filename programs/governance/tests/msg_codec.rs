@@ -49,11 +49,12 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
-        let msg2 = GovernanceMessage::decode(&mut buf.as_slice()).unwrap();
+        let msg2 = GovernanceMessage::read_body(&mut buf.as_slice(), msg.origin_caller, msg.program_id).unwrap();
         assert_eq!(msg, msg2);
 
         prepare_governance_message_simulation(&msg);

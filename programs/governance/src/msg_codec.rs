@@ -33,19 +33,20 @@ impl GovernanceMessage {
     /// Decode a full governance message (header + body).
     pub fn decode(reader: &mut &[u8]) -> io::Result<Self> {
         let origin_caller = Self::read_bytes32(reader)?;
+        let program_id = Self::read_pubkey(reader)?;
 
-        Self::read_body(reader, origin_caller)
+        Self::read_body(reader, origin_caller, program_id)
     }
 
     /// Encode a full governance message (header + body).
     pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         Self::write_bytes32(writer, &self.origin_caller)?;
+        Self::write_pubkey(writer, &self.program_id)?;
         self.write_body(writer)
     }
 
     /// Reads ONLY the body of the message, not the header.
-    fn read_body(reader: &mut &[u8], origin_caller: [u8; 32]) -> io::Result<Self> {
-        let program_id = Self::read_pubkey(reader)?;
+    pub fn read_body(reader: &mut &[u8], origin_caller: [u8; 32], program_id: Pubkey) -> io::Result<Self> {
         let accounts_len = Self::read_u16(reader)?;
         let mut accounts = Vec::with_capacity(accounts_len as usize);
 
@@ -69,8 +70,7 @@ impl GovernanceMessage {
     }
 
     /// Writes ONLY the body of the message, not the header.
-    fn write_body<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        Self::write_pubkey(writer, &self.program_id)?;
+    pub fn write_body<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
         Self::write_u16(writer, self.accounts.len() as u16)?;
 
         for acc in &self.accounts {
@@ -85,15 +85,14 @@ impl GovernanceMessage {
 
     /// Decodes ONLY the origin caller from the message.
     pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
-        let origin_caller_start = 0;
-        let origin_caller_end = origin_caller_start + 32;
+        let origin_caller_end = 32;
 
         if message.len() < origin_caller_end {
             return Err(error!(GovernanceError::InvalidGovernanceMessage));
         }
         
         let mut origin_caller = [0u8; 32];
-        origin_caller.copy_from_slice(&message[0..32]);
+        origin_caller.copy_from_slice(&message[0..origin_caller_end]);
         Ok(origin_caller)
     }
 
