@@ -69,8 +69,6 @@ Note: If for some reason you modified Governance program and want to re-generate
 pnpm generate:governance
 ```
 
-Note: You may need to remove "target" directory completely before running "cargo test", because sometimes GOVERNANCE_ID is cached and outdated.
-
 ## Scenarios
 
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
