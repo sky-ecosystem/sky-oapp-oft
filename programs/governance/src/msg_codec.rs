@@ -9,10 +9,9 @@ use std::io::{self, Read, Write};
 /// The wire format for this message is:
 /// | field           |                     size (bytes) | description                             |
 /// |-----------------+----------------------------------+-----------------------------------------|
-/// | ACTION          |                                1 | Governance action identifier            |
 /// | ORIGIN_CALLER   |                               32 | Origin caller address as bytes32        |
+/// | TARGET          |                               32 | Target address as bytes32               |
 /// |-----------------+----------------------------------+-----------------------------------------|
-/// | program_id      |                               32 | Program ID of the program to be invoked |
 /// | accounts_length |                                2 | Number of accounts                      |
 /// | accounts        | `accounts_length` * (32 + 1 + 1) | Accounts to be passed to the program    |
 /// | data            |                        remaining | Data to be passed to the program        |
@@ -33,14 +32,6 @@ impl GovernanceMessage {
 
     /// Decode a full governance message (header + body).
     pub fn decode(reader: &mut &[u8]) -> io::Result<Self> {
-        let action: u8 = Self::read_u8(reader)?;
-        if action != GovernanceAction::SolanaCall as u8 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                GovernanceError::InvalidGovernanceAction.to_string(),
-            ));
-        }
-
         let origin_caller = Self::read_bytes32(reader)?;
 
         Self::read_body(reader, origin_caller)
@@ -48,7 +39,6 @@ impl GovernanceMessage {
 
     /// Encode a full governance message (header + body).
     pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        Self::write_u8(writer, GovernanceAction::SolanaCall as u8)?;
         Self::write_bytes32(writer, &self.origin_caller)?;
         self.write_body(writer)
     }
@@ -95,7 +85,7 @@ impl GovernanceMessage {
 
     /// Decodes ONLY the origin caller from the message.
     pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
-        let origin_caller_start = 1;
+        let origin_caller_start = 0;
         let origin_caller_end = origin_caller_start + 32;
 
         if message.len() < origin_caller_end {
@@ -103,7 +93,7 @@ impl GovernanceMessage {
         }
         
         let mut origin_caller = [0u8; 32];
-        origin_caller.copy_from_slice(&message[origin_caller_start..origin_caller_end]);
+        origin_caller.copy_from_slice(&message[0..32]);
         Ok(origin_caller)
     }
 
@@ -147,24 +137,6 @@ impl GovernanceMessage {
     fn write_bytes32<W: Write>(writer: &mut W, bytes: &[u8; 32]) -> io::Result<()> {
         writer.write_all(bytes)
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-/// The known set of governance actions.
-///
-/// As the governance logic is expanded to more runtimes, it's important to keep
-/// them in sync, at least the newer ones should ensure they don't overlap with
-/// the existing ones.
-///
-/// Existing implementations are not strongly required to be updated to be aware
-/// of new actions (as they will never need to know the action indices higher
-/// than the one corresponding to the current runtime), but it's good practice.
-///
-/// When adding a new runtime, make sure to at least update in the README.md
-pub enum GovernanceAction {
-    // Undefined = 0, // unused
-    // EvmCall = 1, // unused
-    SolanaCall = 2,
 }
 
 impl From<GovernanceMessage> for Instruction {
