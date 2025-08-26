@@ -53,7 +53,7 @@ impl<'info> LzReceive<'info> {
             &[ctx.accounts.governance.bump],
         ];
 
-        // the first 9 accounts are for clear()
+        // the first 8 accounts are for clear()
         let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];
         let _ = oapp::endpoint_cpi::clear(
             ENDPOINT_ID,
@@ -72,6 +72,13 @@ impl<'info> LzReceive<'info> {
 
         // Decode governance message from LayerZero message
         let governance_message: GovernanceMessage = GovernanceMessage::from_bytes(&params.message)?;
+
+        // Assert supplied program id matches the governed program id from the message
+        require!(
+            governance_message.program_id == ctx.accounts.program.key(),
+            GovernanceError::GovernedProgramIdMismatch
+        );
+
         let origin_caller = governance_message.origin_caller;
         let mut instruction: Instruction = governance_message.into();
 

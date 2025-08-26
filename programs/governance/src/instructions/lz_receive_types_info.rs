@@ -46,7 +46,8 @@ impl LzReceiveTypesInfo<'_> {
     /// - versioned_data: LzReceiveTypesV2Accounts containing the accounts needed for
     ///   lz_receive_types_v2
     pub fn apply(
-        ctx: &Context<LzReceiveTypesInfo>
+        ctx: &Context<LzReceiveTypesInfo>,
+        _params: &LzReceiveParams
     ) -> Result<(u8, LzReceiveTypesV2Accounts)> {
 
         let mut accounts = vec![

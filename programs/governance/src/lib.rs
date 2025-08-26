@@ -17,12 +17,6 @@ declare_id!(Pubkey::new_from_array(program_id_from_env!(
     "EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3"
 )));
 
-#[cfg(feature = "mainnet")]
-pub const SOLANA_CHAIN_ID: u32 = 30168;
-
-#[cfg(feature = "testnet")]
-pub const SOLANA_CHAIN_ID: u32 = 40168;
-
 pub const EXECUTOR_ID: Pubkey = pubkey!("6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn");
 
 pub const GOVERNANCE_SEED: &[u8] = b"Governance";
@@ -57,8 +51,9 @@ pub mod governance {
 
     pub fn lz_receive_types_info(
         ctx: Context<LzReceiveTypesInfo>,
+        params: LzReceiveParams,
     ) -> Result<(u8, oapp::lz_receive_types_v2::LzReceiveTypesV2Accounts)> {
-        LzReceiveTypesInfo::apply(&ctx)
+        LzReceiveTypesInfo::apply(&ctx, &params)
     }
 
     pub fn lz_receive_types_v2(

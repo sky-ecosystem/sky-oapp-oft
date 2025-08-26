@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::{error::GovernanceError, SOLANA_CHAIN_ID};
+use crate::error::GovernanceError;
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
@@ -10,7 +10,6 @@ use std::io::{self, Read, Write};
 /// | field           |                     size (bytes) | description                             |
 /// |-----------------+----------------------------------+-----------------------------------------|
 /// | ACTION          |                                1 | Governance action identifier            |
-/// | CHAIN           |                                4 | Chain identifier                        |
 /// | ORIGIN_CALLER   |                               32 | Origin caller address as bytes32        |
 /// |-----------------+----------------------------------+-----------------------------------------|
 /// | program_id      |                               32 | Program ID of the program to be invoked |
@@ -42,14 +41,6 @@ impl GovernanceMessage {
             ));
         }
 
-        let chain = Self::read_u32(reader)?;
-        if chain != SOLANA_CHAIN_ID {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                GovernanceError::InvalidGovernanceChain.to_string(),
-            ));
-        }
-
         let origin_caller = Self::read_bytes32(reader)?;
 
         Self::read_body(reader, origin_caller)
@@ -58,7 +49,6 @@ impl GovernanceMessage {
     /// Encode a full governance message (header + body).
     pub fn encode<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         Self::write_u8(writer, GovernanceAction::SolanaCall as u8)?;
-        Self::write_u32(writer, SOLANA_CHAIN_ID)?;
         Self::write_bytes32(writer, &self.origin_caller)?;
         self.write_body(writer)
     }
@@ -105,7 +95,7 @@ impl GovernanceMessage {
 
     /// Decodes ONLY the origin caller from the message.
     pub fn decode_origin_caller(message: &[u8]) -> Result<[u8; 32]> {
-        let origin_caller_start = 1 + 4;
+        let origin_caller_start = 1;
         let origin_caller_end = origin_caller_start + 32;
 
         if message.len() < origin_caller_end {
@@ -130,12 +120,6 @@ impl GovernanceMessage {
         Ok(u16::from_be_bytes(buf))
     }
 
-    fn read_u32<R: Read>(reader: &mut R) -> io::Result<u32> {
-        let mut buf = [0u8; 4];
-        reader.read_exact(&mut buf)?;
-        Ok(u32::from_be_bytes(buf))
-    }
-
     fn read_pubkey<R: Read>(reader: &mut R) -> io::Result<Pubkey> {
         let mut buf = [0u8; 32];
         reader.read_exact(&mut buf)?;
@@ -153,10 +137,6 @@ impl GovernanceMessage {
     }
 
     fn write_u16<W: Write>(writer: &mut W, value: u16) -> io::Result<()> {
-        writer.write_all(&value.to_be_bytes())
-    }
-
-    fn write_u32<W: Write>(writer: &mut W, value: u32) -> io::Result<()> {
         writer.write_all(&value.to_be_bytes())
     }
 

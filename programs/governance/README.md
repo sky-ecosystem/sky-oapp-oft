@@ -41,14 +41,22 @@ pnpm generate:governance
 
 Double check generated file: `src/generated/governance/index.ts` - variable `PROGRAM_ADDRESS` - make sure it matches Governance Program ID.
 
-Deploy EVM side:
+Deploy EVM side, prepare .env variables first (change to your preferred values):
+```
+EVM_ADD_INITIAL_VALID_TARGET=false
+EVM_INITIAL_VALID_TARGET_SRC_EID=0
+EVM_INITIAL_VALID_TARGET_ORIGIN_CALLER=0x0000000000000000000000000000000000000000000000000000000000000000
+EVM_INITIAL_VALID_TARGET_GOVERNED_CONTRACT=0x0000000000000000000000000000000000000000
+```
+
+Run the actual command:
 ```
 pnpm hardhat lz:deploy
 
 ✔ Which deploy script tags would you like to use? … GovernanceControllerOApp
 ```
 
-Take the deployed EVM address and put it as `GOVERNANCE_CONTROLLER_ADDRESS` in .env. Also update `scripts/configGov.ts` - `remotePeers` and in `programs/governance/tests/msg_codec.rs` update: `FUJI_PEER_ADDRESS`.
+Take the deployed EVM address and put it as `GOVERNANCE_CONTROLLER_ADDRESS` in .env. Also update `programs/governance/tests/msg_codec.rs`: `FUJI_PEER_ADDRESS`.
 
 Verify EVM contract, eg. using:
 ```
@@ -78,26 +86,26 @@ This is definitely not required if you didn't modify Governance program source c
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/3mdQZ4KLLRo5YzsnRseZsMfQcZB56AjkhDxgHwhKZXRTDjZZtE8NrHwjsHzi8gX2ZyFm4kqgvtAWpjJKzWf6a1mK?cluster=devnet)
-2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2akuXRgaFyJHZAsZTejimaRJpjyncSNmWjEt1qVeEjgSNs6aRdczv2JvfHEsR9t5gURj7czEjHhJhNvm87W2mC2s?cluster=devnet)
-3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet)
-4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet)
-5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet)
-6. OFT unpause | test_governance_message_unpause_oft | [demo](https://explorer.solana.com/tx/4koxbrtyEexG9DaHHxjKDGrw4mebPrasaXFfqPqMzKfC9roaQ2bpbGxxn4pXyaVAmPSDsQQgrqyax8CL26T9dJiz?cluster=devnet)
-7. OFT.setOFTConfig - setDelegate | test_governance_message_set_delegate | [demo](https://explorer.solana.com/tx/2q8YcQ7V1iJWJBfXo8uEhNV16Z3XnVssXzniBhhurgzxF9Hue668sborVRY6hmAqVxXSZQcBuFAPFAcHaUySCauN?cluster=devnet)
-8. OFT.setOFTConfig - setAdmin | test_governance_message_set_admin | [demo](https://explorer.solana.com/tx/5WUAgnhckabp67RQ6BMnc3Q7qNjgEbpqLpsoh6TFY9XVFEHGrwadYqCSqPsp3tVmswDotcL8PQ7c8LDobQHMKKat?cluster=devnet)
-9. OFT.setPeerConfig - setPeerAddress | test_set_peer_address | [demo](https://explorer.solana.com/tx/4b1pUMmpANDQFZuoJb56B4SnMmbPvtuc5jP3TvecatCTWTsqYmnjpdVZPzdbD3GwAQzd4DjiwJKCSyHeijNro51J?cluster=devnet)
-10. Endpoint.initSendLibrary | test_init_send_library | [demo](https://explorer.solana.com/tx/5rz9LrS5gzFvgZHjUUdaXjq3NrXUHceKSHvWz4mRHE6E83uxTX2TGGVMyYoaM3y2cthoVsCVSkb7W7pjDwLAEoCa?cluster=devnet)
-11. Endpoint.setSendLibrary | test_governance_message_set_send_library | [demo](https://explorer.solana.com/tx/4syvFDSawatbkbTqGpAmB4Zohqv1hrgJYpnvPggoZv1kwfvh9EJYMLebbyq3jQcxZ1sbTiEmDEbxeFrHYNgGhtRX?cluster=devnet)
-12. Endpoint.initReceiveLibrary | test_init_receive_library | [demo](https://explorer.solana.com/tx/3WUPcxgmszKRrU4i1jPqcjdnTVqeCpHqt5fSzotjdFmH8tut43rY3VL7FCdSXd7ezsuw9eGwrLH8n8QUfHu5cReM?cluster=devnet)
-13. Endpoint.setReceiveLibrary | test_set_receive_library | [demo](https://explorer.solana.com/tx/3H52Uxht5pV6Yuj8W5Ai6ZnVYJhwrqjxc8xSpFdEvYp758nWueAdtqXbneTR6vhpSFAeB89Q7uPUP9WVfAE2wB8n?cluster=devnet)
-14. OFT.setPeerConfig - setEnforcedOptions | test_governance_message_set_enforced_options | [demo](https://explorer.solana.com/tx/5ZQtDktmHRvjcvM2K9GohqsMLyXxDH8hRLxtYNPfyeceD9UBHC4dHGfirc3wZ92xhm4GMKxrfSLeMaFsTThJ7Sgj?cluster=devnet)
-15. Endpoint.setConfig - setSendConfig | test_governance_message_set_send_config | [demo](https://explorer.solana.com/tx/5eeTsEU75UnM8VAjf9PxXLHUKiM1qkJD1rKBWAdTYVW4A4oCFobMSdr9QY47wr7N9fWv7F52J55RhvfSt6vkKGj6?cluster=devnet)
-16. Endpoint.setConfig - setExecutorConfig | test_governance_message_set_executor_config | [demo](https://explorer.solana.com/tx/qminCQth3s7kvdC3P3BBLgr6qNckFnbuDv7EaUrhzUJX1HRAR7isLBAHSydQTavzNnBsSyZGexE7Ph3wh2XsBnd?cluster=devnet)
-17. Endpoint.setConfig - setReceiveConfig | test_governance_message_set_receive_config | [demo](https://explorer.solana.com/tx/2T3aoUewbrU5Xwf9kF1ZQPXzYXx1wWoCce1PAHigUcHFqUm8LCEFjA7CS8Zvq7n6jT2mR2Wbm9mF2mZtRz3Tf8E8?cluster=devnet)
-18. Endpoint.initNonce | test_governance_message_init_nonce | [demo](https://explorer.solana.com/tx/5ncNRyEwPUVwPb8mi5beLayDKXcwo38vauBVbCiTGmvs83g3hMQPnqcqCwJD6vW8memMgixVg2Ku4n8uRChzuYYx?cluster=devnet)
-19. Squads.execute | test_squads_execute | [demo](https://explorer.solana.com/tx/5RgthGPgxUZLMswvWPtnwtZVB6oG4dAAKVjLaxtP5gFMG7PerZdP31togw8HFANBnB3QpBowCcj2XrAbaVzCt39c?cluster=devnet)
-20. Endpoint.initConfig | test_endpoint_init_config | [demo](https://explorer.solana.com/tx/3T2EmnNU3zzrDgYXFiETFGgGnA259fQ3FuiNMXsfWMs36oNqscckPxXfK57uV8o1ESb4FtXqek9QLBCS3o8ESqfD?cluster=devnet)
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/2YHTAq1638mBQjfFSJdShfaJRShF2jvLyGEzfzmzCH9pr6hDv72k1J4RmzM59Lv75KHLktrx9FhZo5WMitqKgKJn?cluster=devnet) | CPI depth = 1
+2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2r4gjfJz9LHuzXkmsC8J6SX7dR28c5xEqFf6GrhNqhsmewtzcuPpbSbkvx37QdyjAc4LCtuXSXdMkGyeU92Tu9TW?cluster=devnet) | CPI depth = 1
+3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet) | CPI depth = 1
+4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet) | CPI depth = 1
+5. OFT pause | test_governance_message_pause_oft | [demo](https://explorer.solana.com/tx/GZsXYNiUkC8JC7z82x5iiqPVD11BqACJfEn6cBGF5jKGB8Nayb7AvLdyunFC8uimFZFjMbrct2VcLs42LZBobF3?cluster=devnet) | CPI depth = 1
+6. OFT unpause | test_governance_message_unpause_oft | [demo](https://explorer.solana.com/tx/4koxbrtyEexG9DaHHxjKDGrw4mebPrasaXFfqPqMzKfC9roaQ2bpbGxxn4pXyaVAmPSDsQQgrqyax8CL26T9dJiz?cluster=devnet) | CPI depth = 1
+7. OFT.setOFTConfig - setDelegate | test_governance_message_set_delegate | [demo](https://explorer.solana.com/tx/2q8YcQ7V1iJWJBfXo8uEhNV16Z3XnVssXzniBhhurgzxF9Hue668sborVRY6hmAqVxXSZQcBuFAPFAcHaUySCauN?cluster=devnet) | CPI depth = 3
+8. OFT.setOFTConfig - setAdmin | test_governance_message_set_admin | [demo](https://explorer.solana.com/tx/5WUAgnhckabp67RQ6BMnc3Q7qNjgEbpqLpsoh6TFY9XVFEHGrwadYqCSqPsp3tVmswDotcL8PQ7c8LDobQHMKKat?cluster=devnet) | CPI depth = 1
+9. OFT.setPeerConfig - setPeerAddress | test_set_peer_address | [demo](https://explorer.solana.com/tx/4b1pUMmpANDQFZuoJb56B4SnMmbPvtuc5jP3TvecatCTWTsqYmnjpdVZPzdbD3GwAQzd4DjiwJKCSyHeijNro51J?cluster=devnet) | CPI depth = 2
+10. Endpoint.initSendLibrary | test_init_send_library | [demo](https://explorer.solana.com/tx/5rz9LrS5gzFvgZHjUUdaXjq3NrXUHceKSHvWz4mRHE6E83uxTX2TGGVMyYoaM3y2cthoVsCVSkb7W7pjDwLAEoCa?cluster=devnet) | CPI depth = 2
+11. Endpoint.setSendLibrary | test_governance_message_set_send_library | [demo](https://explorer.solana.com/tx/4syvFDSawatbkbTqGpAmB4Zohqv1hrgJYpnvPggoZv1kwfvh9EJYMLebbyq3jQcxZ1sbTiEmDEbxeFrHYNgGhtRX?cluster=devnet) | CPI depth = 2
+12. Endpoint.initReceiveLibrary | test_init_receive_library | [demo](https://explorer.solana.com/tx/3WUPcxgmszKRrU4i1jPqcjdnTVqeCpHqt5fSzotjdFmH8tut43rY3VL7FCdSXd7ezsuw9eGwrLH8n8QUfHu5cReM?cluster=devnet) | CPI depth = 2
+13. Endpoint.setReceiveLibrary | test_set_receive_library | [demo](https://explorer.solana.com/tx/3H52Uxht5pV6Yuj8W5Ai6ZnVYJhwrqjxc8xSpFdEvYp758nWueAdtqXbneTR6vhpSFAeB89Q7uPUP9WVfAE2wB8n?cluster=devnet) | CEPI depth = 2
+14. OFT.setPeerConfig - setEnforcedOptions | test_governance_message_set_enforced_options | [demo](https://explorer.solana.com/tx/5ZQtDktmHRvjcvM2K9GohqsMLyXxDH8hRLxtYNPfyeceD9UBHC4dHGfirc3wZ92xhm4GMKxrfSLeMaFsTThJ7Sgj?cluster=devnet) | CPI depth = 1
+15. Endpoint.setConfig - setSendConfig | test_governance_message_set_send_config | [demo](https://explorer.solana.com/tx/5eeTsEU75UnM8VAjf9PxXLHUKiM1qkJD1rKBWAdTYVW4A4oCFobMSdr9QY47wr7N9fWv7F52J55RhvfSt6vkKGj6?cluster=devnet) | CPI depth = 3
+16. Endpoint.setConfig - setExecutorConfig | test_governance_message_set_executor_config | [demo](https://explorer.solana.com/tx/qminCQth3s7kvdC3P3BBLgr6qNckFnbuDv7EaUrhzUJX1HRAR7isLBAHSydQTavzNnBsSyZGexE7Ph3wh2XsBnd?cluster=devnet) | CPI depth = 3
+17. Endpoint.setConfig - setReceiveConfig | test_governance_message_set_receive_config | [demo](https://explorer.solana.com/tx/2T3aoUewbrU5Xwf9kF1ZQPXzYXx1wWoCce1PAHigUcHFqUm8LCEFjA7CS8Zvq7n6jT2mR2Wbm9mF2mZtRz3Tf8E8?cluster=devnet) | CPI depth = 3
+18. Endpoint.initNonce | test_governance_message_init_nonce | [demo](https://explorer.solana.com/tx/5ncNRyEwPUVwPb8mi5beLayDKXcwo38vauBVbCiTGmvs83g3hMQPnqcqCwJD6vW8memMgixVg2Ku4n8uRChzuYYx?cluster=devnet) | CPI depth = 2
+19. Squads.execute | test_squads_execute | [demo](https://explorer.solana.com/tx/5RgthGPgxUZLMswvWPtnwtZVB6oG4dAAKVjLaxtP5gFMG7PerZdP31togw8HFANBnB3QpBowCcj2XrAbaVzCt39c?cluster=devnet) | CPI depth = 2
+20. Endpoint.initConfig | test_endpoint_init_config | [demo](https://explorer.solana.com/tx/3T2EmnNU3zzrDgYXFiETFGgGnA259fQ3FuiNMXsfWMs36oNqscckPxXfK57uV8o1ESb4FtXqek9QLBCS3o8ESqfD?cluster=devnet) | CPI depth = 3
 
 The code used to craft the Governance Message for the scenarios above is located in [programs/governance/tests/msg_codec.rs](./tests/msg_codec.rs).
 
@@ -144,11 +152,13 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 
 ## Sending transactions
 
+Before sending: Make sure your address is added as valid caller.
+
 1. Obtain serialized governance message
 2. Replace value of: `bytes memory messageBytes = hex"";` in scripts/SendRawBytes.s.sol
-3. Run:
+3. Run (in case you are sending to 40168 - Solana Devnet):
 ```
-forge script scripts/SendRawBytes.s.sol --rpc-url https://api.avax-test.network/ext/bc/C/rpc --broadcast --force
+forge script scripts/SendRawBytes.s.sol -s "run(uint32)" 40168 --rpc-url https://api.avax-test.network/ext/bc/C/rpc --broadcast
 ```
 
 ## Configuring ALTs
