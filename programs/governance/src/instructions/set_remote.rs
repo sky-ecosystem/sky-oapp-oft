@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: Apache-2.0
+use crate::{error::GovernanceError, *};
+use anchor_lang::prelude::*;
+
+#[derive(Accounts)]
+#[instruction(params: SetRemoteParams)]
+pub struct SetRemote<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = admin,
+        space = 8 + Remote::INIT_SPACE,
+        seeds = [REMOTE_SEED, &governance.key().to_bytes(), &params.remote_eid.to_be_bytes()],
+        bump
+    )]
+    pub remote: Account<'info, Remote>,
+
+    #[account(
+        seeds = [GOVERNANCE_SEED, &governance.id.to_be_bytes()],
+        bump = governance.bump,
+        has_one = admin @GovernanceError::Unauthorized
+    )]
+    pub governance: Account<'info, Governance>,
+
+    pub system_program: Program<'info, System>,
+}
+
+impl SetRemote<'_> {
+    pub fn apply(ctx: &mut Context<SetRemote>, params: &SetRemoteParams) -> Result<()> {
+        ctx.accounts.remote.address = params.remote;
+        ctx.accounts.remote.bump = ctx.bumps.remote;
+        Ok(())
+    }
+}
+
+#[derive(Clone, AnchorSerialize, AnchorDeserialize)]
+pub struct SetRemoteParams {
+    pub remote_eid: u32,
+    pub remote: [u8; 32],
+}

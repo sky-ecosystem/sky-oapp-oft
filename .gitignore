@@ -11,11 +11,11 @@ typechain-types
 cache
 artifacts
 
-
 # LayerZero specific files
 .layerzero
 
-# foundry test compilation files
+# Foundry
+broadcast
 out
 
 # pnpm
@@ -27,3 +27,4 @@ pnpm-error.log
 
 # Kinobi
 tasks/solana/sdk/generated
+src/generated

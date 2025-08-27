@@ -1,3 +1,5 @@
+import { ErrorWithLogs, ProgramError, Transaction, Umi } from '@metaplex-foundation/umi'
+import { toWeb3JsTransaction } from '@metaplex-foundation/umi-web3js-adapters'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { backOff } from 'exponential-backoff'
 
@@ -24,3 +26,27 @@ export const assertAccountInitialized = async (connection: Connection, publicKey
         }
     )
 }
+
+export const simulateTransaction = async (
+    context: Umi,
+    transaction: Transaction,
+    connection: Connection,
+    options: { verifySignatures?: boolean; } = {}
+  ) => {
+    try {
+      const tx = toWeb3JsTransaction(transaction);
+      const result = await connection.simulateTransaction(tx, {
+        sigVerify: options.verifySignatures,
+      });
+      return result.value;
+    } catch (error: any) {
+      let resolvedError: ProgramError | null = null;
+      if (error instanceof Error && 'logs' in error) {
+        resolvedError = context.programs.resolveError(
+          error as ErrorWithLogs,
+          transaction
+        );
+      }
+      throw resolvedError || error;
+    }
+  };
