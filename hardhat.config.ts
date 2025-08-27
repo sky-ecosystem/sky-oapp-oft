@@ -61,7 +61,7 @@ const config: HardhatUserConfig = {
     networks: {
         'avalanche-testnet': {
             eid: EndpointId.AVALANCHE_V2_TESTNET,
-            url: 'https://api.avax-test.network/ext/bc/C/rpc',
+            url: process.env.RPC_URL_AVALANCHE || 'https://api.avax-test.network/ext/bc/C/rpc',
             accounts,
         },
         hardhat: {

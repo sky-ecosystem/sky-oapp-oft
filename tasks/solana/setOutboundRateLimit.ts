@@ -1,20 +1,20 @@
 import assert from 'assert'
 
 import { mplToolbox } from '@metaplex-foundation/mpl-toolbox'
-import { createSignerFromKeypair, publicKey, signerIdentity } from '@metaplex-foundation/umi'
+import { createSignerFromKeypair, publicKey, signerIdentity, transactionBuilder } from '@metaplex-foundation/umi'
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
-import { fromWeb3JsKeypair, toWeb3JsKeypair, toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
-import { Keypair, PublicKey, sendAndConfirmTransaction } from '@solana/web3.js'
+import { fromWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
+import { Keypair } from '@solana/web3.js'
 import bs58 from 'bs58'
 import { task } from 'hardhat/config'
 
 import { types } from '@layerzerolabs/devtools-evm-hardhat'
-import { deserializeTransactionMessage } from '@layerzerolabs/devtools-solana'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
-import { OftPDA, oft } from '@layerzerolabs/oft-v2-solana-sdk'
-import { createOFTFactory } from '@layerzerolabs/ua-devtools-solana'
 
 import { createSolanaConnectionFactory } from '../common/utils'
+import { setPeerConfig } from './sdk/oft302'
+import { RateLimiterType } from './sdk/generated/oft302'
+import { getExplorerTxLink } from '.'
 
 interface Args {
     mint: string
@@ -24,6 +24,7 @@ interface Args {
     oftStore: string
     capacity: bigint
     refillPerSecond: bigint
+    type: string
 }
 
 task(
@@ -37,46 +38,55 @@ task(
     .addParam('oftStore', 'The OFTStore account')
     .addParam('capacity', 'The capacity of the rate limit', undefined, types.bigint)
     .addParam('refillPerSecond', 'The refill rate of the rate limit', undefined, types.bigint)
+    .addParam('type', 'The type of the rate limit: net or gross', undefined)
     .setAction(async (taskArgs: Args, hre) => {
+        if (taskArgs.type !== 'net' && taskArgs.type !== 'gross') {
+            throw new Error('Invalid rate limit type. Must be either "net" or "gross".')
+        }
+        ``
+        const rateLimiterType = taskArgs.type === 'net' ? RateLimiterType.Net : RateLimiterType.Gross;
+
         const privateKey = process.env.SOLANA_PRIVATE_KEY
         assert(!!privateKey, 'SOLANA_PRIVATE_KEY is not defined in the environment variables.')
 
         const keypair = Keypair.fromSecretKey(bs58.decode(privateKey))
         const umiKeypair = fromWeb3JsKeypair(keypair)
+
         const connectionFactory = createSolanaConnectionFactory()
         const connection = await connectionFactory(taskArgs.eid)
+
         const umi = createUmi(connection.rpcEndpoint).use(mplToolbox())
         const umiWalletSigner = createSignerFromKeypair(umi, umiKeypair)
-        const web3WalletKeyPair = toWeb3JsKeypair(umiKeypair)
         umi.use(signerIdentity(umiWalletSigner))
 
-        const solanaSdkFactory = createOFTFactory(
-            () => toWeb3JsPublicKey(umiWalletSigner.publicKey),
-            () => new PublicKey(taskArgs.programId),
-            connectionFactory
+        const ix = setPeerConfig({
+                admin: umiWalletSigner,
+                oftStore: publicKey(taskArgs.oftStore),
+            },
+            {
+                __kind: 'OutboundRateLimit',
+                rateLimit: {
+                    capacity: taskArgs.capacity,
+                    refillPerSecond: taskArgs.refillPerSecond,
+                    rateLimiterType,
+                },
+                remote: taskArgs.dstEid,
+            },
+            publicKey(taskArgs.programId)
         )
+       
+        
+        let txBuilder = transactionBuilder().add([ix])
+        const tx = await txBuilder.buildWithLatestBlockhash(umi)
+        console.log(Buffer.from(tx.serializedMessage).toString("base64"));
+       
+        const { signature } = await txBuilder.sendAndConfirm(umi)
+        const transactionSignatureBase58 = bs58.encode(signature)
 
-        const sdk = await solanaSdkFactory({
-            address: new PublicKey(taskArgs.oftStore).toBase58(),
-            eid: taskArgs.eid,
-        })
-        const solanaRateLimits = {
-            capacity: taskArgs.capacity,
-            refillPerSecond: taskArgs.refillPerSecond,
-        }
-        // for (const peer of graph.connections.filter((connection) => connection.vector.from.eid === solanaEid)) {
-        try {
-            const tx = deserializeTransactionMessage(
-                (await sdk.setOutboundRateLimit(EndpointId.SEPOLIA_V2_TESTNET, solanaRateLimits)).data
-            )
-            tx.sign(keypair)
-            const txId = await sendAndConfirmTransaction(connection, tx, [keypair])
-            console.log(`Transaction successful with ID: ${txId}`)
-            const [peer] = new OftPDA(publicKey(taskArgs.programId)).peer(publicKey(taskArgs.oftStore), taskArgs.dstEid)
-            const peerInfo = await oft.accounts.fetchPeerConfig({ rpc: umi.rpc }, peer)
-            console.dir({ peerInfo }, { depth: null })
-        } catch (error) {
-            console.error(`setOutboundRateLimit failed:`, error)
-        }
+        console.log(`✅ Set outbound rate limit for destination endpoint id: ${taskArgs.dstEid}!`)
+        const isTestnet = taskArgs.eid == EndpointId.SOLANA_V2_TESTNET
+        console.log(
+            `View Solana transaction here: ${getExplorerTxLink(transactionSignatureBase58.toString(), isTestnet)}`
+        )
     })
     
