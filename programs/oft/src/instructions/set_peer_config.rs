@@ -69,6 +69,9 @@ impl SetPeerConfig<'_> {
             if let Some(refill_rate) = param.refill_per_second {
                 limiter.set_rate(refill_rate)?;
             }
+            if let Some(rate_limiter_type) = param.rate_limiter_type.clone() {
+                limiter.rate_limiter_type = rate_limiter_type;
+            }
             *rate_limiter = Some(limiter);
         } else {
             *rate_limiter = None;
@@ -96,4 +99,5 @@ pub enum PeerConfigParam {
 pub struct RateLimitParams {
     pub refill_per_second: Option<u64>,
     pub capacity: Option<u64>,
+    pub rate_limiter_type: Option<RateLimiterType>,
 }
