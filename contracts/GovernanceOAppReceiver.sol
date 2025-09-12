@@ -23,7 +23,7 @@ contract GovernanceOAppReceiver is OAppReceiver, ReentrancyGuard, IGovernanceOAp
      * @param _governanceOAppSenderEid The GovernanceOAppSender endpoint ID
      * @param _governanceOAppSenderAddress The GovernanceOAppSender address
      * @param _endpoint The LayerZero endpoint address
-     * @param _owner The initial owner address (will be transferred to address(this) later)
+     * @param _owner The delegate and owner address for the OApp
      */
     constructor(
         uint32 _governanceOAppSenderEid, 
@@ -37,8 +37,7 @@ contract GovernanceOAppReceiver is OAppReceiver, ReentrancyGuard, IGovernanceOAp
         // Deployment steps:
         // 1. Deploy the GovernanceOAppSender on a given chain.
         // 2. Deploy the GovernanceOAppReceiver on all the dst chains with eid, and addresses generated from step 1.
-        // 3. Transfer ownership of all the GovernanceOAppReceivers to itself (address(this)).
-        // 4. Set the peers on the GovernanceOAppSender contract for all of the receivers deployed in step 2.
+        // 3. Set the peers on the GovernanceOAppSender contract for all of the receivers deployed in step 2.
         //
         // IMPORTANT!!!!: Since the GovernanceOAppReceiver's lzReceive is gated by valid peers. 
         // If you remove the GovernanceOAppSender as a peer on the GovernanceOAppReceiver contracts, 
