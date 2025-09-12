@@ -410,6 +410,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -695,6 +701,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpi-helper"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
+dependencies = [
+ "bs58 0.5.1",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -724,9 +741,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.22"
+version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
+checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crunchy"
@@ -896,11 +913,24 @@ version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "anchor-lang",
- "cpi-helper",
- "messagelib-interface",
+ "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+ "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
  "solana-helper",
  "solana-program",
- "utils",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+]
+
+[[package]]
+name = "endpoint"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
+dependencies = [
+ "anchor-lang",
+ "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
+ "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
+ "solana-helper",
+ "solana-program",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
 ]
 
 [[package]]
@@ -908,7 +938,7 @@ name = "endpoint-mock"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
- "cpi-helper",
+ "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
  "solana-program",
 ]
 
@@ -936,6 +966,15 @@ name = "feature-probe"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "835a3dc7d1ec9e75e2b5fb4ba75396837112d2060b03f7d43bc1897c7f7211da"
+
+[[package]]
+name = "fixed-hash"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "835c052cb0c08c1acf6ffd71c022172e18723949c8282f2b9f27efbc51e64534"
+dependencies = [
+ "static_assertions",
+]
 
 [[package]]
 name = "fnv"
@@ -981,6 +1020,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "governance"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "base64 0.22.1",
+ "bincode",
+ "hex",
+ "oapp 0.2.0",
+ "oft",
+ "solana-helper",
+ "solana-program",
+ "solana-sdk",
+ "spl-associated-token-account",
+ "spl-token",
+ "uln",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1021,6 +1079,12 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hmac"
@@ -1257,9 +1321,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "messagelib-helper"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
+dependencies = [
+ "anchor-lang",
+ "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
+ "messagelib-interface 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
+]
+
+[[package]]
 name = "messagelib-interface"
 version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
+name = "messagelib-interface"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
 dependencies = [
  "anchor-lang",
 ]
@@ -1362,7 +1445,16 @@ version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
 dependencies = [
  "anchor-lang",
- "endpoint",
+ "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
+]
+
+[[package]]
+name = "oapp"
+version = "0.2.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
+dependencies = [
+ "anchor-lang",
+ "endpoint 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
 ]
 
 [[package]]
@@ -1371,9 +1463,9 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
- "oapp",
+ "oapp 0.1.0",
  "solana-helper",
- "utils",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
 ]
 
 [[package]]
@@ -1458,6 +1550,16 @@ name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
+name = "primitive-types"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b34d9fd68ae0b74a41b21c03c2f62847aa0ffea044eee893b4c140b37e244e2"
+dependencies = [
+ "fixed-hash",
+ "uint",
+]
 
 [[package]]
 name = "proc-macro-crate"
@@ -2304,6 +2406,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2433,6 +2541,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
 
 [[package]]
+name = "uint"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76f64bba2c53b04fcab63c01a7d7427eadc821e3bc48c34dc9ba29c501164b52"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "hex",
+ "static_assertions",
+]
+
+[[package]]
+name = "uln"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "messagelib-helper",
+ "primitive-types",
+ "solana-helper",
+ "utils 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4)",
+ "worker-interface",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2477,6 +2611,14 @@ dependencies = [
 name = "utils"
 version = "0.1.0"
 source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f#34321ac15e47e0dafd25d66659e2f3d1b9b6db8f"
+dependencies = [
+ "anchor-lang",
+]
+
+[[package]]
+name = "utils"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
 dependencies = [
  "anchor-lang",
 ]
@@ -2674,6 +2816,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "worker-interface"
+version = "0.1.0"
+source = "git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=4d17c7b986e85a10ea0b1ec36d769d609968bbd4#4d17c7b986e85a10ea0b1ec36d769d609968bbd4"
+dependencies = [
+ "anchor-lang",
 ]
 
 [[package]]

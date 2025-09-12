@@ -129,6 +129,14 @@ Where `<OFT_PROGRAM_ID>` is replaced with your OFT Program ID copied from the pr
 
 <!-- TODO: move the following 'preview rent costs' into docs and replace below with link to docs page -->
 
+### Generate OFT IDL
+
+This is required to make set rate limit scripts work.
+
+```
+pnpm generate:oft
+```
+
 #### Preview Rent Costs for the Solana OFT
 
 :information_source: The majority of the SOL required to deploy your program will be for [**rent**](https://solana.com/docs/core/fees#rent) (specifically, for the minimum balance of SOL required for [rent-exemption](https://solana.com/docs/core/fees#rent-exempt)), which is calculated based on the amount of bytes the program or account uses. Programs typically require more rent than PDAs as more bytes are required to store the program's executable code.
@@ -330,6 +338,18 @@ pnpm hardhat lz:oft:solana:setauthority --eid <SOLANA_EID> --mint <TOKEN_MINT> -
 
 The `OFTStore` is automatically added as a mint authority to the newly created mint authority, and does not need to be
 included in the `--additional-minters` list.
+
+## Set inbound rate limit
+
+```
+pnpm hardhat lz:oft:solana:inbound-rate-limit --mint BAbxz9StRee3vcPXwKoqmZuuRWJw7nMDDzRCr8P8bhco --program-id E4fE7PL7CghQipjJ1q6tXW2Yx3MuUAVZwHMrG7X8APcD --src-eid 40106 --eid 40168 --oft-store ECrqD25BHkLtowssWef4LqjcmL7ZH8sMR1MYB4P8A79e --capacity 1 --refill-per-second 1 --type net
+```
+
+## Set outbound rate limit
+
+```
+pnpm hardhat lz:oft:solana:outbound-rate-limit --mint BAbxz9StRee3vcPXwKoqmZuuRWJw7nMDDzRCr8P8bhco --program-id E4fE7PL7CghQipjJ1q6tXW2Yx3MuUAVZwHMrG7X8APcD --dst-eid 40106 --eid 40168 --oft-store ECrqD25BHkLtowssWef4LqjcmL7ZH8sMR1MYB4P8A79e --capacity 1 --refill-per-second 1 --type net
+```
 
 ## Appendix
 
