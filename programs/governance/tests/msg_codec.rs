@@ -28,15 +28,24 @@ mod test_msg_codec {
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
-    const FUJI_PEER_ADDRESS: &str = "0xC61B038bC91f3Ad9f87A562daAfa0Df3E6987779";
+    const FUJI_PEER_ADDRESS: &str = "0xc4116303c13512dD1ff416D3A48EBeC2f091a5E6";
     const BSC_PEER_ADDRESS: &str = "0xFcF2F7F9d8dE3cf7C3dec9FcB33BCc88c0B2f8CC";
     const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
 
+    fn assert_governance_program_id() {
+        let a = governance::id();        
+        let b = Pubkey::from_str(&std::env::var("GOVERNANCE_ID").unwrap()).unwrap_or_else(|_| panic!("Incorrect GOVERNANCE_ID passed. Is it a valid Solana public key?"));
+        println!("Governance Program ID: {:?}", a);
+        assert_eq!(a, b, "Governance Program ID does not match environment variable GOVERNANCE_ID. Try running: cargo clean --profile dev");
+    }
+
     #[test]
     fn test_hello_world() {
+        assert_governance_program_id();
+
         // hello world program id
         let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
         let accounts = vec![];
