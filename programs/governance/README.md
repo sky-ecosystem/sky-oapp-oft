@@ -64,17 +64,24 @@ It will create a Governance instance and configure it for you.
 
 Take the: "governancePDA hex" from log of the above command and call `setPeer` on the EVM contract with its value and endpoint id. Eg. `setPeer, dstEid = 40168, peer = 0xa2a4c256938d341b8b41812a0348da0f489ec1bca07fdc7979717fdfb4aa8498`.
 
-Note: If for some reason you modified Governance program and want to re-generate TypeScript SDK types you can run:
-```
-pnpm generate:governance
-```
-
 ## Scenarios
 
 The Governance program includes support for Solana and the current repository heavily focuses on providing example code for testing EVM -> Solana scenarios mainly for controlling OFT.
 
+Example command to generate a Governance message based on scenarios in the test suite:
+```
+GOVERNANCE_ID=7iM1ZZT6jbBNC8ASb5weBNNMZSKPJusjBtovz6qWVH3 cargo test -p governance --test msg_codec -- --exact --show-output test_msg_codec::test_hello_world
+```
+
+If you change `GOVERNANCE_ID` then make sure to run:
+```
+cargo clean --profile dev
+```
+
+to clean target/debug directory before running a test scenario.
+
 Tested scenarios include:
-1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/5Jj9pF38FQnL9k3X1MHTp783SS9bVXeK51veG1keztEtbqHSmBJyZHmh8R5HXQTTCWcyvKYXizsDBmQ5C3Ut89jy?cluster=devnet) | CPI depth = 1
+1. Hello World | test_hello_world | [demo](https://explorer.solana.com/tx/XRH4UsQsGBsHrAwnaa2rWNCHfQNpintapm2SAQhTmETA7Vo5XRXGsWXySSufzz2CLANNivnCAViLL1bqwszyKwv?cluster=devnet) | CPI depth = 1
 2. SPL token transfer | test_spl_token_transfer | [demo](https://explorer.solana.com/tx/2sbHPSYeFEXhWXTANybsuv362YkwZp53BTPzgZensFUtUvHcpGf2D9LHc9qpLySPvvEx6KzS9F3eGqEyJvrDfvoK?cluster=devnet) | CPI depth = 1
 3. Transfer Program Upgrade Authority | test_transfer_upgrade_authority | [demo](https://explorer.solana.com/tx/54M3cD2KqBZrs7sG2Cr3wwiMwSVNYSyEUfbLXho3U11EcPffCyi4VtfnxFrjCGiuqokd1ABfBoxQRncvrZEDeEgu?cluster=devnet) | CPI depth = 1
 4. Upgrade Program | test_governance_message_upgrade_program | [demo](https://explorer.solana.com/tx/5We9jE5C2FqeEJscwWvB7ncwc2RmsjxucdkFcyaQfRPBVyJVZfNYK82xp1LMroSxcWLsXeNYjfLA6proJ6ZGy13j?cluster=devnet) | CPI depth = 1
@@ -96,6 +103,41 @@ Tested scenarios include:
 20. Endpoint.initConfig | test_endpoint_init_config | [demo](https://explorer.solana.com/tx/3T2EmnNU3zzrDgYXFiETFGgGnA259fQ3FuiNMXsfWMs36oNqscckPxXfK57uV8o1ESb4FtXqek9QLBCS3o8ESqfD?cluster=devnet) | CPI depth = 3
 
 The code used to craft the Governance Message for the scenarios above is located in [programs/governance/tests/msg_codec.rs](./tests/msg_codec.rs).
+
+## Sending transactions
+
+1. Obtain Governance message dstTarget and dstCallData
+2. Update `canCallTarget` mapping (args: srcSender, dstEid, dstTarget, canCall)
+```
+cast send $GOVERNANCE_CONTROLLER_ADDRESS --rpc-url https://api.avax-test.network/ext/bc/C/rpc --private-key $PRIVATE_KEY "setCanCallTarget(address,uint32,bytes32,bool)" 0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8 40168 0x2c43318f0f99dfd8c0ebc65b0b23cc661fcd1df64af6aef33b7b83eca8e58197 true
+```
+3. Send
+```
+forge script scripts/SendGovernanceMessage.s.sol --rpc-url https://api.avax-test.network/ext/bc/C/rpc -s "run(uint32,bytes32,bytes)" 40168 0x2c43318f0f99dfd8c0ebc65b0b23cc661fcd1df64af6aef33b7b83eca8e58197 0x0000afaf6d1f0d989bed --broadcast
+```
+
+## Delivering transactions
+
+Currently only manual delivery of transactions is supported with the automatic delivery support coming soon.
+
+Example clear tx:
+
+```
+pnpm hardhat lz:oapp:solana:clear-v2 --src-tx-hash 0x41006c361e15153c0b2cae14f92121bd32e8484c2f0a3db54810e571fe8363d7
+```
+
+where --src-tx-hash is source transaction hash where the governance message was sent on the source chain.
+
+## (Optional) Configuring ALTs
+
+If you are sending transaction with a lot of accounts you can configure ALTs to be used when lz_receive is called. You can create ALTs eg. `createLookupTable()` from `tasks/solana/clearPayloadV2.ts`.
+
+Then you can set the ALT using following script:
+```
+pnpm hardhat lz:oapp:solana:setLzReceiveTypes --from-eid 40168 --alts GXR4civq2anMtcHGgApYrQWhpWJeqSybXkC4nVpAwWfg
+```
+
+## Advanced scenarios
 
 ### Upgrading program via Governance account
 
@@ -137,42 +179,6 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 ```
 
 5. Send the governance message using SendGovernanceMessage Foundry script.
-
-## Sending transactions
-
-Before sending: Make sure your address is added as valid caller.
-
-Adding valid caller example:
-```
-cast send 0xe978282De8e7D14DFBf44A3f7CaCE5aD5D37BC96 --rpc-url https://api.avax-test.network/ext/bc/C/rpc --private-key $PRIVATE_KEY "setCanCallTarget(address,uint32,bytes32,bool)" 0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8 40168 0x06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9 true
-```
-
-1. Obtain serialized governance message calldata
-2. Run (in case you are sending to 40168 - Solana Devnet):
-```
-forge script scripts/SendGovernanceMessage.s.sol --rpc-url https://api.avax-test.network/ext/bc/C/rpc -s "run(uint32,bytes32,bytes)" 40168 0x2c43318f0f99dfd8c0ebc65b0b23cc661fcd1df64af6aef33b7b83eca8e58197 0x0000afaf6d1f0d989bed --broadcast
-```
-
-## Configuring ALTs
-
-If you are sending transaction with a lot of accounts you can configure ALTs to be used when lz_receive is called. You can create ALTs eg. `createLookupTable()` from `tasks/solana/clearPayloadV2.ts`.
-
-Then you can set the ALT using following script:
-```
-pnpm hardhat lz:oapp:solana:setLzReceiveTypes --from-eid 40168 --alts GXR4civq2anMtcHGgApYrQWhpWJeqSybXkC4nVpAwWfg
-```
-
-## Delivering transactions
-
-Clearing of transactions is manual because it uses ALT for lzReceive.
-
-Example clear tx:
-
-```
-pnpm hardhat lz:oapp:solana:clear-v2 --src-tx-hash 0x41006c361e15153c0b2cae14f92121bd32e8484c2f0a3db54810e571fe8363d7
-```
-
-where --src-tx-hash is source transaction hash where the governance message was sent on the source chain.
 
 ## License
 
