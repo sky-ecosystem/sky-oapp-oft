@@ -1236,7 +1236,7 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertEq(amountCanBeReceived, 10 ether - minAmountToCreditLD);
     }
 
-    function test_quoteOFT_no_fee_returns_empty_array() public {
+    function test_quoteOFT_no_fee_returns_empty_array() public view {
         uint256 tokensToSend = 1 ether;
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
         SendParam memory sendParam = SendParam(
@@ -1357,7 +1357,7 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertEq(oftReceipt.amountSentLD, tokensToSend, "Amount sent should equal tokens to send");
     }
 
-    function test_quoteOFT_rate_limit_integration() public {
+    function test_quoteOFT_rate_limit_integration() public view {
         uint256 tokensToSend = 5 ether; // Within rate limit
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
         SendParam memory sendParam = SendParam(
@@ -1370,7 +1370,7 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
             ""
         );
 
-        (, OFTFeeDetail[] memory oftFeeDetails, OFTReceipt memory oftReceipt) = aOFT.quoteOFT(sendParam);
+        (OFTLimit memory oftLimit, OFTFeeDetail[] memory oftFeeDetails, OFTReceipt memory oftReceipt) = aOFT.quoteOFT(sendParam);
         
         // Verify rate limit is properly reflected
         assertEq(oftLimit.minAmountLD, 0, "Min amount should be 0");

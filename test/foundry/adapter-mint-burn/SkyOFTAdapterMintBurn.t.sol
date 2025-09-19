@@ -1201,7 +1201,7 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         assertEq(amountCanBeReceived, 10 ether - minAmountToCreditLD);
     }
 
-    function test_quoteOFT_no_fee_returns_empty_array() public {
+    function test_quoteOFT_no_fee_returns_empty_array() public view {
         uint256 tokensToSend = 1 ether;
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
         SendParam memory sendParam = SendParam(
