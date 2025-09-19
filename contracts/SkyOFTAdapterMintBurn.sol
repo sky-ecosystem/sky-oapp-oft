@@ -78,7 +78,7 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
         uint256 _amountLD,
         uint256 _minAmountLD,
         uint32 _dstEid
-    ) internal virtual override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
+    ) internal override returns (uint256 amountSentLD, uint256 amountReceivedLD) {
         (amountSentLD, amountReceivedLD) = _debitView(_amountLD, _minAmountLD, _dstEid);
 
         // @dev We are using amountReceivedLD because that is the amount of tokens leaving the chain.
