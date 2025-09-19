@@ -14,7 +14,7 @@ import { SkyOFTAdapterMintBurn } from "../../../contracts/SkyOFTAdapterMintBurn.
 import { SkyRateLimiter, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
 import { ISkyRateLimiter } from "../../../contracts/interfaces/ISkyRateLimiter.sol";
 import { IOFT, SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
-import { MessagingFee, MessagingReceipt, Origin } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
+import { MessagingFee, MessagingReceipt, Origin, OFTLimit, OFTFeeDetail } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
 import { OFTMsgCodec } from "@layerzerolabs/oft-evm/contracts/libs/OFTMsgCodec.sol";
 import { OFTComposeMsgCodec } from "@layerzerolabs/oft-evm/contracts/libs/OFTComposeMsgCodec.sol";
 import { Packet } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ISendLib.sol";
@@ -1199,5 +1199,89 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         (currentReceiveAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
         assertEq(currentReceiveAmountInFlight, minAmountToCreditLD);
         assertEq(amountCanBeReceived, 10 ether - minAmountToCreditLD);
+    }
+
+    function test_quoteOFT_no_fee_returns_empty_array() public {
+        uint256 tokensToSend = 1 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            tokensToSend,
+            options,
+            "",
+            ""
+        );
+
+        // Test with no fee set (default is 0)
+        (OFTLimit memory oftLimit, OFTFeeDetail[] memory oftFeeDetails, OFTReceipt memory oftReceipt) = aOFT.quoteOFT(sendParam);
+        
+        // Should return empty fee details array when no fee is charged
+        assertEq(oftFeeDetails.length, 0, "Fee details array should be empty when no fee is charged");
+        
+        // Verify other return values
+        assertEq(oftLimit.minAmountLD, 0, "Min amount should be 0");
+        assertEq(oftReceipt.amountSentLD, tokensToSend, "Amount sent should equal tokens to send");
+        assertEq(oftReceipt.amountReceivedLD, tokensToSend, "Amount received should equal tokens to send when no fee");
+    }
+
+    function test_quoteOFT_with_fee_returns_populated_array() public {
+        // Set a fee
+        uint16 feeBps = 100; // 1%
+        aOFT.setDefaultFeeBps(feeBps);
+
+        uint256 tokensToSend = 1 ether;
+        uint256 expectedFee = tokensToSend * feeBps / 10000;
+        uint256 expectedAmountReceived = tokensToSend - expectedFee;
+        
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            expectedAmountReceived, // min amount after fee
+            options,
+            "",
+            ""
+        );
+
+        (OFTLimit memory oftLimit, OFTFeeDetail[] memory oftFeeDetails, OFTReceipt memory oftReceipt) = aOFT.quoteOFT(sendParam);
+        
+        // Should return populated fee details array when fee is charged
+        assertEq(oftFeeDetails.length, 1, "Fee details array should have 1 element when fee is charged");
+        assertEq(oftFeeDetails[0].feeAmountLD, int256(expectedFee), "Fee amount should match expected fee");
+        assertEq(oftFeeDetails[0].description, "SkyOFT: cross-chain transfer fee", "Fee description should match");
+        
+        // Verify other return values
+        assertEq(oftLimit.minAmountLD, 0, "Min amount should be 0");
+        assertEq(oftReceipt.amountSentLD, tokensToSend, "Amount sent should equal tokens to send");
+        assertEq(oftReceipt.amountReceivedLD, expectedAmountReceived, "Amount received should be after fee deduction");
+    }
+
+    function test_quoteOFT_zero_fee_edge_case() public {
+        // Explicitly set fee to 0
+        aOFT.setDefaultFeeBps(0);
+
+        uint256 tokensToSend = 1 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(
+            bEid,
+            addressToBytes32(userB),
+            tokensToSend,
+            tokensToSend,
+            options,
+            "",
+            ""
+        );
+
+        (, OFTFeeDetail[] memory oftFeeDetails, OFTReceipt memory oftReceipt) = aOFT.quoteOFT(sendParam);
+        
+        // Should return empty fee details array when fee is explicitly 0
+        assertEq(oftFeeDetails.length, 0, "Fee details array should be empty when fee is 0");
+        
+        // Verify amounts are equal
+        assertEq(oftReceipt.amountSentLD, oftReceipt.amountReceivedLD, "Sent and received amounts should be equal with 0 fee");
+        assertEq(oftReceipt.amountSentLD, tokensToSend, "Amount sent should equal tokens to send");
     }
 }
