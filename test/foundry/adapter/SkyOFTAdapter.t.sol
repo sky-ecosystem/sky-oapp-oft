@@ -1316,7 +1316,6 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         (OFTLimit memory oftLimit, OFTFeeDetail[] memory oftFeeDetails, OFTReceipt memory oftReceipt) = aOFT.quoteOFT(sendParam);
         
         // The dust removal happens in _removeDust, which should remove any remainder
-        
         // If there's a difference between sent and received, should have fee details
         if (oftReceipt.amountSentLD != oftReceipt.amountReceivedLD) {
             assertEq(oftFeeDetails.length, 1, "Fee details array should have 1 element when fee is charged");
