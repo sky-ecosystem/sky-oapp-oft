@@ -100,7 +100,7 @@ abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable 
         } else {
             oftFeeDetails = new OFTFeeDetail[](1);
             oftFeeDetails[0] = OFTFeeDetail(
-                int256(amountSentLD) - int256(amountReceivedLD), // The fee amount in local decimals.
+                int256(amountSentLD - amountReceivedLD), // The fee amount in local decimals.
                 'SkyOFT: cross-chain transfer fee' // Fee description.
             );
         }
