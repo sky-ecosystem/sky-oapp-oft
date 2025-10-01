@@ -116,9 +116,10 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
      * @param _window The time window (in seconds) for which the limit applies.
      *
      * @return currentAmountInFlight The decayed amount of in-flight based on the elapsed time since lastUpdated.
-     * @dev If the time since lastUpdated exceeds the window, it returns zero.
      * @return availableCapacity The amount of capacity available for new activity.
-     * @dev If the time since lastUpdated exceeds the window, it returns the full limit.
+     * @dev If the time since lastUpdated exceeds the window:
+     *      - currentAmountInFlight is 0.
+     *      - availableCapacity is the full limit.
      */
     function _calculateDecay(
         uint256 _amountInFlight,

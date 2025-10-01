@@ -68,10 +68,6 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
      *
      * @return amountSentLD The amount sent in local decimals.
      * @return amountReceivedLD The amount received in local decimals on the remote.
-     *
-     * @dev WARNING: The default OFTAdapter implementation assumes LOSSLESS transfers, i.e., 1 token in, 1 token out.
-     *      If the 'innerToken' applies something like a transfer fee, the default will NOT work.
-     *      A pre/post balance check will need to be done to calculate the amountReceivedLD.
      */
     function _debit(
         address _from,
@@ -100,10 +96,6 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
      * @param _srcEid The source Endpoint ID.
      *
      * @return amountReceivedLD The amount of tokens actually received in local decimals.
-     *
-     * @dev WARNING: The default OFTAdapter implementation assumes LOSSLESS transfers, i.e., 1 token in, 1 token out.
-     *      If the 'innerToken' applies something like a transfer fee, the default will NOT work.
-     *      A pre/post balance check will need to be done to calculate the amountReceivedLD.
      */
     function _credit(
         address _to,

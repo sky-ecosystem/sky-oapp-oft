@@ -17,9 +17,6 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
  * @dev For existing ERC20 tokens, this can be used to convert the token to cross-chain compatibility.
  * @dev WARNING: ONLY 1 of these should exist for a given global mesh,
  * unless you make a NON-default implementation of OFT and needs to be done very carefully.
- * @dev WARNING: The default OFTAdapter implementation assumes LOSSLESS transfers, ie. 1 token in, 1 token out.
- * IF the 'innerToken' applies something like a transfer fee, the default will NOT work...
- * a pre/post balance check will need to be done to calculate the amountSentLD/amountReceivedLD.
  */
 contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
@@ -117,10 +114,6 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
      * @param _srcEid The source Endpoint ID.
      *
      * @return amountReceivedLD The amount of tokens ACTUALLY received in local decimals.
-     *
-     * @dev WARNING: The default OFTAdapter implementation assumes LOSSLESS transfers, ie. 1 token in, 1 token out.
-     *      IF the 'innerToken' applies something like a transfer fee, the default will NOT work...
-     *      a pre/post balance check will need to be done to calculate the amountReceivedLD.
      */
     function _credit(
         address _to,
@@ -136,7 +129,6 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         // @dev Unlock the tokens and transfer to the recipient.
         innerToken.safeTransfer(_to, _amountLD);
 
-        // @dev In the case of NON-default OFT, the _amountLD MIGHT not be == amountReceivedLD.
         return _amountLD;
     }
 }

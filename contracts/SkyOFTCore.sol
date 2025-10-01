@@ -200,6 +200,7 @@ abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable 
         // @dev Apply the fee, then de-dust the amount afterwards.
         // This means the fee is taken from the amount before the dust is removed.
         uint256 fee = getFee(_dstEid, _amountLD);
+        // @dev The fee technically also includes the dust.
         amountReceivedLD = _removeDust(_amountLD - fee);
 
         // @dev Check for slippage.
