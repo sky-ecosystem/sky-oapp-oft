@@ -64,6 +64,14 @@ export class Governance {
             },
             ...ixAccounts,
         ]
+
+        const bpfProgramAddress = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+        const seeds = [Buffer.from(this.program.toBytes())];
+        const [governanceProgramData,] = await PublicKey.findProgramAddressSync(
+            seeds,
+            bpfProgramAddress
+        );
+
         // the first two accounts are both signers, so we need to set them to false, solana will set them to signer internally
         registerOAppAccounts[1].isSigner = false
         registerOAppAccounts[2].isSigner = false
@@ -72,6 +80,8 @@ export class Governance {
                 payer,
                 governance: id,
                 lzReceiveTypesV2Accounts: this.governanceDeriver.lzReceiveTypesInfoAccounts()[0],
+                governanceProgram: this.program,
+                governanceProgramData,
                 anchorRemainingAccounts: registerOAppAccounts,
             } satisfies instructions.InitGovernanceInstructionAccounts,
             {

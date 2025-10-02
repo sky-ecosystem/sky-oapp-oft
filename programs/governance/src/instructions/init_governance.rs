@@ -23,11 +23,27 @@ pub struct InitGovernance<'info> {
         bump
     )]
     pub lz_receive_types_v2_accounts: Account<'info, GovernanceLzReceiveTypesAccounts>,
+    pub governance_program: Program<'info, program::Governance>,
+    pub governance_program_data: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
 impl InitGovernance<'_> {
     pub fn apply(ctx: &mut Context<InitGovernance>, params: &InitGovernanceParams) -> Result<()> {
+        require!(
+            ctx.accounts.governance_program.programdata_address()? == Some(ctx.accounts.governance_program_data.key()),
+            error::GovernanceError::InvalidProgramDataAccount
+        );
+
+        let mut data_slice: &[u8] = &ctx.accounts.governance_program_data.data.borrow();
+        let governance_program_data = ProgramData::try_deserialize(&mut data_slice)
+            .map_err(|_| crate::error::GovernanceError::InvalidProgramDataAccount)?;
+
+        require!(
+            governance_program_data.upgrade_authority_address == Some(ctx.accounts.payer.key()),
+            error::GovernanceError::NotUpgradeAuthority
+        );
+
         ctx.accounts.governance.id = params.id;
         ctx.accounts.governance.admin = params.admin;
         ctx.accounts.governance.bump = ctx.bumps.governance;
