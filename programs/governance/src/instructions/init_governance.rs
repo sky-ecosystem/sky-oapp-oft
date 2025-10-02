@@ -24,6 +24,7 @@ pub struct InitGovernance<'info> {
     )]
     pub lz_receive_types_v2_accounts: Account<'info, GovernanceLzReceiveTypesAccounts>,
     pub governance_program: Program<'info, program::Governance>,
+    /// CHECK: governance program data association check is done in the function implementation
     pub governance_program_data: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
