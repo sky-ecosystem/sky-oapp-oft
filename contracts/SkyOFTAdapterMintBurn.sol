@@ -106,7 +106,7 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);
 
         // @dev If recipient is the zero address or the inner token, reroute to the dead address.
-        if (_to == address(0) || _to == token())_to = address(0xdead);
+        if (_to == address(0) || _to == token()) _to = address(0xdead);
 
         // @dev Mints the tokens to the recipient.
         IMintBurnVoidReturn(token()).mint(_to, _amountLD);
