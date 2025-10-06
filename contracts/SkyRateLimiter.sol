@@ -12,7 +12,7 @@ import {
 /**
  * @title SkyRateLimiter
  * @dev Abstract contract for implementing net and gross rate limiting functionality.
- * @dev The owner can toggle between net and gross accounting by calling `_setRateLimitAccountingType`.
+ * @dev Toggle between net and gross accounting by calling `_setRateLimitAccountingType`.
  * ---------------------------------------------------------------------------------------------------------------------
  * Net accounting allows two operations to offset each other's net impact (e.g., inflow v.s. outflow of assets).
  * A flexible rate limit that grows during congestive periods and shrinks during calm periods could give some
