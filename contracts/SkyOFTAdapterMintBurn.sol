@@ -13,7 +13,7 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
  * @dev This contract needs mint permissions on the token.
  * @dev This contract burns the tokens from the sender's balance and transfers in the fee.
  *
- * @dev This contract extends the DoubleSidedRateLimiter contract to provide double-sided rate limiting functionality.
+ * @dev This contract extends the SkyOFTCore, which extends the SkyRateLimiter containing rate limiting functionality.
  * @dev It allows for the configuration of rate limits for both outbound and inbound directions.
  * @dev It also allows for the setting of the rate limit accounting type to be net or gross.
  */
