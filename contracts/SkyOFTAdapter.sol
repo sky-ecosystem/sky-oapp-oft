@@ -10,13 +10,12 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
 /**
  * @title SkyOFTAdapter Contract
  * @dev OFTAdapter is a contract that adapts an ERC-20 token to the OFT functionality.
- * @dev This contract extends the DoubleSidedRateLimiter contract to provide double-sided rate limiting functionality.
+ * @dev This contract extends the SkyOFTCore, which extends the SkyRateLimiter containing rate limiting functionality.
  * @dev It allows for the configuration of rate limits for both outbound and inbound directions.
  * @dev It also allows for the setting of the rate limit accounting type to be net or gross.
  *
  * @dev For existing ERC20 tokens, this can be used to convert the token to cross-chain compatibility.
- * @dev WARNING: ONLY 1 of these should exist for a given global mesh,
- * unless you make a NON-default implementation of OFT and needs to be done very carefully.
+ * @dev WARNING: ONLY 1 of these should exist for a given global mesh.
  */
 contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
