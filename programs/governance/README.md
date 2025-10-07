@@ -180,6 +180,14 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 
 5. Send the governance message using SendGovernanceMessage Foundry script.
 
+## Tests
+
+### Solana
+
+```
+ENDPOINT_ID=6xmPjYnXyxz36xcKkv2zCrZc72LK5hQ9xzY3EjeZ59MV anchor test
+```
+
 ## License
 
 License is [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).

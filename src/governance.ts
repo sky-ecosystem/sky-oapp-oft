@@ -67,7 +67,7 @@ export class Governance {
 
         const bpfProgramAddress = new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
         const seeds = [Buffer.from(this.program.toBytes())];
-        const [governanceProgramData,] = await PublicKey.findProgramAddressSync(
+        const [governanceProgramData,] = PublicKey.findProgramAddressSync(
             seeds,
             bpfProgramAddress
         );

@@ -6,6 +6,8 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
+endpoint = "6xmPjYnXyxz36xcKkv2zCrZc72LK5hQ9xzY3EjeZ59MV"
+governance = "EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3"
 oft = "G2BYTnfGCMQAErMZkTBCFSapKevzf6QCjizjXi8hFEtJ"
 
 [registry]
@@ -17,3 +19,6 @@ wallet = "./junk-id.json"
 
 [scripts]
 test = "npx jest test/anchor"
+
+[test]
+upgradeable = true

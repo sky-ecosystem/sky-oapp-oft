@@ -110,6 +110,8 @@ mod test_msg_codec {
 
     #[test]
     fn test_spl_token_transfer() {
+        assert_governance_program_id();
+        
         let mint_pubkey = pubkey!("HC8D1rWMtAifPRhUYD7PwKHMtMVLtwCjarfNVvcN3SGK");
         let mint_account = Acc {
             pubkey: mint_pubkey,

@@ -1,7 +1,9 @@
+pub mod events;
 pub mod instructions;
 pub mod state;
 
 use anchor_lang::prelude::*;
+use events::*;
 use instructions::*;
 use state::*;
 
@@ -15,5 +17,9 @@ pub mod endpoint {
 
     pub fn register_oapp(mut ctx: Context<RegisterOApp>, params: RegisterOAppParams) -> Result<()> {
         RegisterOApp::apply(&mut ctx, &params)
+    }
+
+    pub fn set_delegate(mut ctx: Context<SetDelegate>, params: SetDelegateParams) -> Result<()> {
+        SetDelegate::apply(&mut ctx, &params)
     }
 }
