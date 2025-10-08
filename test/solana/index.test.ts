@@ -17,7 +17,7 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { Connection } from '@solana/web3.js'
 import axios from 'axios'
 import { $, sleep } from 'zx'
-import { DEPLOYER, DEPLOYER_SECRET_KEY, GOVERNANCE_PROGRAM_ID } from './constants'
+import { DEPLOYER, DEPLOYER_SECRET_KEY, GOVERNANCE_PROGRAM_ID, HELLO_WORLD_PROGRAM_ID } from './constants'
 import { createDefaultProgramRepository } from '@metaplex-foundation/umi-program-repository'
 import { TestContext } from './types'
 import * as anchor from "@coral-xyz/anchor";
@@ -63,7 +63,7 @@ describe('Governance Solana Tests', function () {
     })
 
     require('./suites/layerzero-infrastructure.test')
-    require('./suites/init_governance.test')
+    require('./suites/governance.test')
 })
 
 // Export global context for child tests
@@ -88,7 +88,7 @@ async function setupPrograms(): Promise<void> {
         { name: 'dvn', id: 'HtEYV4xB4wvsj5fgTkcfuChYpvGYzgzwvNhgDZQNh7wW' },
         { name: 'pricefeed', id: '8ahPGPjEbpgGaZx2NV1iG5Shj7TDwvsjkEDcGWjt94TP' },
         { name: 'blocked_messagelib', id: '2XrYqmhBMPJgDsb4SVbjV1PnJBprurd5bzRCkHwiFCJB' },
-        { name: 'hello_world', id: '3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg' }
+        { name: 'hello_world', id: HELLO_WORLD_PROGRAM_ID }
     ]
 
     console.log('📦 Downloading LayerZero programs...')

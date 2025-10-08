@@ -159,7 +159,7 @@ export async function receive(context: TestContext, umi: Context, packetSentEven
             bytesCreatedOnChain: 0,
         })),
         [umi.payer, ...signers],
-        200_000,
+        400_000,
         newAddressLookupTables
     )
     return signature

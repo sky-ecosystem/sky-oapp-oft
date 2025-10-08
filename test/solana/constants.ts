@@ -12,6 +12,7 @@ export const SRC_EID = 40106
 export const DST_EID = 40168
 
 export const GOVERNANCE_PROGRAM_ID = publicKey('EiQujD3MpwhznKZn4jSa9J7j6cHd7W9QA213QrPZgpR3')
+export const HELLO_WORLD_PROGRAM_ID = publicKey('3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg')
 
 export const DEPLOYER_SECRET_KEY = readFileSync(`${__dirname}/../../junk-id.json`, {
     encoding: "utf-8",
