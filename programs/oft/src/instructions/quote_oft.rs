@@ -34,7 +34,17 @@ impl QuoteOFT<'_> {
         )?;
         require!(amount_received_ld >= params.min_amount_ld, OFTError::SlippageExceeded);
 
-        let oft_limits = OFTLimits { min_amount_ld: 0, max_amount_ld: 0xffffffffffffffff };
+        let max_amount_ld = if let Some(rate_limiter) = &ctx.accounts.peer.outbound_rate_limiter {
+            rate_limiter.clone().fetch_available_capacity()?
+        } else {
+            0
+        };
+
+        let oft_limits = OFTLimits { 
+            min_amount_ld: 0, 
+            max_amount_ld 
+        };
+
         let mut oft_fee_details = if amount_received_ld + oft_fee_ld < amount_sent_ld {
             vec![OFTFeeDetail {
                 fee_amount_ld: amount_sent_ld - oft_fee_ld - amount_received_ld,

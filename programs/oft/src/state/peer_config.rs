@@ -68,6 +68,11 @@ impl RateLimiter {
             None => Err(error!(OFTError::RateLimitExceeded)),
         }
     }
+
+    pub fn fetch_available_capacity(&mut self) -> Result<u64> {
+        self.refill(0)?;
+        Ok(self.tokens)
+    }
 }
 
 #[derive(Clone, Default, AnchorSerialize, AnchorDeserialize, InitSpace)]
