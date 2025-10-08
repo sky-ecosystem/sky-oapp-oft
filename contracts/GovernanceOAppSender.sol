@@ -39,7 +39,7 @@ contract GovernanceOAppSender is OAppSender, OAppOptionsType3, IGovernanceOAppSe
         // the GovernanceOAppReceiver will no longer be able to receive/execute messages from the GovernanceOAppSender. 
         // This will brick the system!!! So be very careful when removing a peer.
 
-        // TODO Alternatively to this, you could make setting a peer immutable, and then you cannot accidently brick it.
+        // TODO Alternatively to this, you could make setting a peer immutable, and then you cannot accidentally brick it.
         // However you then cannot change them later, and a full migration of ownership would be required.
     }
 
