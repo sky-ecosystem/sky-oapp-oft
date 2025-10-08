@@ -934,15 +934,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "endpoint-mock"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "cpi-helper 0.1.0 (git+https://github.com/LayerZero-Labs/LayerZero-v2.git?rev=34321ac15e47e0dafd25d66659e2f3d1b9b6db8f)",
- "solana-program",
-]
-
-[[package]]
 name = "env_logger"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -185,7 +185,7 @@ cargo test --package governance --test msg_codec -- test_msg_codec::test_governa
 ### Solana
 
 ```
-ENDPOINT_ID=6xmPjYnXyxz36xcKkv2zCrZc72LK5hQ9xzY3EjeZ59MV anchor test
+pnpm run test:solana
 ```
 
 ## License
