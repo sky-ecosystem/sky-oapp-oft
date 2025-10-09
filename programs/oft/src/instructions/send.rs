@@ -126,10 +126,6 @@ impl Send<'_> {
         }
 
         // send message to endpoint
-        require!(
-            ctx.accounts.oft_store.key() == ctx.remaining_accounts[1].key(),
-            OFTError::InvalidSender
-        );
         let amount_sd = ctx.accounts.oft_store.ld2sd(amount_received_ld);
         let msg_receipt = oapp::endpoint_cpi::send(
             ctx.accounts.oft_store.endpoint_program,
