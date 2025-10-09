@@ -49,6 +49,7 @@ impl QuoteSend<'_> {
         );
 
         // calling endpoint cpi
+        let amount_received_sd = ctx.accounts.oft_store.ld2sd(amount_received_ld);
         oapp::endpoint_cpi::quote(
             ctx.accounts.oft_store.endpoint_program,
             ctx.remaining_accounts,
@@ -58,7 +59,7 @@ impl QuoteSend<'_> {
                 receiver: ctx.accounts.peer.peer_address,
                 message: msg_codec::encode(
                     params.to,
-                    amount_received_ld,
+                    amount_received_sd,
                     Pubkey::default(),
                     &params.compose_msg,
                 ),
