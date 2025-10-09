@@ -74,6 +74,25 @@ impl QuoteSend<'_> {
     }
 }
 
+/// Computes fee and adjusts amount for OFT bridging operations.
+/// 
+/// Returns (amount_sent_ld, amount_received_ld, oft_fee_ld)
+/// 
+/// ## Fee Calculation Behavior:
+/// 
+/// ### Native OFT:
+/// - No transfer fees (tokens are minted/burned)
+/// - oft_fee_ld is the exact bridging fee that will be collected
+/// 
+/// ### Adapter OFT (mint-and-burn type):
+/// - Accounts for token2022 transfer fees
+/// - oft_fee_ld represents the calculated bridging fee
+/// - **IMPORTANT**: For fee-on-transfer tokens, the actual received bridging fee
+///   in the escrow may be less than oft_fee_ld due to transfer fees applied
+///   during the fee transfer operation
+/// 
+/// The returned oft_fee_ld should be considered the "intended" fee amount,
+/// not necessarily the "actual received" amount for Adapter type OFTs.
 pub fn compute_fee_and_adjust_amount(
     amount_ld: u64,
     oft_store: &OFTStore,

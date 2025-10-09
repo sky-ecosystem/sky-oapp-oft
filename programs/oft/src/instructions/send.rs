@@ -108,6 +108,9 @@ impl Send<'_> {
             )?;
 
             // transfer fee to escrow
+            // NOTE: For mint-and-burn type adapters with fee-on-transfer tokens,
+            // the actual received OFT fee in the escrow may be less than oft_fee_ld
+            // due to transfer fees applied during this transfer operation.
             if oft_fee_ld > 0 {
                 token_interface::transfer_checked(
                     CpiContext::new(
