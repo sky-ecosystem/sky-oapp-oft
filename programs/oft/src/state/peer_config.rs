@@ -80,10 +80,9 @@ pub struct EnforcedOptions {
 
 impl EnforcedOptions {
     pub fn get_enforced_options(&self, composed_msg: &Option<Vec<u8>>) -> Vec<u8> {
-        if composed_msg.is_none() {
-            self.send.clone()
-        } else {
-            self.send_and_call.clone()
+        match composed_msg {
+            None => self.send.clone(),
+            Some(_) => self.send_and_call.clone(),
         }
     }
 

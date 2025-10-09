@@ -48,12 +48,7 @@ impl InitOFT<'_> {
             10u64.pow((ctx.accounts.token_mint.decimals - params.shared_decimals) as u32);
         ctx.accounts.oft_store.token_mint = ctx.accounts.token_mint.key();
         ctx.accounts.oft_store.token_escrow = ctx.accounts.token_escrow.key();
-        ctx.accounts.oft_store.endpoint_program =
-            if let Some(endpoint_program) = params.endpoint_program {
-                endpoint_program
-            } else {
-                ENDPOINT_ID
-            };
+        ctx.accounts.oft_store.endpoint_program = params.endpoint_program.unwrap_or(ENDPOINT_ID);
         ctx.accounts.oft_store.bump = ctx.bumps.oft_store;
         ctx.accounts.oft_store.tvl_ld = 0;
         ctx.accounts.oft_store.admin = params.admin;

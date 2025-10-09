@@ -98,11 +98,10 @@ impl LzReceive<'_> {
         let mut amount_received_ld = ctx.accounts.oft_store.sd2ld(amount_sd);
 
         // Consume the inbound rate limiter
-        if let Some(rate_limiter) = ctx.accounts.peer.inbound_rate_limiter.as_mut() {
-            rate_limiter.try_consume(amount_received_ld)?;
-        } else {
-            return Err(error!(OFTError::RateLimitExceeded))
-        }
+        ctx.accounts.peer.inbound_rate_limiter
+            .as_mut()
+            .ok_or(OFTError::RateLimitExceeded)?
+            .try_consume(amount_received_ld)?;
 
         // Refill the outbound rate limiter
         if let Some(rate_limiter) = ctx.accounts.peer.outbound_rate_limiter.as_mut() {
