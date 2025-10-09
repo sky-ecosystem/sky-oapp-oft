@@ -156,7 +156,7 @@ impl LzReceive<'_> {
             return Err(OFTError::InvalidMintAuthority.into());
         }
 
-        if let Some(message) = msg_codec::compose_msg(&params.message) {
+        if let Some(message) = msg_codec::compose_msg_with_sender(&params.message) {
             oapp::endpoint_cpi::send_compose(
                 ctx.accounts.oft_store.endpoint_program,
                 ctx.accounts.oft_store.key(),

@@ -109,7 +109,7 @@ impl LzReceiveTypes<'_> {
         accounts.extend(accounts_for_clear);
 
         // remaining accounts 8..14
-        if let Some(message) = msg_codec::compose_msg(&params.message) {
+        if let Some(message) = msg_codec::compose_msg_with_sender(&params.message) {
             let amount_sd = msg_codec::amount_sd(&params.message);
             let amount_ld = ctx.accounts.oft_store.sd2ld(amount_sd);
             let amount_received_ld = if ctx.accounts.oft_store.oft_type == OFTType::Native {
