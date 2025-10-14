@@ -33,8 +33,8 @@ pub struct LzReceiveTypes<'info> {
 // account 11 - event authority
 // account 12 - this program
 // account remaining accounts
-//      0..9 - accounts for clear
-//      9..16 - accounts for compose
+//      0..7 - accounts for clear
+//      8..14 - accounts for compose
 impl LzReceiveTypes<'_> {
     pub fn apply(
         ctx: &Context<LzReceiveTypes>,
@@ -98,7 +98,7 @@ impl LzReceiveTypes<'_> {
         ]);
 
         let endpoint_program = ctx.accounts.oft_store.endpoint_program;
-        // remaining accounts 0..9
+        // remaining accounts 0..7
         let accounts_for_clear = oapp::endpoint_cpi::get_accounts_for_clear(
             endpoint_program,
             &ctx.accounts.oft_store.key(),
@@ -108,8 +108,8 @@ impl LzReceiveTypes<'_> {
         );
         accounts.extend(accounts_for_clear);
 
-        // remaining accounts 9..16
-        if let Some(message) = msg_codec::compose_msg(&params.message) {
+        // remaining accounts 8..14
+        if let Some(message) = msg_codec::compose_msg_with_sender(&params.message) {
             let amount_sd = msg_codec::amount_sd(&params.message);
             let amount_ld = ctx.accounts.oft_store.sd2ld(amount_sd);
             let amount_received_ld = if ctx.accounts.oft_store.oft_type == OFTType::Native {

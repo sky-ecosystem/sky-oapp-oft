@@ -55,9 +55,14 @@ impl QuoteOFT<'_> {
         };
         // cross chain fee
         if oft_fee_ld > 0 {
+            let description = if ctx.accounts.oft_store.oft_type == OFTType::Adapter {
+                "Cross Chain Fee (actual received fee may be less due to transfer fees)".to_string()
+            } else {
+                "Cross Chain Fee".to_string()
+            };
             oft_fee_details.push(OFTFeeDetail {
                 fee_amount_ld: oft_fee_ld,
-                description: "Cross Chain Fee".to_string(),
+                description,
             });
         }
         let oft_receipt = OFTReceipt { amount_sent_ld, amount_received_ld };
@@ -83,6 +88,10 @@ pub struct QuoteOFTResult {
     pub oft_receipt: OFTReceipt,
 }
 
+/// Details about a specific fee component in OFT operations.
+/// 
+/// Note: For Adapter type OFTs with fee-on-transfer tokens, the actual received
+/// bridging fee may be less than fee_amount_ld due to transfer fees.
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct OFTFeeDetail {
     pub fee_amount_ld: u64,

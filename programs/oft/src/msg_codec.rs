@@ -37,7 +37,7 @@ pub fn amount_sd(message: &[u8]) -> u64 {
     u64::from_be_bytes(amount_sd_bytes)
 }
 
-pub fn compose_msg(message: &[u8]) -> Option<Vec<u8>> {
+pub fn compose_msg_with_sender(message: &[u8]) -> Option<Vec<u8>> {
     if message.len() > COMPOSE_MSG_OFFSET {
         Some(message[COMPOSE_MSG_OFFSET..].to_vec())
     } else {
