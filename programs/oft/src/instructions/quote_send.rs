@@ -43,9 +43,13 @@ impl QuoteSend<'_> {
             &ctx.accounts.token_mint,
             ctx.accounts.peer.fee_bps,
         )?;
-        require!(amount_received_ld >= params.min_amount_ld, OFTError::SlippageExceeded);
+        require!(
+            amount_received_ld >= params.min_amount_ld,
+            OFTError::SlippageExceeded
+        );
 
         // calling endpoint cpi
+        let amount_received_sd = ctx.accounts.oft_store.ld2sd(amount_received_ld);
         oapp::endpoint_cpi::quote(
             ctx.accounts.oft_store.endpoint_program,
             ctx.remaining_accounts,
@@ -55,7 +59,7 @@ impl QuoteSend<'_> {
                 receiver: ctx.accounts.peer.peer_address,
                 message: msg_codec::encode(
                     params.to,
-                    amount_received_ld,
+                    amount_received_sd,
                     Pubkey::default(),
                     &params.compose_msg,
                 ),
@@ -70,6 +74,25 @@ impl QuoteSend<'_> {
     }
 }
 
+/// Computes fee and adjusts amount for OFT bridging operations.
+/// 
+/// Returns (amount_sent_ld, amount_received_ld, oft_fee_ld)
+/// 
+/// ## Fee Calculation Behavior:
+/// 
+/// ### Native OFT:
+/// - No transfer fees (tokens are minted/burned)
+/// - oft_fee_ld is the exact bridging fee that will be collected
+/// 
+/// ### Adapter OFT (mint-and-burn type):
+/// - Accounts for token2022 transfer fees
+/// - oft_fee_ld represents the calculated bridging fee
+/// - **IMPORTANT**: For fee-on-transfer tokens, the actual received bridging fee
+///   in the escrow may be less than oft_fee_ld due to transfer fees applied
+///   during the fee transfer operation
+/// 
+/// The returned oft_fee_ld should be considered the "intended" fee amount,
+/// not necessarily the "actual received" amount for Adapter type OFTs.
 pub fn compute_fee_and_adjust_amount(
     amount_ld: u64,
     oft_store: &OFTStore,
@@ -105,7 +128,7 @@ pub fn compute_fee_and_adjust_amount(
 }
 
 fn calculate_fee(pre_fee_amount: u64, default_fee_bps: u16, fee_bps: Option<u16>) -> u64 {
-    let final_fee_bps = if let Some(bps) = fee_bps { bps as u128 } else { default_fee_bps as u128 };
+    let final_fee_bps = fee_bps.unwrap_or(default_fee_bps) as u128;
     if final_fee_bps == 0 || pre_fee_amount == 0 {
         0
     } else {
@@ -173,12 +196,15 @@ fn calculate_pre_fee_amount(fee: &TransferFee, post_fee_amount: u64) -> Option<u
                 // should return `None` if `pre_fee_amount` overflows
                 u64::try_from(raw_pre_fee_amount).ok()
             }
-        },
+        }
     }
 }
 
 fn ceil_div(numerator: u128, denominator: u128) -> Option<u128> {
-    numerator.checked_add(denominator)?.checked_sub(1)?.checked_div(denominator)
+    numerator
+        .checked_add(denominator)?
+        .checked_sub(1)?
+        .checked_div(denominator)
 }
 
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]

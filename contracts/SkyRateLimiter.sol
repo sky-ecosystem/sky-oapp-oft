@@ -1,81 +1,34 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.22;
+
+import {
+    RateLimit,
+    RateLimitConfig,
+    RateLimitDirection,
+    RateLimitAccountingType,
+    ISkyRateLimiter
+} from "./interfaces/ISkyRateLimiter.sol";
 
 /**
- * @title DoubleSidedRateLimiter
+ * @title SkyRateLimiter
  * @dev Abstract contract for implementing net and gross rate limiting functionality.
- * @dev The owner can toggle between net and gross accounting by calling `_setRateLimitAccountingType`.
+ * @dev Toggle between net and gross accounting by calling `_setRateLimitAccountingType`.
  * ---------------------------------------------------------------------------------------------------------------------
- * Net accounting effectively allows two operations to offset each other's net impact (e.g., inflow v.s. outflow of assets). 
+ * Net accounting allows two operations to offset each other's net impact (e.g., inflow v.s. outflow of assets).
  * A flexible rate limit that grows during congestive periods and shrinks during calm periods could give some
  * leeway when someone tries to forcefully congest the network, while still preventing huge amounts to be sent at once.
  * ---------------------------------------------------------------------------------------------------------------------
- * Gross accounting does not allow any offsetting and will revert if the amount to be sent or received is greater than the available capacity.
- * The contract is designed to be inherited by other contracts requiring rate limiting capabilities to protect resources or services from excessive use.
+ * Gross accounting does not allow any offsetting and will revert if the amount to be sent or received,
+ * is greater than the available capacity.
+ * Designed to be inherited by other contracts requiring rate limiting to protect resources/services from excessive use.
  */
-abstract contract DoubleSidedRateLimiter {
-
-    /**
-     * @notice Rate Limit struct
-     * @param lastUpdated Timestamp representing the last time the rate limit was checked or updated.
-     * @param window Defines the duration of the rate limiting window.
-     * @param amountInFlight Current amount within the rate limit window.
-     * @param limit This represents the maximum allowed amount within a given window.
-     */
-    struct RateLimit {
-        uint128 lastUpdated;    // 16 bytes
-        uint48 window;          // 6 bytes
-        uint256 amountInFlight; // 32 bytes (new slot)
-        uint256 limit;          // 32 bytes (new slot)
-    }
-
-    /**
-     * @notice Rate Limit Configuration struct.
-     * @param eid The endpoint id.
-     * @param window Defines the duration of the rate limiting window.
-     * @param limit This represents the maximum allowed amount within a given window.
-     */
-    struct RateLimitConfig {
-        uint32 eid;      // 4 bytes
-        uint48 window;   // 6 bytes
-        uint256 limit;   // 32 bytes (new slot)
-    }
-
-    // Define an enum to clearly distinguish between inbound and outbound rate limits.
-    enum RateLimitDirection {
-        Inbound,
-        Outbound
-    }
-
-    enum RateLimitAccountingType {
-        Net,
-        Gross
-    }
-
-    /**
-     * @notice Emitted when _setRateLimits occurs.
-     * @param rateLimitConfigs An array of `RateLimitConfig` structs representing the rate limit configurations set per endpoint id.
-     * - `eid`: The source / destination endpoint id (depending on direction).
-     * - `window`: Defines the duration of the rate limiting window.
-     * - `limit`: This represents the maximum allowed amount within a given window.
-     * @param direction Specifies whether the outbound or inbound rates were changed.
-     */
-    event RateLimitsChanged(RateLimitConfig[] rateLimitConfigs, RateLimitDirection direction);
-
-    event RateLimitAccountingTypeSet(RateLimitAccountingType newRateLimitAccountingType);
-    event RateLimitsReset(uint32[] eids, RateLimitDirection direction);
-
-    /**
-     * @notice Error that is thrown when an amount exceeds the rate limit for a given direction.
-     */
-    error RateLimitExceeded();
-
+abstract contract SkyRateLimiter is ISkyRateLimiter {
     RateLimitAccountingType public rateLimitAccountingType;
 
     // Tracks rate limits for outbound transactions to a dstEid.
-    mapping(uint32 => RateLimit) public outboundRateLimits;
+    mapping(uint32 dstEid => RateLimit) public outboundRateLimits;
     // Tracks rate limits for inbound transactions from a srcEid.
-    mapping(uint32 => RateLimit) public inboundRateLimits;
+    mapping(uint32 srcEid => RateLimit) public inboundRateLimits;
 
     /**
      * @notice Get the current amount that can be sent to this destination endpoint id for the given rate limit window.
@@ -85,7 +38,7 @@ abstract contract DoubleSidedRateLimiter {
      */
     function getAmountCanBeSent(
         uint32 _dstEid
-    ) external view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeSent) {
+    ) public view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeSent) {
         RateLimit storage orl = outboundRateLimits[_dstEid];
         return _amountCanBeSent(orl.amountInFlight, orl.lastUpdated, orl.limit, orl.window);
     }
@@ -98,14 +51,14 @@ abstract contract DoubleSidedRateLimiter {
      */
     function getAmountCanBeReceived(
         uint32 _srcEid
-    ) external view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeReceived) {
+    ) public view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeReceived) {
         RateLimit storage irl = inboundRateLimits[_srcEid];
         return _amountCanBeReceived(irl.amountInFlight, irl.lastUpdated, irl.limit, irl.window);
     }
 
     /**
      * @notice Sets the rate limits.
-     * @param _rateLimitConfigs A `RateLimitConfig[]` array representing the rate limit configurations for either outbound or inbound.
+     * @param _rateLimitConfigs A `RateLimitConfig[]` array representing the rate limit configurations.
      * @param _direction Indicates whether the rate limits being set are for outbound or inbound.
      */
     function _setRateLimits(RateLimitConfig[] memory _rateLimitConfigs, RateLimitDirection _direction) internal virtual {
@@ -133,7 +86,7 @@ abstract contract DoubleSidedRateLimiter {
      * @param _direction The direction of the rate limits to reset.
      */
     function _resetRateLimits(uint32[] memory _eids, RateLimitDirection _direction) internal virtual {
-        for (uint32 i = 0; i < _eids.length; i++) {
+        for (uint256 i = 0; i < _eids.length; i++) {
             RateLimit storage rateLimit = _direction == RateLimitDirection.Outbound
                 ? outboundRateLimits[_eids[i]]
                 : inboundRateLimits[_eids[i]];
@@ -155,14 +108,18 @@ abstract contract DoubleSidedRateLimiter {
     }
 
     /**
-     * @dev Calculates the current amount in flight and the available capacity based on the rate limit configuration and time elapsed.
-     * This function applies a linear decay model to compute how much of the 'amountInFlight' remains based on the time elapsed since the last update.
+     * @dev Calculates current amount in flight and the available capacity based on configuration and time elapsed.
+     * Applies a linear decay to compute how much 'amountInFlight' remains based on the time elapsed since last update.
      * @param _amountInFlight The total amount that was in flight at the last update.
      * @param _lastUpdated The timestamp (in seconds) when the last update occurred.
      * @param _limit The maximum allowable amount within the specified window.
      * @param _window The time window (in seconds) for which the limit applies.
-     * @return currentAmountInFlight The decayed amount of in-flight based on the elapsed time since lastUpdated. If the time since lastUpdated exceeds the window, it returns zero.
-     * @return availableCapacity The amount of capacity available for new activity. If the time since lastUpdated exceeds the window, it returns the full limit.
+     *
+     * @return currentAmountInFlight The decayed amount of in-flight based on the elapsed time since lastUpdated.
+     * @return availableCapacity The amount of capacity available for new activity.
+     * @dev If the time since lastUpdated exceeds the window:
+     *      - currentAmountInFlight is 0.
+     *      - availableCapacity is the full limit.
      */
     function _calculateDecay(
         uint256 _amountInFlight,

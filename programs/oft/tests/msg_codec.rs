@@ -15,7 +15,7 @@ mod test_msg_codec {
         assert_eq!(msg_codec::send_to(&encoded), send_to);
         assert_eq!(msg_codec::amount_sd(&encoded), amount_sd);
         assert_eq!(
-            msg_codec::compose_msg(&encoded),
+            msg_codec::compose_msg_with_sender(&encoded),
             Some([sender.to_bytes().as_ref(), compose_msg.unwrap().as_slice()].concat())
         );
     }
@@ -30,7 +30,7 @@ mod test_msg_codec {
         assert_eq!(encoded.len(), 40);
         assert_eq!(msg_codec::send_to(&encoded), send_to);
         assert_eq!(msg_codec::amount_sd(&encoded), amount_sd);
-        assert_eq!(msg_codec::compose_msg(&encoded), None);
+        assert_eq!(msg_codec::compose_msg_with_sender(&encoded), None);
     }
 
     #[test]

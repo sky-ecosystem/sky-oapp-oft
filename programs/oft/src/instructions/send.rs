@@ -108,6 +108,9 @@ impl Send<'_> {
             )?;
 
             // transfer fee to escrow
+            // NOTE: For mint-and-burn type adapters with fee-on-transfer tokens,
+            // the actual received OFT fee in the escrow may be less than oft_fee_ld
+            // due to transfer fees applied during this transfer operation.
             if oft_fee_ld > 0 {
                 token_interface::transfer_checked(
                     CpiContext::new(
@@ -126,10 +129,6 @@ impl Send<'_> {
         }
 
         // send message to endpoint
-        require!(
-            ctx.accounts.oft_store.key() == ctx.remaining_accounts[1].key(),
-            OFTError::InvalidSender
-        );
         let amount_sd = ctx.accounts.oft_store.ld2sd(amount_received_ld);
         let msg_receipt = oapp::endpoint_cpi::send(
             ctx.accounts.oft_store.endpoint_program,

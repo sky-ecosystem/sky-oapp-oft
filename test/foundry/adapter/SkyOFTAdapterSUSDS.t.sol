@@ -4,12 +4,12 @@ pragma solidity ^0.8.22;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import { OFTAdapterTest } from "./OFTAdapter.t.sol";
+import { SkyOFTAdapterTest } from "./SkyOFTAdapter.t.sol";
 import { SUsds } from "../mocks/SUsds.sol";
 import { Vat } from "../mocks/vat.sol";
 import { UsdsJoin } from "../mocks/UsdsJoin.sol";
 
-contract OFTAdapterSUSDSTest is OFTAdapterTest {
+contract SkyOFTAdapterSUSDSTest is SkyOFTAdapterTest {
     function setUpTokens() public override {
         Vat vat = new Vat();
         UsdsJoin usdsJoin = new UsdsJoin(address(vat), address(0));
