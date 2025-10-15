@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 #[cfg(test)]
 mod test_msg_codec {
+    use std::str::FromStr;
     use anchor_lang::prelude::*;
     use base64::Engine;
-    use oapp::endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, InitConfigParams, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED};
+    use oapp::{endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, InitConfigParams, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED}, LZ_RECEIVE_TYPES_SEED};
     use oft::{instructions::{PeerConfigParam, SetOFTConfigParams, SetPauseParams, SetPeerConfigParams}, PEER_SEED};
     use solana_program::pubkey::Pubkey;
     use solana_program::bpf_loader_upgradeable;
@@ -11,7 +12,7 @@ mod test_msg_codec {
     use spl_token::instruction::TokenInstruction;
 
     use governance::{
-        msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, CPI_AUTHORITY_PLACEHOLDER, PAYER_PLACEHOLDER
+        instructions::SetOAppConfigParams, msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_PLACEHOLDER, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER
     };
     use uln::state::{ExecutorConfig, UlnConfig};
 
@@ -21,21 +22,30 @@ mod test_msg_codec {
         pub remote_eid: u32,
         pub remote_oapp: [u8; 32],
     }
-    
+
     const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
     const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
-    const FUJI_PEER_ADDRESS: &str = "0xC61B038bC91f3Ad9f87A562daAfa0Df3E6987779";
+    const FUJI_PEER_ADDRESS: &str = "0xc4116303c13512dD1ff416D3A48EBeC2f091a5E6";
     const BSC_PEER_ADDRESS: &str = "0xFcF2F7F9d8dE3cf7C3dec9FcB33BCc88c0B2f8CC";
     const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
 
+    fn assert_governance_program_id() {
+        let a = governance::id();        
+        let b = Pubkey::from_str(&std::env::var("GOVERNANCE_ID").unwrap()).unwrap_or_else(|_| panic!("Incorrect GOVERNANCE_ID passed. Is it a valid Solana public key?"));
+        println!("Governance Program ID: {:?}", a);
+        assert_eq!(a, b, "Governance Program ID does not match environment variable GOVERNANCE_ID. Try running: cargo clean --profile dev");
+    }
+
     #[test]
     fn test_hello_world() {
+        assert_governance_program_id();
+
         // hello world program id
         let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
         let accounts = vec![];
@@ -49,11 +59,12 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
-        let msg2 = GovernanceMessage::decode(&mut buf.as_slice()).unwrap();
+        let msg2 = GovernanceMessage::read_body(&mut buf.as_slice(), msg.origin_caller, msg.program_id).unwrap();
         assert_eq!(msg, msg2);
 
         prepare_governance_message_simulation(&msg);
@@ -63,7 +74,7 @@ mod test_msg_codec {
     fn test_governance_message_parse() {
         let origin_caller_hex = "9876543210000000000000000000000000000000000000000000000001234567";
         let hex_string = format!(
-            "02{}0000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
+            "{}0000000000000001000000000000000000000000000000000000000000000000000200000000000000020000000000000000000000000000000000000000000000000101000000000000000300000000000000000000000000000000000000000000000000010102030405",
             origin_caller_hex,
         );
         let h = hex::decode(hex_string).unwrap();
@@ -99,6 +110,8 @@ mod test_msg_codec {
 
     #[test]
     fn test_spl_token_transfer() {
+        assert_governance_program_id();
+        
         let mint_pubkey = pubkey!("HC8D1rWMtAifPRhUYD7PwKHMtMVLtwCjarfNVvcN3SGK");
         let mint_account = Acc {
             pubkey: mint_pubkey,
@@ -162,9 +175,10 @@ mod test_msg_codec {
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized governance message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
         prepare_governance_message_simulation(&msg);
     }
@@ -460,6 +474,93 @@ mod test_msg_codec {
         msg.encode(&mut buf).unwrap();
 
         println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_governance_message_oapp_set_delegate() {
+        assert_governance_program_id();
+        
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_oapp_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = SetOAppConfigParams::Delegate(pubkey!("22222222222222222222222222222222222222222222"));
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetOAppConfigParams");
+
+        let (governance_oapp_address, _) = get_governance_oapp_pda();
+        let (lz_receive_types_accounts_address, _) = get_lz_receive_types_accounts_pda();
+        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
+            &[
+                OAPP_SEED,
+                governance_oapp_address.as_ref()
+            ],
+            &endpoint::id(),
+        );
+
+        let accounts = vec![
+            // admin as signer
+            Acc {
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
+                is_signer: true,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: governance_oapp_address,
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: lz_receive_types_accounts_address,
+                is_signer: false,
+                is_writable: true,
+            },
+            Acc {
+                pubkey: endpoint::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: governance_oapp_address,
+                is_signer: false,
+                is_writable: true,
+            },
+            // oapp registry account
+            Acc {
+                pubkey: oapp_registry,
+                is_signer: false,
+                is_writable: true,
+            },
+            // event authority account
+            Acc {
+                pubkey: pubkey!("F8E8QGhKmHEx2esh5LpVizzcP4cHYhzXdXTwg9w3YYY2"),
+                is_signer: false,
+                is_writable: false,
+            },
+            Acc {
+                pubkey: endpoint::id(),
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            origin_caller: [0; 32],
+            program_id: get_governance_program_id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.write_body(&mut buf).unwrap();
+
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
         prepare_governance_message_simulation(&msg);
     }
@@ -1654,10 +1755,10 @@ mod test_msg_codec {
         println!("\n{}", base64::engine::general_purpose::STANDARD.encode(tx.message_data()));
     }
 
-    fn get_cpi_authority() -> Pubkey {
+    fn get_cpi_authority() -> Pubkey {        
         let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
             &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &FUJI_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
-            &governance::id(),
+            &get_governance_program_id(),
         );
 
         cpi_authority
@@ -1677,14 +1778,35 @@ mod test_msg_codec {
 
     fn get_governance_oapp_pda() -> (Pubkey, u8) {
         let governance_id: u64 = 0;
-        let (governance_oapp_address, bump_seed) = Pubkey::find_program_address(
+        let (pda, bump_seed) = Pubkey::find_program_address(
             &[
                 GOVERNANCE_SEED,
                 &governance_id.to_be_bytes()
             ],
-            &governance::id(),
+            &get_governance_program_id(),
         );
 
-        (governance_oapp_address, bump_seed)
+        (pda, bump_seed)
+    }
+
+    fn get_lz_receive_types_accounts_pda() -> (Pubkey, u8) {
+        let (governance_oapp_address, _) = get_governance_oapp_pda();
+
+        let (pda, bump_seed) = Pubkey::find_program_address(
+            &[
+                LZ_RECEIVE_TYPES_SEED,
+                &governance_oapp_address.to_bytes()
+            ],
+            &get_governance_program_id(),
+        );
+
+        (pda, bump_seed)
+    }
+
+    fn get_governance_program_id() -> Pubkey {
+        std::env::var("GOVERNANCE_ID")
+            .ok()
+            .and_then(|s| Pubkey::from_str(&s).ok())
+            .unwrap_or_else(|| governance::id())
     }
 }
