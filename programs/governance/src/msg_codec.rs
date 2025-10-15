@@ -155,25 +155,6 @@ impl From<GovernanceMessage> for Instruction {
     }
 }
 
-impl From<Instruction> for GovernanceMessage {
-    fn from(instruction: Instruction) -> GovernanceMessage {
-        let Instruction {
-            program_id,
-            accounts,
-            data,
-        } = instruction;
-
-        let accounts: Vec<Acc> = accounts.into_iter().map(|a| a.into()).collect();
-
-        GovernanceMessage {
-            origin_caller: [0; 32],
-            program_id,
-            accounts,
-            data,
-        }
-    }
-}
-
 /// A copy of [`solana_program::instruction::AccountMeta`] with
 /// `AccountSerialize`/`AccountDeserialize` impl.
 /// Would be nice to just use the original, but it lacks these traits.

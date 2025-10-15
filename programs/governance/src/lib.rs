@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-mod instructions;
-mod state;
-
+pub mod instructions;
+pub mod state;
 pub mod error;
 pub mod msg_codec;
 

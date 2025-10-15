@@ -13,4 +13,8 @@ pub enum GovernanceError {
     GovernedProgramIdMismatch,
     #[msg("Unauthorized")]
     Unauthorized,
+    #[msg("InvalidProgramDataAccount")]
+    InvalidProgramDataAccount,
+    #[msg("NotUpgradeAuthority")]
+    NotUpgradeAuthority,
 }
