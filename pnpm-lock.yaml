@@ -15,18 +15,6 @@ devDependencies:
   '@ethersproject/bytes':
     specifier: ^5.7.0
     version: 5.8.0
-  '@kinobi-so/nodes':
-    specifier: ^0.21.4
-    version: 0.21.5
-  '@kinobi-so/nodes-from-anchor':
-    specifier: ^0.21.2
-    version: 0.21.3
-  '@kinobi-so/renderers':
-    specifier: ^0.21.3
-    version: 0.21.5(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
-  '@kinobi-so/renderers-js-umi':
-    specifier: ^0.21.6
-    version: 0.21.7(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
   '@layerzerolabs/devtools':
     specifier: ~1.0.0
     version: 1.0.0(@ethersproject/bytes@5.8.0)(@layerzerolabs/io-devtools@0.2.0)(@layerzerolabs/lz-definitions@3.0.116)(zod@3.24.2)
@@ -57,6 +45,9 @@ devDependencies:
   '@layerzerolabs/lz-evm-v1-0.7':
     specifier: ^3.0.116
     version: 3.0.116(@openzeppelin/contracts-upgradeable@5.2.0)(@openzeppelin/contracts@5.2.0)(hardhat-deploy@0.12.4)
+  '@layerzerolabs/lz-foundation':
+    specifier: ^3.0.116
+    version: 3.0.116(typescript@5.8.2)
   '@layerzerolabs/lz-solana-sdk-v2':
     specifier: ^3.0.116
     version: 3.0.116(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
@@ -147,6 +138,9 @@ devDependencies:
   '@metaplex-foundation/umi-web3js-adapters':
     specifier: ^0.9.2
     version: 0.9.2(@metaplex-foundation/umi@0.9.2)(@solana/web3.js@1.95.8)
+  '@noble/secp256k1':
+    specifier: ^1.7.1
+    version: 1.7.1
   '@nomicfoundation/hardhat-ethers':
     specifier: ^3.0.5
     version: 3.0.8(ethers@5.8.0)(hardhat@2.22.19)
@@ -198,6 +192,9 @@ devDependencies:
   '@types/node':
     specifier: ~18.18.14
     version: 18.18.14
+  axios:
+    specifier: ^1.6.2
+    version: 1.8.4
   bn.js:
     specifier: ^5.2.1
     version: 5.2.1
@@ -246,9 +243,6 @@ devDependencies:
   jest:
     specifier: ^29.7.0
     version: 29.7.0(@types/node@18.18.14)(ts-node@10.9.2)
-  kinobi:
-    specifier: ^0.21.4
-    version: 0.21.5
   mocha:
     specifier: ^10.2.0
     version: 10.8.2
@@ -261,12 +255,18 @@ devDependencies:
   solidity-bytes-utils:
     specifier: ^0.8.2
     version: 0.8.3
+  ts-mocha:
+    specifier: ^10.0.0
+    version: 10.1.0(mocha@10.8.2)
   ts-node:
     specifier: ^10.9.2
     version: 10.9.2(@swc/core@1.11.13)(@types/node@18.18.14)(typescript@5.8.2)
   typescript:
     specifier: ^5.4.4
     version: 5.8.2
+  zx:
+    specifier: ^8.1.3
+    version: 8.8.4
 
 packages:
 
@@ -1075,7 +1075,7 @@ packages:
       functional-red-black-tree: 1.0.1
       mcl-wasm: 0.7.9
       merkle-patricia-tree: 4.2.4
-      rustbn.js: 0.3.0
+      rustbn.js: 0.2.0
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -1820,128 +1820,6 @@ packages:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
-    dev: true
-
-  /@kinobi-so/errors@0.21.5:
-    resolution: {integrity: sha512-IqPMOe0qbmuBI8vux9HU+tvx+SaCVk32g5GnRvYxJh6OmpYOEuJRg02nT2XtYPeYWB2IFKJ1X2AnwTbEz9Vx8Q==}
-    hasBin: true
-    dependencies:
-      '@kinobi-so/node-types': 0.21.5
-      chalk: 5.4.1
-      commander: 12.1.0
-    dev: true
-
-  /@kinobi-so/node-types@0.21.5:
-    resolution: {integrity: sha512-OKpk08+nTsO25xSZBT+PXpjx2FOHfn7jr0CbnQZ+ulfRa+dr3eSf7zSn+0ipKjG+FFWUUGpizgSkgpTQMjAqLA==}
-    dev: true
-
-  /@kinobi-so/nodes-from-anchor@0.21.3:
-    resolution: {integrity: sha512-mar3UeJNx61k77NhucqYIwUXZvC0b6mhLYFksQY0Wz+gCFTWLr8exxB7KmgSycT+XuFNOydpYnEOeMa5lUywBQ==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/visitors': 0.21.5
-      '@noble/hashes': 1.7.1
-    dev: true
-
-  /@kinobi-so/nodes@0.21.5:
-    resolution: {integrity: sha512-6iu9/GXrVs14olVeUAAw73BK2js7RGefVGHBDF6PKcvw6i0DlxhPkZiNOSpzweaeTmZsowHO7xEJKov0446fbQ==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/node-types': 0.21.5
-    dev: true
-
-  /@kinobi-so/renderers-core@0.21.3:
-    resolution: {integrity: sha512-Ow1x0IaRmUlqQUAFTQZpq56wpkB6YKdnpNmfjM8IS/ssgz2IG5Jw3LREvNLvdXwpp/eyjSYOsux2RDFJkERl0g==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/visitors-core': 0.21.5
-    dev: true
-
-  /@kinobi-so/renderers-js-umi@0.21.7(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2):
-    resolution: {integrity: sha512-OgM8L44jWYww7gnCSC7gSNPC+yWVEPCj/cffhDb1O1WfglpeQiHFiRUEnBc8GCGF8Oc6Azn2jjQlja8JNsqZmA==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/renderers-core': 0.21.3
-      '@kinobi-so/validators': 0.21.5
-      '@kinobi-so/visitors-core': 0.21.5
-      '@solana/codecs-strings': 2.0.0-rc.4(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
-      nunjucks: 3.2.4
-      prettier: 3.5.3
-    transitivePeerDependencies:
-      - chokidar
-      - fastestsmallesttextencoderdecoder
-      - typescript
-    dev: true
-
-  /@kinobi-so/renderers-js@0.21.9(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2):
-    resolution: {integrity: sha512-ZwN3UIYGZHu1V9TYsCPolVPdScR71r4PrLVVLsxixIxPBhdTMIgUbXK4OqHkzxaR5kn8Ssrvuq6+V2f7XFbVSg==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/nodes-from-anchor': 0.21.3
-      '@kinobi-so/renderers-core': 0.21.3
-      '@kinobi-so/visitors-core': 0.21.5
-      '@solana/codecs-strings': 2.0.0-rc.4(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
-      nunjucks: 3.2.4
-      prettier: 3.5.3
-    transitivePeerDependencies:
-      - chokidar
-      - fastestsmallesttextencoderdecoder
-      - typescript
-    dev: true
-
-  /@kinobi-so/renderers-rust@0.21.8(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2):
-    resolution: {integrity: sha512-rjWK+hWnniAcfaVAPwgzom3LtXkGj4iZ/LPsm8LpgfSdTbXLT2HihVgyQGQDpSTDdVvGb4PuuX7A01Et3N7iog==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/renderers-core': 0.21.3
-      '@kinobi-so/visitors-core': 0.21.5
-      '@solana/codecs-strings': 2.0.0-rc.4(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
-      nunjucks: 3.2.4
-    transitivePeerDependencies:
-      - chokidar
-      - fastestsmallesttextencoderdecoder
-      - typescript
-    dev: true
-
-  /@kinobi-so/renderers@0.21.5(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2):
-    resolution: {integrity: sha512-JwHaYEjx1l/nf302b2RoZv3TEsBDsE1u+sgEt+noC3WXjqHVJJkjZ7DTL6IBSgBerR9OwukraCN7RWK2XQVwgA==}
-    dependencies:
-      '@kinobi-so/renderers-js': 0.21.9(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
-      '@kinobi-so/renderers-js-umi': 0.21.7(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
-      '@kinobi-so/renderers-rust': 0.21.8(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2)
-    transitivePeerDependencies:
-      - chokidar
-      - fastestsmallesttextencoderdecoder
-      - typescript
-    dev: true
-
-  /@kinobi-so/validators@0.21.5:
-    resolution: {integrity: sha512-JYZWHgma1TrnjhiUJn5/oYS9XfeirUBhwpuTPDRmRrSiHHv329gjWimzZO2uLAm5S5PgFyhLTz+S6jjxRsdNXg==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/visitors-core': 0.21.5
-    dev: true
-
-  /@kinobi-so/visitors-core@0.21.5:
-    resolution: {integrity: sha512-qNq9CcDh1P/A0BRR7zEdRpzeWL6ObAowMNWpkxZTT2BKqejK9oKWSh2/gzg6ehcn2Fn/J5DE8bnKZfAlEww95g==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      json-stable-stringify: 1.3.0
-    dev: true
-
-  /@kinobi-so/visitors@0.21.5:
-    resolution: {integrity: sha512-RCJFaN1Q1f/MQW6PP3Oz0fgNXFVmfUEyErMzPM9CjBi1j2BJzTjff7IzEjbTpG7SbDY91eEyTDcl430ygcDBkA==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/visitors-core': 0.21.5
     dev: true
 
   /@layerzerolabs/devtools-evm-hardhat@3.1.0(@ethersproject/abi@5.8.0)(@ethersproject/abstract-signer@5.8.0)(@ethersproject/contracts@5.8.0)(@ethersproject/providers@5.8.0)(@layerzerolabs/devtools-evm@2.0.0)(@layerzerolabs/devtools@1.0.0)(@layerzerolabs/io-devtools@0.2.0)(@layerzerolabs/lz-definitions@3.0.116)(@nomiclabs/hardhat-ethers@2.2.3)(ethers@5.8.0)(fp-ts@2.16.9)(hardhat-deploy@0.12.4)(hardhat@2.22.19):
@@ -3754,16 +3632,6 @@ packages:
       typescript: 5.8.2
     dev: true
 
-  /@solana/codecs-core@2.0.0-rc.4(typescript@5.8.2):
-    resolution: {integrity: sha512-JIrTSps032mSE3wBxW3bXOqWfoy4CMy1CX/XeVCijyh5kLVxZTSDIdRTYdePdL1yzaOZF1Xysvt1DhOUgBdM+A==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      typescript: '>=5'
-    dependencies:
-      '@solana/errors': 2.0.0-rc.4(typescript@5.8.2)
-      typescript: 5.8.2
-    dev: true
-
   /@solana/codecs-core@2.1.1(typescript@5.8.2):
     resolution: {integrity: sha512-iPQW3UZ2Vi7QFBo2r9tw0NubtH8EdrhhmZulx6lC8V5a+qjaxovtM/q/UW2BTNpqqHLfO0tIcLyBLrNH4HTWPg==}
     engines: {node: '>=20.18.0'}
@@ -3795,17 +3663,6 @@ packages:
       typescript: 5.8.2
     dev: true
 
-  /@solana/codecs-numbers@2.0.0-rc.4(typescript@5.8.2):
-    resolution: {integrity: sha512-ZJR7TaUO65+3Hzo3YOOUCS0wlzh17IW+j0MZC2LCk1R0woaypRpHKj4iSMYeQOZkMxsd9QT3WNvjFrPC2qA6Sw==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      typescript: '>=5'
-    dependencies:
-      '@solana/codecs-core': 2.0.0-rc.4(typescript@5.8.2)
-      '@solana/errors': 2.0.0-rc.4(typescript@5.8.2)
-      typescript: 5.8.2
-    dev: true
-
   /@solana/codecs-numbers@2.1.1(typescript@5.8.2):
     resolution: {integrity: sha512-m20IUPJhPUmPkHSlZ2iMAjJ7PaYUvlMtFhCQYzm9BEBSI6OCvXTG3GAPpAnSGRBfg5y+QNqqmKn4QHU3B6zzCQ==}
     engines: {node: '>=20.18.0'}
@@ -3830,20 +3687,6 @@ packages:
       typescript: 5.8.2
     dev: true
 
-  /@solana/codecs-strings@2.0.0-rc.4(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2):
-    resolution: {integrity: sha512-LGfK2RL0BKjYYUfzu2FG/gTgCsYOMz9FKVs2ntji6WneZygPxJTV5W98K3J8Rl0JewpCSCFQH3xjLSHBJUS0fA==}
-    engines: {node: '>=20.18.0'}
-    peerDependencies:
-      fastestsmallesttextencoderdecoder: ^1.0.22
-      typescript: '>=5'
-    dependencies:
-      '@solana/codecs-core': 2.0.0-rc.4(typescript@5.8.2)
-      '@solana/codecs-numbers': 2.0.0-rc.4(typescript@5.8.2)
-      '@solana/errors': 2.0.0-rc.4(typescript@5.8.2)
-      fastestsmallesttextencoderdecoder: 1.0.22
-      typescript: 5.8.2
-    dev: true
-
   /@solana/codecs@2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.2):
     resolution: {integrity: sha512-qxoR7VybNJixV51L0G1RD2boZTcxmwUWnKCaJJExQ5qNKwbpSyDdWfFJfM5JhGyKe9DnPVOZB+JHWXnpbZBqrQ==}
     peerDependencies:
@@ -3861,18 +3704,6 @@ packages:
 
   /@solana/errors@2.0.0-rc.1(typescript@5.8.2):
     resolution: {integrity: sha512-ejNvQ2oJ7+bcFAYWj225lyRkHnixuAeb7RQCixm+5mH4n1IA4Qya/9Bmfy5RAAHQzxK43clu3kZmL5eF9VGtYQ==}
-    hasBin: true
-    peerDependencies:
-      typescript: '>=5'
-    dependencies:
-      chalk: 5.4.1
-      commander: 12.1.0
-      typescript: 5.8.2
-    dev: true
-
-  /@solana/errors@2.0.0-rc.4(typescript@5.8.2):
-    resolution: {integrity: sha512-0PPaMyB81keEHG/1pnyEuiBVKctbXO641M2w3CIOrYT/wzjunfF0FTxsqq9wYJeYo0AyiefCKGgSPs6wiY2PpQ==}
-    engines: {node: '>=20.18.0'}
     hasBin: true
     peerDependencies:
       typescript: '>=5'
@@ -4445,6 +4276,7 @@ packages:
 
   /@types/json5@0.0.29:
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
+    requiresBuild: true
     dev: true
 
   /@types/keyv@3.1.4:
@@ -4912,10 +4744,6 @@ packages:
       through: 2.3.8
     dev: true
 
-  /a-sync-waterfall@1.0.1:
-    resolution: {integrity: sha512-RYTOHHdWipFUliRFMCS4X2Yn2X8M87V/OpSqWzKKOGhzqyUxzyVmhHDH9sAvG+ZuQf/TAOFsLCpMw09I1ufUnA==}
-    dev: true
-
   /abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
     engines: {node: '>=6.5'}
@@ -5209,8 +5037,9 @@ packages:
       is-array-buffer: 3.0.5
     dev: true
 
-  /asap@2.0.6:
-    resolution: {integrity: sha512-BSHWgDSAiKs50o2Re8ppvp3seVHXSRM44cdSsT9FfNEUUZLOGWVCsiWaRPWM1Znn+mqZ1OfVZ3z3DWEzSp7hRA==}
+  /arrify@1.0.1:
+    resolution: {integrity: sha512-3CYzex9M9FGQjCGMGyi6/31c8GJbgb0qGyrx5HWxPd0aCwh4cB2YjMb2Xf9UuoogrMrlO9cTqnB5rI5GHZTcUA==}
+    engines: {node: '>=0.10.0'}
     dev: true
 
   /asn1@0.2.6:
@@ -6098,11 +5927,6 @@ packages:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
     dev: true
 
-  /commander@5.1.0:
-    resolution: {integrity: sha512-P0CysNDQ7rtVw4QIQtm+MRxV66vKFSvlsQvGYXZWR3qFU0jlMKHZZZgw8e+8DSah4UDKMqnknRDQz+xuQXQ/Zg==}
-    engines: {node: '>= 6'}
-    dev: true
-
   /commander@8.3.0:
     resolution: {integrity: sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==}
     engines: {node: '>= 12'}
@@ -6503,6 +6327,11 @@ packages:
   /diff-sequences@29.6.3:
     resolution: {integrity: sha512-EjePK1srD3P08o2j4f0ExnylqRs5B9tJjcp9t1krH2qRi8CCdsYfwe9JgSLurFBWwq4uOlipzfk5fHNvwFKr8Q==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+    dev: true
+
+  /diff@3.5.0:
+    resolution: {integrity: sha512-A46qtFgd+g7pDZinpnwiRJtxbC1hpgf0uzP3iG89scHk0AUC7A1TGxf5OiiOUv/JMZR8GOt8hL900hV0bOy5xA==}
+    engines: {node: '>=0.3.1'}
     dev: true
 
   /diff@4.0.2:
@@ -9433,17 +9262,6 @@ packages:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
     dev: true
 
-  /json-stable-stringify@1.3.0:
-    resolution: {integrity: sha512-qtYiSSFlwot9XHtF9bD9c7rwKjr+RecWT//ZnPvSmEjpV5mmPOCN4j8UjY5hbjNkOwZ/jQv3J6R1/pL7RwgMsg==}
-    engines: {node: '>= 0.4'}
-    dependencies:
-      call-bind: 1.0.8
-      call-bound: 1.0.4
-      isarray: 2.0.5
-      jsonify: 0.0.1
-      object-keys: 1.1.1
-    dev: true
-
   /json-stream-stringify@3.1.6:
     resolution: {integrity: sha512-x7fpwxOkbhFCaJDJ8vb1fBY3DdSa4AlITaz+HHILQJzdPMnHEFjxPwVUi1ALIbcIxDE0PNe/0i7frnY8QnBQog==}
     engines: {node: '>=7.10.1'}
@@ -9456,6 +9274,7 @@ packages:
   /json5@1.0.2:
     resolution: {integrity: sha512-g1MWMLBiz8FKi1e4w0UyVL3w+iJceWAFBAaBnnGKOpNa5f8TLktkbre1+s6oICydWAm+HRUGTmI+//xv2hvXYA==}
     hasBin: true
+    requiresBuild: true
     dependencies:
       minimist: 1.2.8
     dev: true
@@ -9488,10 +9307,6 @@ packages:
       universalify: 2.0.1
     optionalDependencies:
       graceful-fs: 4.2.11
-    dev: true
-
-  /jsonify@0.0.1:
-    resolution: {integrity: sha512-2/Ki0GcmuqSrgFyelQq9M05y7PS0mEwuIzrf3f1fPqkVDVRvZrPZtVSMHxdgo8Aq0sxAOb/cr2aqqA3LeWHVPg==}
     dev: true
 
   /jsonparse@1.3.1:
@@ -9544,15 +9359,6 @@ packages:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
     dependencies:
       json-buffer: 3.0.1
-    dev: true
-
-  /kinobi@0.21.5:
-    resolution: {integrity: sha512-1xgN00od8x4tokR1Xuqv5Gbg0Iqo9bzrEvA9o2rm63vXqoW7/C+TN1voPhj1SQE4h2VmpfM3MD1clTUvJK0J2g==}
-    dependencies:
-      '@kinobi-so/errors': 0.21.5
-      '@kinobi-so/nodes': 0.21.5
-      '@kinobi-so/validators': 0.21.5
-      '@kinobi-so/visitors': 0.21.5
     dev: true
 
   /klaw@1.3.1:
@@ -10265,21 +10071,6 @@ packages:
     dependencies:
       bn.js: 4.11.6
       strip-hex-prefix: 1.0.0
-    dev: true
-
-  /nunjucks@3.2.4:
-    resolution: {integrity: sha512-26XRV6BhkgK0VOxfbU5cQI+ICFUtMLixv1noZn1tGU38kQH5A5nmmbk/O45xdyBhD1esk47nKrY0mvQpZIhRjQ==}
-    engines: {node: '>= 6.9.0'}
-    hasBin: true
-    peerDependencies:
-      chokidar: ^3.3.0
-    peerDependenciesMeta:
-      chokidar:
-        optional: true
-    dependencies:
-      a-sync-waterfall: 1.0.1
-      asap: 2.0.6
-      commander: 5.1.0
     dev: true
 
   /oauth-sign@0.9.0:
@@ -11276,8 +11067,8 @@ packages:
       queue-microtask: 1.2.3
     dev: true
 
-  /rustbn.js@0.3.0:
-    resolution: {integrity: sha512-RXLW0TSDBFlujBgq/ZdWa6ADGKiEFZgSqRdCcSXy8XiPqLPApKwaJjf14ImspysQm2mI8hA3EBWN+IOQReqwtA==}
+  /rustbn.js@0.2.0:
+    resolution: {integrity: sha512-4VlvkRUuCJvr2J6Y0ImW7NvTCriMi7ErOAqWk1y69vAdoNIzCF3yPmgeNzx+RQTLEDFq5sHfscn1MwHxP9hNfA==}
     dev: true
 
   /rxjs@7.8.2:
@@ -11904,6 +11695,7 @@ packages:
   /strip-bom@3.0.0:
     resolution: {integrity: sha512-vavAMRXOgBVNF6nyEEmL3DBK19iRpDcoIwW+swQ+CbGiu7lju6t+JklA1MHweoWtadgt4ISVUsXLyDq34ddcwA==}
     engines: {node: '>=4'}
+    requiresBuild: true
     dev: true
 
   /strip-bom@4.0.0:
@@ -12227,6 +12019,19 @@ packages:
       typescript: 5.8.2
     dev: true
 
+  /ts-mocha@10.1.0(mocha@10.8.2):
+    resolution: {integrity: sha512-T0C0Xm3/WqCuF2tpa0GNGESTBoKZaiqdUP8guNv4ZY316AFXlyidnrzQ1LUrCT0Wb1i3J0zFTgOh/55Un44WdA==}
+    engines: {node: '>= 6.X.X'}
+    hasBin: true
+    peerDependencies:
+      mocha: ^3.X.X || ^4.X.X || ^5.X.X || ^6.X.X || ^7.X.X || ^8.X.X || ^9.X.X || ^10.X.X || ^11.X.X
+    dependencies:
+      mocha: 10.8.2
+      ts-node: 7.0.1
+    optionalDependencies:
+      tsconfig-paths: 3.15.0
+    dev: true
+
   /ts-node@10.9.2(@swc/core@1.11.13)(@types/node@18.18.14)(typescript@5.8.2):
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
     hasBin: true
@@ -12257,6 +12062,21 @@ packages:
       typescript: 5.8.2
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
+    dev: true
+
+  /ts-node@7.0.1:
+    resolution: {integrity: sha512-BVwVbPJRspzNh2yfslyT1PSbl5uIk03EZlb493RKHN4qej/D06n1cEhjlOJG69oFsE7OT8XjpTUcYf6pKTLMhw==}
+    engines: {node: '>=4.2.0'}
+    hasBin: true
+    dependencies:
+      arrify: 1.0.1
+      buffer-from: 1.1.2
+      diff: 3.5.0
+      make-error: 1.3.6
+      minimist: 1.2.8
+      mkdirp: 0.5.6
+      source-map-support: 0.5.21
+      yn: 2.0.0
     dev: true
 
   /tsconfig-paths@3.15.0:
@@ -13279,6 +13099,11 @@ packages:
       yargs-parser: 2.4.1
     dev: true
 
+  /yn@2.0.0:
+    resolution: {integrity: sha512-uTv8J/wiWTgUTg+9vLTi//leUl5vDQS6uii/emeTb2ssY7vl6QWf2fFbIIGjnhjvbdKlU0ed7QPgY1htTC86jQ==}
+    engines: {node: '>=4'}
+    dev: true
+
   /yn@3.1.1:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
     engines: {node: '>=6'}
@@ -13316,4 +13141,10 @@ packages:
 
   /zod@3.24.2:
     resolution: {integrity: sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==}
+    dev: true
+
+  /zx@8.8.4:
+    resolution: {integrity: sha512-44GcD+ZlM/v1OQtbwnSxLPcoE1ZEUICmR+RSbJZLAqfIixNLuMjLyh0DcS75OyfJ/sWYAwCWDmDvJ4hdnANAPQ==}
+    engines: {node: '>= 12.17.0'}
+    hasBin: true
     dev: true

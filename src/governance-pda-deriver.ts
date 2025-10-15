@@ -4,6 +4,7 @@ import BN from 'bn.js'
 export const GOVERNANCE_SEED = 'Governance'
 export const REMOTE_SEED = 'Remote'
 export const LZ_RECEIVE_TYPES_SEED = 'LzReceiveTypes'
+export const CPI_AUTHORITY_SEED = 'CpiAuthority'
 
 export class GovernancePDADeriver {
     constructor(
@@ -27,7 +28,14 @@ export class GovernancePDADeriver {
 
     lzReceiveTypesInfoAccounts(): [PublicKey, number] {
         return PublicKey.findProgramAddressSync(
-            [Buffer.from(LZ_RECEIVE_TYPES_SEED, 'utf8'), this.governance()[0].toBytes()],
+            [Buffer.from(LZ_RECEIVE_TYPES_SEED), this.governance()[0].toBytes()],
+            this.program
+        )
+    }
+
+    cpiAuthority(srcChainId: number, originCaller: string): [PublicKey, number] {
+        return PublicKey.findProgramAddressSync(
+            [Buffer.from(CPI_AUTHORITY_SEED), this.governance()[0].toBytes(), new BN(srcChainId).toArrayLike(Buffer, 'be', 4), Buffer.from(originCaller, 'hex')],
             this.program
         )
     }
