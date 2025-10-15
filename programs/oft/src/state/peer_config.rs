@@ -24,7 +24,7 @@ pub enum RateLimiterType {
 #[derive(Clone, Default, AnchorSerialize, AnchorDeserialize, InitSpace)]
 pub struct RateLimiter {
     pub capacity: u64,
-    pub tokens: u64,
+    pub available_capacity: u64,
     pub refill_per_second: u64,
     pub last_refill_time: u64,
     pub rate_limiter_type: RateLimiterType,
@@ -39,20 +39,20 @@ impl RateLimiter {
 
     pub fn set_capacity(&mut self, capacity: u64) -> Result<()> {
         self.capacity = capacity;
-        self.tokens = capacity;
+        self.available_capacity = capacity;
         self.last_refill_time = Clock::get()?.unix_timestamp.try_into().unwrap();
         Ok(())
     }
 
-    pub fn refill(&mut self, extra_tokens: u64) -> Result<()> {
-        let mut new_tokens = extra_tokens;
+    pub fn refill(&mut self, extra_available_capacity: u64) -> Result<()> {
+        let mut new_available_capacity = extra_available_capacity;
         let current_time: u64 = Clock::get()?.unix_timestamp.try_into().unwrap();
         if current_time > self.last_refill_time {
             let time_elapsed_in_seconds = current_time - self.last_refill_time;
-            new_tokens = new_tokens
+            new_available_capacity = new_available_capacity
                 .saturating_add(time_elapsed_in_seconds.saturating_mul(self.refill_per_second));
         }
-        self.tokens = std::cmp::min(self.capacity, self.tokens.saturating_add(new_tokens));
+        self.available_capacity = std::cmp::min(self.capacity, self.available_capacity.saturating_add(new_available_capacity));
 
         self.last_refill_time = current_time;
         Ok(())
@@ -60,13 +60,18 @@ impl RateLimiter {
 
     pub fn try_consume(&mut self, amount: u64) -> Result<()> {
         self.refill(0)?;
-        match self.tokens.checked_sub(amount) {
-            Some(new_tokens) => {
-                self.tokens = new_tokens;
+        match self.available_capacity.checked_sub(amount) {
+            Some(new_available_capacity) => {
+                self.available_capacity = new_available_capacity;
                 Ok(())
             },
             None => Err(error!(OFTError::RateLimitExceeded)),
         }
+    }
+
+    pub fn fetch_available_capacity(&mut self) -> Result<u64> {
+        self.refill(0)?;
+        Ok(self.tokens)
     }
 }
 
@@ -80,10 +85,9 @@ pub struct EnforcedOptions {
 
 impl EnforcedOptions {
     pub fn get_enforced_options(&self, composed_msg: &Option<Vec<u8>>) -> Vec<u8> {
-        if composed_msg.is_none() {
-            self.send.clone()
-        } else {
-            self.send_and_call.clone()
+        match composed_msg {
+            None => self.send.clone(),
+            Some(_) => self.send_and_call.clone(),
         }
     }
 

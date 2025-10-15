@@ -13,7 +13,7 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
  * @dev This contract needs mint permissions on the token.
  * @dev This contract burns the tokens from the sender's balance and transfers in the fee.
  *
- * @dev This contract extends the DoubleSidedRateLimiter contract to provide double-sided rate limiting functionality.
+ * @dev This contract extends the SkyOFTCore, which extends the SkyRateLimiter containing rate limiting functionality.
  * @dev It allows for the configuration of rate limits for both outbound and inbound directions.
  * @dev It also allows for the setting of the rate limit accounting type to be net or gross.
  */
@@ -68,10 +68,6 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
      *
      * @return amountSentLD The amount sent in local decimals.
      * @return amountReceivedLD The amount received in local decimals on the remote.
-     *
-     * @dev WARNING: The default OFTAdapter implementation assumes LOSSLESS transfers, i.e., 1 token in, 1 token out.
-     *      If the 'innerToken' applies something like a transfer fee, the default will NOT work.
-     *      A pre/post balance check will need to be done to calculate the amountReceivedLD.
      */
     function _debit(
         address _from,
@@ -100,10 +96,6 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
      * @param _srcEid The source Endpoint ID.
      *
      * @return amountReceivedLD The amount of tokens actually received in local decimals.
-     *
-     * @dev WARNING: The default OFTAdapter implementation assumes LOSSLESS transfers, i.e., 1 token in, 1 token out.
-     *      If the 'innerToken' applies something like a transfer fee, the default will NOT work.
-     *      A pre/post balance check will need to be done to calculate the amountReceivedLD.
      */
     function _credit(
         address _to,
@@ -114,7 +106,7 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);
 
         // @dev If recipient is the zero address or the inner token, reroute to the dead address.
-        if (_to == address(0) || _to == token())_to = address(0xdead);
+        if (_to == address(0) || _to == token()) _to = address(0xdead);
 
         // @dev Mints the tokens to the recipient.
         IMintBurnVoidReturn(token()).mint(_to, _amountLD);
