@@ -71,7 +71,7 @@ impl RateLimiter {
 
     pub fn fetch_available_capacity(&mut self) -> Result<u64> {
         self.refill(0)?;
-        Ok(self.tokens)
+        Ok(self.available_capacity)
     }
 }
 
