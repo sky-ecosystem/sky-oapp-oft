@@ -80,19 +80,21 @@ impl QuoteSend<'_> {
 /// 
 /// ## Fee Calculation Behavior:
 /// 
-/// ### Native OFT:
-/// - No transfer fees (tokens are minted/burned)
-/// - oft_fee_ld is the exact bridging fee that will be collected
+/// ### Native OFT (mint-and-burn):
+/// - No token2022 transfer fee on the bridged amount (tokens are minted/burned)
+/// - oft_fee_ld is the calculated/intended bridging fee to collect
+/// - **IMPORTANT**: For fee-on-transfer tokens, the actual received fee in the
+///   escrow may be less than `oft_fee_ld` due to transfer fees applied during
+///   the fee transfer from the user to the escrow
 /// 
-/// ### Adapter OFT (mint-and-burn type):
-/// - Accounts for token2022 transfer fees
-/// - oft_fee_ld represents the calculated bridging fee
-/// - **IMPORTANT**: For fee-on-transfer tokens, the actual received bridging fee
-///   in the escrow may be less than oft_fee_ld due to transfer fees applied
-///   during the fee transfer operation
+/// ### Adapter OFT (escrow):
+/// - Accounts for token2022 transfer fees on the source transfer
+/// - oft_fee_ld is calculated on the post-transfer-fee amount and therefore
+///   reflects both the intended and the actual received fee
 /// 
-/// The returned oft_fee_ld should be considered the "intended" fee amount,
-/// not necessarily the "actual received" amount for Adapter type OFTs.
+/// In summary, `oft_fee_ld` should be read as the intended fee; on Native
+/// (mint-and-burn) OFTs with fee-on-transfer tokens, the escrow may receive
+/// slightly less than this intended amount.
 pub fn compute_fee_and_adjust_amount(
     amount_ld: u64,
     oft_store: &OFTStore,
