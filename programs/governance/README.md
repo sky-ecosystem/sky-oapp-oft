@@ -57,7 +57,7 @@ npx @layerzerolabs/verify-contract@latest -d deployments -n avalanche-testnet
 
 Now run:
 ```
-pnpm config:governance
+pnpm wire:governance:solana:testnet
 ```
 
 It will create a Governance instance and configure it for you.

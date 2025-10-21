@@ -8,7 +8,6 @@
     "compile:anchor": "anchor build",
     "compile:forge": "forge build",
     "compile:hardhat": "hardhat compile",
-    "config:governance": "ts-node scripts/configGov.ts",
     "generate:governance": "ts-node scripts/generateGovernance.ts",
     "generate:oft": "ts-node tasks/solana/sdk/scripts/generate.ts",
     "lint": "$npm_execpath run lint:js && $npm_execpath run lint:sol",
@@ -19,7 +18,8 @@
     "test:solana": "anchor test; ANCHOR_PROVIDER_URL=http://localhost:13033 ANCHOR_WALLET=./junk-id.json ts-mocha -b -p ./tsconfig.json -t 10000000 test/solana/index.test.ts",
     "test:forge": "forge test",
     "test:generate-features": "mkdir -p target/programs && ts-node scripts/generate-features.ts",
-    "test:hardhat": "hardhat test"
+    "test:hardhat": "hardhat test",
+    "wire:governance:solana:testnet": "ts-node scripts/wire-testnet.ts"
   },
   "resolutions": {
     "ethers": "^5.7.2",
