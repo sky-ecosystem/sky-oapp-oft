@@ -9,7 +9,6 @@ import { Connection, Keypair, PublicKey, Signer, TransactionInstruction, Simulat
 import bs58 from 'bs58';
 import {
     EndpointProgram,
-    ExecutorPDADeriver,
     SetConfigType,
     UlnProgram,
     buildVersionedTransaction,
@@ -18,6 +17,7 @@ import { arrayify, hexZeroPad } from '@ethersproject/bytes'
 import { EndpointId } from '@layerzerolabs/lz-definitions';
 
 import { GovernanceProgram } from '../src'
+import BN from 'bn.js';
 
 if (!process.env.SOLANA_PRIVATE_KEY) {
     throw new Error("SOLANA_PRIVATE_KEY env required");
@@ -25,7 +25,6 @@ if (!process.env.SOLANA_PRIVATE_KEY) {
 
 const endpointProgram = new EndpointProgram.Endpoint(new PublicKey('76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6')) // endpoint program id, mainnet and testnet are the same
 const ulnProgram = new UlnProgram.Uln(new PublicKey('7a4WjyR8VZ7yZz5XJAKm39BUGn5iT9CKcv2pmG9tdXVH')) // uln program id, mainnet and testnet are the same
-const executorProgram = new PublicKey('6doghB248px58JSSwG4qejQ46kFMW4AMj7vzJnWZHNZn') // executor program id, mainnet and testnet are the same
 
 const governanceProgramId = process.env.GOVERNANCE_PROGRAM_ID
 if (!governanceProgramId) {
@@ -39,12 +38,26 @@ if (!process.env.GOVERNANCE_CONTROLLER_ADDRESS) {
 const governanceProgram = new GovernanceProgram.Governance(new PublicKey(governanceProgramId), endpointProgram)
 
 const connection = new Connection('https://api.devnet.solana.com')
-const signer = Keypair.fromSecretKey (bs58.decode(process.env.SOLANA_PRIVATE_KEY))
+const signer = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY))
 const remotePeers: { [key in EndpointId]?: string } = {
     [EndpointId.AVALANCHE_V2_TESTNET]: process.env.GOVERNANCE_CONTROLLER_ADDRESS,
 }
 
 const DEFAULT_COMMITMENT = 'finalized'
+
+const RECEIVE_ULN_CONFIG_REQUIRED_DVNS = [
+    new PublicKey('4VDjp6XQaxoZf5RGwiPU9NR1EXSZn2TP4ATMmiSzLfhb'), // LayerZero Labs
+    new PublicKey('29EKzmCscUg8mf4f5uskwMqvu2SXM8hKF1gWi1cCBoKT'), // P2P
+].sort((a, b) => a.toBase58().localeCompare(b.toBase58()));
+
+const RECEIVE_ULN_CONFIG: UlnProgram.types.UlnConfig = {
+    confirmations: new BN(32),
+    requiredDvnCount: RECEIVE_ULN_CONFIG_REQUIRED_DVNS.length,
+    optionalDvnCount: 0,
+    optionalDvnThreshold: 0,
+    requiredDvns: RECEIVE_ULN_CONFIG_REQUIRED_DVNS,
+    optionalDvns: [],
+}
 
 ;(async () => {
     await initGovernance(connection, signer, signer);
@@ -54,13 +67,11 @@ const DEFAULT_COMMITMENT = 'finalized'
         const remote = parseInt(remoteStr) as EndpointId
 
         await setPeers(connection, signer, remote, remotePeerBytes)
-        await initSendLibrary(connection, signer, remote)
         await initReceiveLibrary(connection, signer, remote)
         await initOAppNonce(connection, signer, remote, remotePeerBytes)
-        await setSendLibrary(connection, signer, remote)
         await setReceiveLibrary(connection, signer, remote)
-        await initUlnConfig(connection, signer, signer, remote)
-        await setOAppExecutor(connection, signer, remote)
+        await initReceiveConfig(connection, signer, signer, remote)
+        await setReceiveConfig(connection, signer, remote)
     }
 })()
 
@@ -102,7 +113,6 @@ async function setPeers(
 ): Promise<void> {
     const ix = governanceProgram.setRemote(admin.publicKey, remotePeer, remote)
     const [remotePDA] = governanceProgram.governanceDeriver.remote(remote)
-    console.log('remotePDA', remotePDA.toBase58());
     let current = ''
     try {
         const info = await GovernanceProgram.accounts.Remote.fromAccountAddress(connection, remotePDA, {
@@ -120,7 +130,7 @@ async function setPeers(
     await sendAndConfirm(connection, [admin], [ix])
 }
 
-async function initUlnConfig(
+async function initReceiveConfig(
     connection: Connection,
     payer: Keypair,
     admin: Keypair,
@@ -128,40 +138,34 @@ async function initUlnConfig(
 ): Promise<void> {
     const [id] = governanceProgram.idPDA()
 
-    const current = await ulnProgram.getSendConfigState(connection, id, remote)
+    const current = await ulnProgram.getReceiveConfigState(connection, id, remote)
     if (current) {
-        console.log('initUlnConfig: already initialized')
+        console.log('initReceiveConfig: already initialized')
         return Promise.resolve()
     }
-    console.log('initUlnConfig: initializing')
+    console.log('initReceiveConfig: initializing')
     const ix = await endpointProgram.initOAppConfig(admin.publicKey, ulnProgram, payer.publicKey, id, remote)
     await sendAndConfirm(connection, [admin], [ix])
 }
 
-async function setOAppExecutor(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
+async function setReceiveConfig(connection: Connection, admin: Keypair, remote: EndpointId): Promise<void> {
     const [id] = governanceProgram.idPDA()
-    const defaultOutboundMaxMessageSize = 10000
 
-    const [executorPda] = new ExecutorPDADeriver(executorProgram).config()
-    const expected: UlnProgram.types.ExecutorConfig = {
-        maxMessageSize: defaultOutboundMaxMessageSize,
-        executor: executorPda,
+    const currentReceiveConfig = (await ulnProgram.getReceiveConfigState(connection, id, remote))?.uln;
+
+    if (!currentReceiveConfig) {
+        throw new Error('No current receive config found');
     }
 
-    const current = (await ulnProgram.getSendConfigState(connection, id, remote))?.executor
-    const ix = await endpointProgram.setOappConfig(connection, admin.publicKey, id, ulnProgram.program, remote, {
-        configType: SetConfigType.EXECUTOR,
-        value: expected,
-    })
-    if (
-        current &&
-        current.executor.toBase58() === expected.executor.toBase58() &&
-        current.maxMessageSize === expected.maxMessageSize
-    ) {
-        console.log('setOappExecutor: already set');
+    if (equalULNConfig(currentReceiveConfig, RECEIVE_ULN_CONFIG)) {
+        console.log('setReceiveConfig: already set');
         return Promise.resolve()
     }
-    console.log('setOAppExecutor: setting')
+    const ix = await endpointProgram.setOappConfig(connection, admin.publicKey, id, ulnProgram.program, remote, {
+        configType: SetConfigType.RECEIVE_ULN,
+        value: RECEIVE_ULN_CONFIG,
+    })
+    console.log('setReceiveConfig: setting')
     await sendAndConfirm(connection, [admin], [ix])
 }
 
@@ -194,10 +198,7 @@ async function setReceiveLibrary(connection: Connection, admin: Keypair, remote:
     const [expectedMessageLib] = ulnProgram.deriver.messageLib()
     const expected = expectedMessageLib.toBase58()
     if (current === expected) {
-        console.log('setReceiveLibrary: already set', {
-            idPDA: id.toBase58(),
-            current
-        });
+        console.log('setReceiveLibrary: already set');
         return Promise.resolve()
     }
     console.log('setReceiveLibrary: setting')
@@ -312,4 +313,15 @@ async function simulateTransaction(
 
     const simulation = await connection.simulateTransaction(tx)
     return simulation.value
+}
+
+function equalULNConfig(config1: UlnProgram.types.UlnConfig, config2: UlnProgram.types.UlnConfig) {
+    let confirmationsEqual = false;
+    if (typeof config1.confirmations === 'number') {
+        confirmationsEqual = config1.confirmations === config2.confirmations;
+    } else {
+        confirmationsEqual = config1.confirmations.eq(new BN(config2.confirmations));
+    }
+
+    return confirmationsEqual && config1.requiredDvnCount === config2.requiredDvnCount && config1.optionalDvnCount === config2.optionalDvnCount && config1.optionalDvnThreshold === config2.optionalDvnThreshold && config1.requiredDvns.length === config2.requiredDvns.length && config1.optionalDvns.length === config2.optionalDvns.length;
 }
