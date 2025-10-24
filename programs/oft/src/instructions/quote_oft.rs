@@ -54,15 +54,14 @@ impl QuoteOFT<'_> {
             vec![]
         };
         // cross chain fee
-        if oft_fee_ld > 0 {
-            let description = if ctx.accounts.oft_store.oft_type == OFTType::Adapter {
-                "Cross Chain Fee (actual received fee may be less due to transfer fees)".to_string()
-            } else {
-                "Cross Chain Fee".to_string()
-            };
+        if oft_fee_ld > 0 {           
+            // Nuance: Native (mint-and-burn) with fee-on-transfer tokens may result
+            // in the escrow receiving slightly less than the intended fee due to
+            // transfer fees; Adapter (escrow) computes the fee on post-transfer
+            // amounts so intended ≈ actual. See compute_fee_and_adjust_amount docs.
             oft_fee_details.push(OFTFeeDetail {
                 fee_amount_ld: oft_fee_ld,
-                description,
+                description: "Cross Chain Fee".to_string(),
             });
         }
         let oft_receipt = OFTReceipt { amount_sent_ld, amount_received_ld };
@@ -90,8 +89,11 @@ pub struct QuoteOFTResult {
 
 /// Details about a specific fee component in OFT operations.
 /// 
-/// Note: For Adapter type OFTs with fee-on-transfer tokens, the actual received
-/// bridging fee may be less than fee_amount_ld due to transfer fees.
+/// Note: For Native (mint-and-burn) type OFTs with fee-on-transfer tokens, the
+/// actual received fee in the escrow may be less than `fee_amount_ld` due to
+/// transfer fees applied during the fee transfer operation. For Adapter
+/// (escrow) type OFTs, `fee_amount_ld` reflects both the intended and actual
+/// received fee since the fee is calculated on the post-transfer-fee amount.
 #[derive(Clone, AnchorSerialize, AnchorDeserialize)]
 pub struct OFTFeeDetail {
     pub fee_amount_ld: u64,
