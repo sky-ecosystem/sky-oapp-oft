@@ -63,7 +63,7 @@ const remotePeers: { [key in EndpointId]?: RemotePeer } = {
     [EndpointId.AVALANCHE_V2_TESTNET]: {
         address: process.env.GOVERNANCE_CONTROLLER_ADDRESS,
         receiveConfig: {
-            confirmations: new BN(1),
+            confirmations: new BN(15),
             requiredDvnCount: REQUIRED_DVNS.length === 0 ? 255 : REQUIRED_DVNS.length, // NULL indicator for required DVNs
             optionalDvnCount: OPTIONAL_DVNS.length,
             optionalDvnThreshold: OPTIONAL_DVN_THRESHOLD,
@@ -79,15 +79,16 @@ const signer = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY)
 (async () => {
     await initGovernance(connection, programs, signer, signer, [], 'finalized');
 
-    for (const [remoteStr, remotePeer] of Object.entries(remotePeers)) {
-        const remotePeerBytes = arrayify(hexZeroPad(remotePeer.address, 32))
-        const remote = parseInt(remoteStr) as EndpointId
+    // NOTE: for redundancy and validation purposes uncomment the following code
+    // for (const [remoteStr, remotePeer] of Object.entries(remotePeers)) {
+    //     const remotePeerBytes = arrayify(hexZeroPad(remotePeer.address, 32))
+    //     const remote = parseInt(remoteStr) as EndpointId
 
-        await setPeers(connection, programs, signer, remote, remotePeerBytes, 'finalized')
-        await initReceiveLibrary(connection, programs, signer, remote, 'finalized')
-        await initOAppNonce(connection, programs, signer, remote, remotePeerBytes, 'finalized')
-        await setReceiveLibrary(connection, programs, signer, remote, 'finalized')
-        await initReceiveConfig(connection, programs, signer, signer, remote, 'finalized')
-        await setReceiveConfig(connection, programs, signer, remote, remotePeer.receiveConfig, 'finalized')
-    }
+    //     await setPeers(connection, programs, signer, remote, remotePeerBytes, 'finalized')
+    //     await initReceiveLibrary(connection, programs, signer, remote, 'finalized')
+    //     await initOAppNonce(connection, programs, signer, remote, remotePeerBytes, 'finalized')
+    //     await setReceiveLibrary(connection, programs, signer, remote, 'finalized')
+    //     await initReceiveConfig(connection, programs, signer, signer, remote, 'finalized')
+    //     await setReceiveConfig(connection, programs, signer, remote, remotePeer.receiveConfig, 'finalized')
+    // }
 })()

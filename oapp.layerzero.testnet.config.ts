@@ -9,7 +9,7 @@ export const avalancheContract: OmniPointHardhat = {
 
 export const solanaContract: OmniPointHardhat = {
   eid: EndpointId.SOLANA_V2_TESTNET,
-  address: '3t9pHwpXqhJQSnxjtHgsWEUNFA9aiPgsjdRHrRZJ5yg2', // Governance OApp PDA
+  address: '8vXXGiaXFrKFUDw21H5Z57ex552Lh8WP9rVd2ktzmcCy', // Governance OApp PDA
 };
 
 export default async function () {
@@ -19,8 +19,8 @@ export default async function () {
     [
       avalancheContract, // Chain A contract
       solanaContract, // Chain B contract
-      [['LayerZero Labs', 'P2P'], []], // [ requiredDVN[], [ optionalDVN[], threshold ] ]
-      [1, undefined], // [A to B confirmations, B to A confirmations] undefined means it is one way
+      [[], [['LayerZero Labs', 'P2P'], 1]], // [ requiredDVN[], [ optionalDVN[], threshold ] ]
+      [15, undefined], // [A to B confirmations, B to A confirmations] undefined means it is one way
       [undefined, undefined], // Chain B enforcedOptions, Chain A enforcedOptions
     ],
   ]);

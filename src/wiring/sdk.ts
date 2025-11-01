@@ -1,5 +1,3 @@
-import assert from 'assert'
-
 import { mplToolbox } from '@metaplex-foundation/mpl-toolbox'
 import {
     Signer,
@@ -26,12 +24,10 @@ import {
     fromHex,
     makeBytes32,
     normalizePeer,
-    toHex,
 } from '@layerzerolabs/devtools'
 import { OmniSDK } from '@layerzerolabs/devtools-solana'
 import { type Logger, printBoolean, printJson } from '@layerzerolabs/io-devtools'
 import { EndpointProgram, MessageLibPDADeriver, UlnProgram } from '@layerzerolabs/lz-solana-sdk-v2'
-import { Options } from '@layerzerolabs/lz-v2-utilities'
 import { EndpointV2 } from '@layerzerolabs/protocol-devtools-solana'
 
 import { myoapp } from './client'
@@ -40,21 +36,6 @@ import type { EndpointId } from '@layerzerolabs/lz-definitions'
 import type { IOApp, OAppEnforcedOptionParam } from '@layerzerolabs/ua-devtools'
 import { Governance } from '../governance'
 
-// TODO: Use exported interfaces when they are available
-interface SetPeerAddressParam {
-    peer: Uint8Array
-    __kind: 'PeerAddress'
-}
-
-interface SetPeerEnforcedOptionsParam {
-    send: Uint8Array
-    sendAndCall: Uint8Array
-    __kind: 'EnforcedOptions'
-}
-
-/*
- * refer to the OFT wrapper SDK in the devtools repo at packages/ua-devtools-solana/src/oft/sdk.ts to understand why this wrapper SDK is needed.
- */
 export class CustomOAppSDK extends OmniSDK implements IOApp {
     protected readonly umi: Umi
     protected readonly umiUserAccount: UmiPublicKey
@@ -144,7 +125,7 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
             // and any network-specific logic will be applied
             return denormalizePeer(fromHex(peer), eid)
         } catch (error) {
-            if (String(error).match(/was not found at the provided address/i)) {
+            if (String(error).match(/Unable to find Remote account at/i)) {
                 return undefined
             }
 
@@ -171,8 +152,8 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
         const oapp = this.umiPublicKey
 
         this.logger.debug(`Setting peer for eid ${eid} (${eidLabel}) to address ${peerAsBytes32}`)
+        const admin = toWeb3JsPublicKey((await this._getAdmin()).publicKey)
         const umiTxs = [
-            await this._createSetPeerAddressIx(normalizedPeer, eid), // admin
             myoapp.initOAppNonce({ admin: delegate, oapp }, eid, normalizedPeer), // delegate
         ]
 
@@ -187,8 +168,14 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
             umiTxs.push(myoapp.initReceiveLibrary({ admin: delegate, oapp }, eid))
         }
 
+        const web3Transaction = new Transaction()
+        web3Transaction.add(this.governance.setRemote(admin, normalizedPeer, eid)); // admin
+        this._umiToWeb3Tx(umiTxs).instructions.map((ix) => {
+            web3Transaction.add(ix)
+        })
+
         return {
-            ...(await this.createTransaction(this._umiToWeb3Tx(umiTxs))),
+            ...(await this.createTransaction(web3Transaction)),
             description: `Setting peer for eid ${eid} (${eidLabel}) to address ${peerAsBytes32} ${delegate.publicKey} ${(await this._getAdmin()).publicKey}`,
         }
     }
@@ -228,56 +215,12 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
 
     @AsyncRetriable()
     async getEnforcedOptions(eid: EndpointId, msgType: number): Promise<Bytes> {
-        // First we check that we can understand the message type
-        this.assertMsgType(msgType)
-
-        const eidLabel = `eid ${eid} (${formatEid(eid)})`
-        this.logger.verbose(`Getting enforced options for ${eidLabel} and message type ${msgType}`)
-        try {
-            const options = await this.umiMyOAppSdk.getEnforcedOptions(this.umi.rpc, eid)
-            const optionsForMsgType = msgType === MSG_TYPE_SEND ? options.send : options.sendAndCall
-
-            return toHex(optionsForMsgType)
-        } catch (error) {
-            if (String(error).match(/was not found at the provided address/)) {
-                return toHex(new Uint8Array(0))
-            }
-
-            throw new Error(
-                `Failed to get enforced options for ${this.label} for ${eidLabel} and message type ${msgType}: ${error}`
-            )
-        }
-    }
-
-    async setOutboundRateLimit(
-        eid: EndpointId,
-        rateLimit: { refillPerSecond: bigint; capacity: bigint }
-    ): Promise<OmniTransaction> {
-        this.logger.verbose(`Setting outbound rate limit for ${eid} to ${printJson(rateLimit)}`)
-
-        return {
-            ...(await this.createTransaction(
-                this._umiToWeb3Tx([await this._setPeerOutboundRateLimit(eid, rateLimit)])
-            )),
-            description: `Setting outbound rate limit for ${eid} to ${printJson(rateLimit)}`,
-        }
-    }
-
-    async setInboundRateLimit(
-        eid: EndpointId,
-        rateLimit: { refillPerSecond: bigint; capacity: bigint }
-    ): Promise<OmniTransaction> {
-        this.logger.verbose(`Setting outbound rate limit for ${eid} to ${printJson(rateLimit)}`)
-
-        return {
-            ...(await this.createTransaction(this._umiToWeb3Tx([await this._setPeerInboundRateLimit(eid, rateLimit)]))),
-            description: `Setting outbound rate limit for ${eid} to ${printJson(rateLimit)}`,
-        }
+       throw new Error('Governance OApp on Solana does not support getting enforced options')
     }
 
     async setEnforcedOptions(enforcedOptions: OAppEnforcedOptionParam[]): Promise<OmniTransaction> {
         this.logger.verbose(`Setting enforced options to ${printJson(enforcedOptions)}`)
-        throw new Error('Governance OApp does not support setting enforced options')
+        throw new Error('Governance OApp on Solana does not support setting enforced options')
     }
 
     async isSendLibraryInitialized(eid: EndpointId): Promise<boolean> {
@@ -314,61 +257,6 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
 
         const endpointSdk = await this.getEndpointSDK()
         return endpointSdk.initializeOAppConfig(this.point.address, eid, lib ?? undefined)
-    }
-
-    /**
-     * Helper utility that takes an array of `OAppEnforcedOptionParam` objects and turns them into
-     * a map keyed by `EndpointId` that contains another map keyed by `MsgType`.
-     *
-     * @param {OAppEnforcedOptionParam[]} enforcedOptions
-     * @returns {Map<EndpointId, Map<MsgType, Uint8Array>>}
-     */
-    private reduceEnforcedOptions(
-        enforcedOptions: OAppEnforcedOptionParam[]
-    ): Map<EndpointId, Map<MsgType, Uint8Array>> {
-        return enforcedOptions.reduce((optionsByEid, enforcedOption) => {
-            const {
-                eid,
-                option: { msgType, options },
-            } = enforcedOption
-
-            // First we check that we can understand the message type
-            this.assertMsgType(msgType)
-
-            // Then we warn the user if they are trying to specify enforced options for eid & msgType more than once
-            // in which case the former option will be ignored
-            const optionsByMsgType = optionsByEid.get(eid) ?? new Map<MsgType, Uint8Array>()
-            if (optionsByMsgType.has(msgType)) {
-                this.logger.warn(`Duplicate enforced option for ${formatEid(eid)} and msgType ${msgType}`)
-            }
-
-            // We wrap the call with try/catch to deliver a better error message in case malformed options were passed
-            try {
-                optionsByMsgType.set(msgType, Options.fromOptions(options).toBytes())
-            } catch (error) {
-                throw new Error(
-                    `Invalid enforced options for ${this.label} for ${formatEid(eid)} and msgType ${msgType}: ${options}: ${error}`
-                )
-            }
-
-            optionsByEid.set(eid, optionsByMsgType)
-
-            return optionsByEid
-        }, new Map<EndpointId, Map<MsgType, Uint8Array>>())
-    }
-
-    /**
-     * Helper method that asserts that `value` is a `MsgType` that the OFT understands
-     * and prints out a friendly error message if it doesn't
-     *
-     * @param {unknown} value
-     * @returns {undefined}
-     */
-    private assertMsgType(value: unknown): asserts value is MsgType {
-        assert(
-            isMsgType(value),
-            `${this.label}: Invalid msgType received: ${value}. Expected one of ${MSG_TYPE_SEND} (send), ${MSG_TYPE_SEND_AND_CALL} (send and call)`
-        )
     }
 
     async setCallerBpsCap(callerBpsCap: bigint): Promise<OmniTransaction | undefined> {
@@ -415,20 +303,6 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
         }
     }
 
-    protected async _setPeerConfigIx(
-        param: (SetPeerAddressParam & { remote: number }) | (SetPeerEnforcedOptionsParam & { remote: number })
-    ) {
-        return this.umiMyOAppSdk.setPeerConfig({ admin: await this._getAdmin() }, param)
-    }
-
-    protected async _createSetPeerAddressIx(normalizedPeer: Uint8Array, eid: EndpointId) {
-        return this._setPeerConfigIx({
-            __kind: 'PeerAddress',
-            peer: normalizedPeer,
-            remote: eid,
-        })
-    }
-
     // Convert Umi instructions to Web3JS Transaction
     protected _umiToWeb3Tx(ixs: WrappedInstruction[]): Transaction {
         const web3Transaction = new Transaction()
@@ -463,10 +337,3 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
         return createNoopSigner(publicKey(owner))
     }
 }
-
-type MsgType = 1 | 2
-
-const MSG_TYPE_SEND = 1 satisfies MsgType
-const MSG_TYPE_SEND_AND_CALL = 2 satisfies MsgType
-
-const isMsgType = (value: unknown): value is MsgType => value === MSG_TYPE_SEND || value === MSG_TYPE_SEND_AND_CALL
