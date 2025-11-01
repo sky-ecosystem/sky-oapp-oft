@@ -91,8 +91,8 @@ importers:
         specifier: ~4.0.0
         version: 4.0.0(b5d585c560c757d48295187c042e7894)
       '@layerzerolabs/protocol-devtools-solana':
-        specifier: ^8.0.0
-        version: 8.0.3(2092e52d6953d7e5dacf154fcda706d1)
+        specifier: 8.0.1
+        version: 8.0.1(2092e52d6953d7e5dacf154fcda706d1)
       '@layerzerolabs/solhint-config':
         specifier: ^3.0.12
         version: 3.0.139(typescript@5.9.3)
@@ -118,8 +118,8 @@ importers:
         specifier: ~8.0.0
         version: 8.0.0(876a939d22dfdb3344e99acd0caf3276)
       '@layerzerolabs/ua-devtools-solana':
-        specifier: ~8.0.1
-        version: 8.0.2(cc1ef41e2a24e5f585ca5a5227f810ba)
+        specifier: 8.0.1
+        version: 8.0.1(f5ea8dbe1714877d1c8f88e1d7a452fa)
       '@metaplex-foundation/beet':
         specifier: ^0.7.2
         version: 0.7.2
@@ -1223,8 +1223,8 @@ packages:
       '@layerzerolabs/protocol-devtools': ~3.0.1
       zod: ^3.22.4
 
-  '@layerzerolabs/protocol-devtools-solana@8.0.3':
-    resolution: {integrity: sha512-zeor10qzjlVgmGDmlbb/s2JMo8pPGHmRcsnDgorunGwAop3BfZkSZI8RbpedXSNVPTfDAdC0VXykpHsXHyrCKg==}
+  '@layerzerolabs/protocol-devtools-solana@8.0.1':
+    resolution: {integrity: sha512-h9IOwQpRHv959PVG46c2wzy8C8ZSRZFC6xhRvgfG6tTtBIkROXHNjwExinJtH5f37fWi46+3uj8UdYFxAnp8Mg==}
     peerDependencies:
       '@layerzerolabs/devtools': ~2.0.0
       '@layerzerolabs/devtools-solana': ~3.0.0
@@ -1232,8 +1232,8 @@ packages:
       '@layerzerolabs/lz-definitions': ^3.0.75
       '@layerzerolabs/lz-solana-sdk-v2': ^3.0.0
       '@layerzerolabs/lz-v2-utilities': ^3.0.75
-      '@layerzerolabs/protocol-devtools': ^3.0.1
-      '@layerzerolabs/ua-devtools': ^5.0.1
+      '@layerzerolabs/protocol-devtools': ^3.0.0
+      '@layerzerolabs/ua-devtools': ^5.0.0
       '@solana/web3.js': ^1.95.8
       fp-ts: ^2.16.2
       zod: ^3.22.4
@@ -1358,11 +1358,11 @@ packages:
       '@layerzerolabs/ua-devtools': ~5.0.0
       zod: ^3.22.4
 
-  '@layerzerolabs/ua-devtools-solana@8.0.2':
-    resolution: {integrity: sha512-S1uiwLKJZQ87h9V51w1gTDgnMXtq45zHxO5xJ7XUIM7B+NoOX2arZB3cWerwocjAwloKHYBUxmWp8/vhJODkeg==}
+  '@layerzerolabs/ua-devtools-solana@8.0.1':
+    resolution: {integrity: sha512-3RXlw36nPxtT07JBjuOAXnDGS3P0N1TDIxed+7EdUj49fUI3El3fUGMN9idzf1XQIjyl2Ki1tCqjKEJXmBpZaA==}
     peerDependencies:
       '@layerzerolabs/devtools': ~2.0.0
-      '@layerzerolabs/devtools-solana': ~3.0.1
+      '@layerzerolabs/devtools-solana': ~3.0.0
       '@layerzerolabs/io-devtools': ~0.3.0
       '@layerzerolabs/lz-definitions': ^3.0.75
       '@layerzerolabs/lz-solana-sdk-v2': ^3.0.59
@@ -8498,7 +8498,7 @@ snapshots:
       p-memoize: 4.0.4
       zod: 3.25.76
 
-  '@layerzerolabs/protocol-devtools-solana@8.0.3(2092e52d6953d7e5dacf154fcda706d1)':
+  '@layerzerolabs/protocol-devtools-solana@8.0.1(2092e52d6953d7e5dacf154fcda706d1)':
     dependencies:
       '@layerzerolabs/devtools': 1.0.1(@ethersproject/bytes@5.8.0)(@layerzerolabs/io-devtools@0.3.1(ink-gradient@2.0.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink-table@3.1.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2)(yoga-layout-prebuilt@1.10.0)(zod@3.25.76))(@layerzerolabs/lz-definitions@3.0.139)(zod@3.25.76)
       '@layerzerolabs/devtools-solana': 3.0.1(2cb8b02d4577c8be06ec8a5db8552315)
@@ -8691,7 +8691,7 @@ snapshots:
       p-memoize: 4.0.4
       zod: 3.25.76
 
-  '@layerzerolabs/ua-devtools-solana@8.0.2(cc1ef41e2a24e5f585ca5a5227f810ba)':
+  '@layerzerolabs/ua-devtools-solana@8.0.1(f5ea8dbe1714877d1c8f88e1d7a452fa)':
     dependencies:
       '@layerzerolabs/devtools': 1.0.1(@ethersproject/bytes@5.8.0)(@layerzerolabs/io-devtools@0.3.1(ink-gradient@2.0.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink-table@3.1.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2)(yoga-layout-prebuilt@1.10.0)(zod@3.25.76))(@layerzerolabs/lz-definitions@3.0.139)(zod@3.25.76)
       '@layerzerolabs/devtools-solana': 3.0.1(2cb8b02d4577c8be06ec8a5db8552315)
@@ -8701,7 +8701,7 @@ snapshots:
       '@layerzerolabs/lz-v2-utilities': 3.0.139
       '@layerzerolabs/oft-v2-solana-sdk': 3.0.139(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(got@12.6.1)(typescript@5.9.3)(utf-8-validate@5.0.10)
       '@layerzerolabs/protocol-devtools': 2.0.0(@layerzerolabs/devtools@1.0.1(@ethersproject/bytes@5.8.0)(@layerzerolabs/io-devtools@0.3.1(ink-gradient@2.0.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink-table@3.1.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2)(yoga-layout-prebuilt@1.10.0)(zod@3.25.76))(@layerzerolabs/lz-definitions@3.0.139)(zod@3.25.76))(@layerzerolabs/io-devtools@0.3.1(ink-gradient@2.0.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink-table@3.1.0(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2))(ink@3.2.0(bufferutil@4.0.9)(react@17.0.2)(utf-8-validate@5.0.10))(react@17.0.2)(yoga-layout-prebuilt@1.10.0)(zod@3.25.76))(@layerzerolabs/lz-definitions@3.0.139)(zod@3.25.76)
-      '@layerzerolabs/protocol-devtools-solana': 8.0.3(2092e52d6953d7e5dacf154fcda706d1)
+      '@layerzerolabs/protocol-devtools-solana': 8.0.1(2092e52d6953d7e5dacf154fcda706d1)
       '@layerzerolabs/ua-devtools': 5.0.1(59a2c05e98f3d825dd864845a14d6b65)
       '@safe-global/api-kit': 1.3.1
       '@safe-global/protocol-kit': 1.3.0(bufferutil@4.0.9)(ethers@5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
