@@ -107,15 +107,19 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
         return this.logger.debug(`Checked whether ${address} is an owner (${owner}): ${printBoolean(isOwner)}`), isOwner
     }
 
-    // TODO: to implement after we implement OAppConfig
-    // async setOwner(address: OmniAddress): Promise<OmniTransaction> {
-    //     this.logger.debug(`Setting owner to ${address}`)
+    async setOwner(address: OmniAddress): Promise<OmniTransaction> {
+        this.logger.debug(`Setting owner to ${address}`)
 
-    //     return {
-    //         ...(await this.createTransaction(this._umiToWeb3Tx([await this._setOFTAdminIx(address)]))),
-    //         description: `Setting owner to ${address}`,
-    //     }
-    // }
+        const admin = toWeb3JsPublicKey((await this._getAdmin()).publicKey)
+        const setAdminIx = this.governance.setAdmin(admin, new PublicKey(address))
+        const web3Transaction = new Transaction()
+        web3Transaction.add(setAdminIx)
+        
+        return {
+            ...(await this.createTransaction(web3Transaction)),
+            description: `Setting owner to ${address}`,
+        }
+    }
 
     @AsyncRetriable()
     async getEndpointSDK(): Promise<EndpointV2> {

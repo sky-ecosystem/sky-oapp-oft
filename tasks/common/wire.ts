@@ -6,7 +6,7 @@ import { SUBTASK_LZ_SIGN_AND_SEND, types as devtoolsTypes } from '@layerzerolabs
 import { setTransactionSizeBuffer } from '@layerzerolabs/devtools-solana'
 import { type LogLevel, createLogger } from '@layerzerolabs/io-devtools'
 import { ChainType, endpointIdToChainType } from '@layerzerolabs/lz-definitions'
-import { type IOApp, type OAppConfigurator, type OAppOmniGraph, configureOwnable } from '@layerzerolabs/ua-devtools'
+import { configureOwnable, type IOApp, type OAppConfigurator, type OAppOmniGraph } from '@layerzerolabs/ua-devtools'
 import {
     SUBTASK_LZ_OAPP_WIRE_CONFIGURE,
     type SubtaskConfigureTaskArgs,
@@ -201,6 +201,26 @@ task(TASK_LZ_OAPP_WIRE)
 // that the logs will say "Wiring OApp" instead of "Transferring ownership"
 task(TASK_LZ_OWNABLE_TRANSFER_OWNERSHIP)
     .addParam('multisigKey', 'The MultiSig key', undefined, publicKeyType, true)
+    .addParam('oapp', 'IS OAPP', undefined, devtoolsTypes.boolean, true)
     .setAction(async (args: Args, hre) => {
-        return hre.run(TASK_LZ_OAPP_WIRE, { ...args, internalConfigurator: configureOwnable })
+        const logger = createLogger(args.logLevel)
+
+        const keypair = (await useWeb3Js()).web3JsKeypair // note: this can be replaced with getSolanaKeypair() if we are okay to export that
+        const userAccount = keypair.publicKey
+
+        const solanaEid = await findSolanaEndpointIdInGraph(hre, args.oappConfig)
+        const solanaDeployment = args.oapp ? getSolanaDeploymentOapp(solanaEid) : getSolanaDeploymentOft(solanaEid)
+
+        const programId = new PublicKey(solanaDeployment.programId)
+
+        if (!programId) {
+            logger.error('Missing programId in Solana deployment')
+            return
+        }
+
+        const connectionFactory = createSolanaConnectionFactory()
+
+        const sdkFactory = createSdkFactory(userAccount, programId, args.oapp, connectionFactory)
+
+        return hre.run(TASK_LZ_OAPP_WIRE, { ...args, internalConfigurator: configureOwnable, sdkFactory })
     })

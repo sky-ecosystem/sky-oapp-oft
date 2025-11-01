@@ -208,4 +208,23 @@ export class Governance {
             this.program
         )
     }
+
+    setAdmin(currentAdmin: PublicKey, newAdmin: PublicKey): TransactionInstruction {
+        const [lzReceiveTypesInfoAccountsPDA] = this.governanceDeriver.lzReceiveTypesInfoAccounts()
+
+        return instructions.createSetOappConfigInstruction(
+            {
+                admin: currentAdmin,
+                governance: this.idPDA()[0],
+                lzReceiveTypesAccounts: lzReceiveTypesInfoAccountsPDA,
+            } satisfies instructions.SetOappConfigInstructionAccounts,
+            {
+                params: {
+                    __kind: 'Admin',
+                    fields: [newAdmin],
+                } satisfies types.SetOAppConfigParams,
+            },
+            this.program
+        )
+    }
 }
