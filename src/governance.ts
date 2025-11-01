@@ -157,4 +157,55 @@ export class Governance {
             this.program
         )
     }
+
+    setDelegate(admin: PublicKey, delegate: PublicKey): TransactionInstruction {
+        const [lzReceiveTypesInfoAccountsPDA] = this.governanceDeriver.lzReceiveTypesInfoAccounts()
+        const [id] = this.idPDA()
+        const [oAppRegistry] = this.endpoint.deriver.oappRegistry(id)
+        const [eventAuthority] = new EventPDADeriver(this.endpoint.program).eventAuthority()
+
+        const setDelegateAccounts = [
+            {
+                pubkey: this.endpoint.program,
+                isSigner: false,
+                isWritable: false,
+            },
+            {
+                pubkey: id,
+                isSigner: false,
+                isWritable: true,
+            },
+            {
+                pubkey: oAppRegistry,
+                isSigner: false,
+                isWritable: true,
+            },
+            {
+                pubkey: eventAuthority,
+                isSigner: false,
+                isWritable: false,
+            },
+            {
+                pubkey: this.endpoint.program,
+                isSigner: false,
+                isWritable: false,
+            },
+        ]
+
+        return instructions.createSetOappConfigInstruction(
+            {
+                admin,
+                governance: this.idPDA()[0],
+                lzReceiveTypesAccounts: lzReceiveTypesInfoAccountsPDA,
+                anchorRemainingAccounts: setDelegateAccounts,
+            } satisfies instructions.SetOappConfigInstructionAccounts,
+            {
+                params: {
+                    __kind: 'Delegate',
+                    fields: [delegate],
+                } satisfies types.SetOAppConfigParams,
+            },
+            this.program
+        )
+    }
 }

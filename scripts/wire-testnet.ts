@@ -44,10 +44,13 @@ const programs: LAYERZERO_PROGRAMS = {
     ulnProgram,
 }
 
-const RECEIVE_ULN_CONFIG_REQUIRED_DVNS = [
+const REQUIRED_DVNS = ([] as PublicKey[]).sort((a, b) => a.toBase58().localeCompare(b.toBase58()));
+
+const OPTIONAL_DVNS = [
     new PublicKey('4VDjp6XQaxoZf5RGwiPU9NR1EXSZn2TP4ATMmiSzLfhb'), // LayerZero Labs
     new PublicKey('29EKzmCscUg8mf4f5uskwMqvu2SXM8hKF1gWi1cCBoKT'), // P2P
 ].sort((a, b) => a.toBase58().localeCompare(b.toBase58()));
+const OPTIONAL_DVN_THRESHOLD = 1;
 
 type RemotePeer = {
     // Peer address
@@ -61,11 +64,11 @@ const remotePeers: { [key in EndpointId]?: RemotePeer } = {
         address: process.env.GOVERNANCE_CONTROLLER_ADDRESS,
         receiveConfig: {
             confirmations: new BN(1),
-            requiredDvnCount: RECEIVE_ULN_CONFIG_REQUIRED_DVNS.length,
-            optionalDvnCount: 0,
-            optionalDvnThreshold: 0,
-            requiredDvns: RECEIVE_ULN_CONFIG_REQUIRED_DVNS,
-            optionalDvns: [],
+            requiredDvnCount: REQUIRED_DVNS.length === 0 ? 255 : REQUIRED_DVNS.length, // NULL indicator for required DVNs
+            optionalDvnCount: OPTIONAL_DVNS.length,
+            optionalDvnThreshold: OPTIONAL_DVN_THRESHOLD,
+            requiredDvns: REQUIRED_DVNS,
+            optionalDvns: OPTIONAL_DVNS,
         }
     },
 }

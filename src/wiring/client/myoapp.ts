@@ -168,45 +168,6 @@ export class MyOApp {
             .addRemainingAccounts(remainingAccounts).items[0]
     }
 
-    setPeerConfig(
-        accounts: {
-            admin: Signer
-        },
-        param: (SetPeerAddressParam | SetPeerEnforcedOptionsParam) & {
-            remote: number
-        }
-    ): WrappedInstruction {
-        const { admin } = accounts
-        const { remote } = param
-        let config: types.PeerConfigParamArgs
-        if (param.__kind === 'PeerAddress') {
-            if (param.peer.length !== 32) {
-                throw new Error('Peer must be 32 bytes (left-padded with zeroes)')
-            }
-            config = types.peerConfigParam('PeerAddress', [param.peer])
-        } else if (param.__kind === 'EnforcedOptions') {
-            config = {
-                __kind: 'EnforcedOptions',
-                send: param.send,
-                sendAndCall: param.sendAndCall,
-            }
-        } else {
-            throw new Error('Invalid peer config')
-        }
-
-        return instructions.setPeerConfig(
-            { programs: this.programRepo },
-            {
-                admin,
-                store: this.pda.oapp()[0],
-                peer: this.pda.peer(remote)[0],
-                // args
-                remoteEid: remote,
-                config,
-            }
-        ).items[0]
-    }
-
     async quote(
         rpc: RpcInterface,
         payer: PublicKey,

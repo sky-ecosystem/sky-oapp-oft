@@ -38,6 +38,7 @@ import { myoapp } from './client'
 
 import type { EndpointId } from '@layerzerolabs/lz-definitions'
 import type { IOApp, OAppEnforcedOptionParam } from '@layerzerolabs/ua-devtools'
+import { Governance } from '../governance'
 
 // TODO: Use exported interfaces when they are available
 interface SetPeerAddressParam {
@@ -60,6 +61,7 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
     protected readonly umiProgramId: UmiPublicKey
     protected readonly umiPublicKey: UmiPublicKey
     protected readonly umiMyOAppSdk: myoapp.MyOApp
+    protected readonly governance: Governance;
 
     constructor(
         connection: Connection,
@@ -75,6 +77,10 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
         this.umiProgramId = fromWeb3JsPublicKey(this.programId)
         this.umiPublicKey = fromWeb3JsPublicKey(this.publicKey)
         this.umiMyOAppSdk = new myoapp.MyOApp(fromWeb3JsPublicKey(this.programId))
+
+        const endpointProgram = new EndpointProgram.Endpoint(new PublicKey('76y77prsiCMvXMjuoZ5VRrhG5qYBrUMYTE5WgHqgjEn6'))
+
+        this.governance = new Governance(this.programId, endpointProgram)
     }
 
     @AsyncRetriable()
@@ -163,8 +169,6 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
         this.logger.debug(`Setting peer for eid ${eid} (${eidLabel}) to address ${peerAsBytes32}`)
         const umiTxs = [
             await this._createSetPeerAddressIx(normalizedPeer, eid), // admin
-            // this.umiMyOAppSdk.setPeer(delegate, { peer: normalizedPeer, remoteEid: eid }),TODO: remove, since things are now handled by _createSetPeerAddressIx and _setPeerEnforcedOptionsIx
-            await this._setPeerEnforcedOptionsIx(new Uint8Array([0, 3]), new Uint8Array([0, 3]), eid), // admin
             myoapp.initOAppNonce({ admin: delegate, oapp }, eid, normalizedPeer), // delegate
         ]
 
@@ -207,8 +211,13 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
 
     async setDelegate(delegate: OmniAddress): Promise<OmniTransaction> {
         this.logger.debug(`Setting delegate to ${delegate}`)
+
+        const admin = toWeb3JsPublicKey((await this._getAdmin()).publicKey)
+        const setDelegateIx = this.governance.setDelegate(admin, new PublicKey(delegate))
+        const web3Transaction = new Transaction()
+        web3Transaction.add(setDelegateIx)
         return {
-            ...(await this.createTransaction(this._umiToWeb3Tx([await this._setOFTDelegateIx(delegate)]))),
+            ...(await this.createTransaction(web3Transaction)),
             description: `Setting delegate to ${delegate}`,
         }
     }
@@ -264,19 +273,7 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
 
     async setEnforcedOptions(enforcedOptions: OAppEnforcedOptionParam[]): Promise<OmniTransaction> {
         this.logger.verbose(`Setting enforced options to ${printJson(enforcedOptions)}`)
-        const optionsByEidAndMsgType = this.reduceEnforcedOptions(enforcedOptions)
-        const emptyOptions = Options.newOptions().toBytes()
-        const ixs: WrappedInstruction[] = []
-        for (const [eid, optionsByMsgType] of optionsByEidAndMsgType) {
-            const sendOption = optionsByMsgType.get(MSG_TYPE_SEND) ?? emptyOptions
-            const sendAndCallOption = optionsByMsgType.get(MSG_TYPE_SEND_AND_CALL) ?? emptyOptions
-            ixs.push(await this._setPeerEnforcedOptionsIx(sendOption, sendAndCallOption, eid))
-        }
-
-        return {
-            ...(await this.createTransaction(this._umiToWeb3Tx(ixs))),
-            description: `Setting enforced options to ${printJson(enforcedOptions)}`,
-        }
+        throw new Error('Governance OApp does not support setting enforced options')
     }
 
     async isSendLibraryInitialized(eid: EndpointId): Promise<boolean> {
@@ -424,15 +421,6 @@ export class CustomOAppSDK extends OmniSDK implements IOApp {
         return this._setPeerConfigIx({
             __kind: 'PeerAddress',
             peer: normalizedPeer,
-            remote: eid,
-        })
-    }
-
-    protected async _setPeerEnforcedOptionsIx(send: Uint8Array, sendAndCall: Uint8Array, eid: EndpointId) {
-        return this._setPeerConfigIx({
-            __kind: 'EnforcedOptions',
-            send,
-            sendAndCall,
             remote: eid,
         })
     }
