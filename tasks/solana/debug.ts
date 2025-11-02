@@ -12,7 +12,8 @@ import { EndpointId, getNetworkForChainId } from '@layerzerolabs/lz-definitions'
 import { EndpointPDADeriver, EndpointProgram } from '@layerzerolabs/lz-solana-sdk-v2'
 import { EndpointProgram as EndpointProgramUmi } from '@layerzerolabs/lz-solana-sdk-v2/umi'
 import { IMetadata, defaultFetchMetadata } from '@layerzerolabs/metadata-tools'
-import { OftPDA, oft } from '@layerzerolabs/oft-v2-solana-sdk'
+import { OftPDA } from './sdk/pda'
+import { accounts, types as oft302types } from './sdk/oft302'
 import { EndpointV2 } from '@layerzerolabs/protocol-devtools-solana'
 
 import { getSolanaReceiveConfig, getSolanaSendConfig } from '../common/taskHelper'
@@ -97,7 +98,7 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
 
         let oftStoreInfo
         try {
-            oftStoreInfo = await oft.accounts.fetchOFTStore(umi, oftStore)
+            oftStoreInfo = await accounts.fetchOFTStore(umi, oftStore)
         } catch (e) {
             console.error(`Failed to fetch OFTStore at ${oftStore.toString()}:`, e)
             return
@@ -130,11 +131,13 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
         const printOftStore = async () => {
             DebugLogger.header('OFT Store Information')
             DebugLogger.keyValue('OFT Program', oftStoreInfo.header.owner)
-            DebugLogger.keyValue('OFT Type', oft.types.OFTType[oftStoreInfo.oftType])
+            DebugLogger.keyValue('OFT Type', oft302types.OFTType[oftStoreInfo.oftType])
             DebugLogger.keyValue('Admin', oftStoreInfo.admin)
             DebugLogger.keyValue('Token Mint', oftStoreInfo.tokenMint)
             DebugLogger.keyValue('Token Escrow', oftStoreInfo.tokenEscrow)
             DebugLogger.keyValue('Endpoint Program', oftStoreInfo.endpointProgram)
+            DebugLogger.keyValue('Pauser', JSON.stringify(oftStoreInfo.pauser))
+            DebugLogger.keyValue('Unpauser', JSON.stringify(oftStoreInfo.unpauser))
             DebugLogger.separator()
         }
 
@@ -211,7 +214,7 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
 
             DebugLogger.header('Peer Configurations')
 
-            const peerConfigInfos = await oft.accounts.safeFetchAllPeerConfig(umi, peerConfigs)
+            const peerConfigInfos = await accounts.safeFetchAllPeerConfig(umi, peerConfigs)
             for (let index = 0; index < dstEids.length; index++) {
                 const dstEid = dstEids[index]
                 const info = peerConfigInfos[index]

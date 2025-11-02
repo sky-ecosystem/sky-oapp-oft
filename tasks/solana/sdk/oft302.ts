@@ -114,3 +114,19 @@ export function setPeerConfig(
         }
     ).items[0]
 }
+
+export function setOFTConfig(
+    accounts: {
+        admin: Signer
+        oftStore: PublicKey
+    },
+    param: types.SetOFTConfigParams,
+    oftProgramId: PublicKey | ProgramRepositoryInterface
+): WrappedInstruction {
+    const programsRepo = typeof oftProgramId === 'string' ? createOFTProgramRepo(oftProgramId) : oftProgramId
+    const { admin, oftStore } = accounts
+    return instructions.setOftConfig(
+        { programs: programsRepo },
+        { admin: admin, oftStore: oftStore, params: param }
+    ).items[0]
+}

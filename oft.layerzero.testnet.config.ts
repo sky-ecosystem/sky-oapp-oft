@@ -5,7 +5,7 @@ import {generateConnectionsConfig} from '@layerzerolabs/metadata-tools';
 
 export const avalancheContract: OmniPointHardhat = {
   eid: EndpointId.AVALANCHE_V2_TESTNET,
-  contractName: 'MyOFT',
+  contractName: 'SkyOFTAdapter',
 };
 
 export const solanaContract: OmniPointHardhat = {
@@ -17,7 +17,7 @@ const EVM_ENFORCED_OPTIONS: OAppEnforcedOption[] = [
   {
     msgType: 1,
     optionType: ExecutorOptionType.LZ_RECEIVE,
-    gas: 80000,
+    gas: 140000,
     value: 0,
   }
 ];
@@ -38,14 +38,20 @@ export default async function () {
     [
       avalancheContract, // Chain A contract
       solanaContract, // Chain B contract
-      [['LayerZero Labs'], []], // [ requiredDVN[], [ optionalDVN[], threshold ] ]
-      [1, 1], // [A to B confirmations, B to A confirmations]
+      [[], [['LayerZero Labs', 'P2P'], 1]], // [ requiredDVN[], [ optionalDVN[], threshold ] ]
+      [15, 32], // [A to B confirmations, B to A confirmations]
       [SOLANA_ENFORCED_OPTIONS, EVM_ENFORCED_OPTIONS], // Chain B enforcedOptions, Chain A enforcedOptions
     ],
   ]);
 
   return {
-    contracts: [{contract: avalancheContract}, {contract: solanaContract}],
+    contracts: [
+      {
+        contract: avalancheContract
+      },
+      {
+        contract: solanaContract,
+      }],
     connections,
   };
 }

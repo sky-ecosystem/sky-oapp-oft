@@ -1,5 +1,4 @@
 import {
-    AccountMeta,
     Cluster,
     ClusterFilter,
     Commitment,
@@ -13,8 +12,7 @@ import {
     createNullRpc,
 } from '@metaplex-foundation/umi'
 import { createDefaultProgramRepository } from '@metaplex-foundation/umi-program-repository'
-import { toWeb3JsInstruction, toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
-import { ComputeBudgetProgram } from '@solana/web3.js'
+import { toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
 import { hexlify } from 'ethers/lib/utils'
 
 import {
@@ -22,9 +20,7 @@ import {
     EventPDA,
     MessageLibInterface,
     SimpleMessageLibProgram,
-    SolanaPacketPath,
     UlnProgram,
-    simulateWeb3JsTransaction,
     toWeb3Connection,
 } from '@layerzerolabs/lz-solana-sdk-v2/umi'
 
@@ -33,7 +29,6 @@ import * as errors from '../../generated/governance/errors'
 import * as instructions from '../../generated/governance/instructions'
 import * as types from '../../generated/governance/types'
 import { MyOAppPDA as MyOAppPDA } from './pda'
-import { SetPeerAddressParam, SetPeerEnforcedOptionsParam } from './types'
 export { accounts, errors, instructions, types }
 export { PROGRAM_ID as GOVERNANCE_PROGRAM_ID } from '../../generated/governance'
 
@@ -79,12 +74,6 @@ export class MyOApp {
         this.endpointSDK = new EndpointProgram.Endpoint(endpointProgramId)
     }
 
-    async getEnforcedOptions(rpc: RpcInterface, remoteEid: number): Promise<types.EnforcedOptions> {
-        const [peer] = this.pda.peer(remoteEid)
-        const peerInfo = await accounts.fetchPeerConfig({ rpc }, peer)
-        return peerInfo.enforcedOptions
-    }
-
     getProgram(clusterFilter: ClusterFilter = 'custom'): Program {
         return this.programRepo.get('myOapp', clusterFilter)
     }
@@ -111,130 +100,6 @@ export class MyOApp {
                 }
             )
             .addRemainingAccounts(remainingAccounts).items[0]
-    }
-
-    async send(
-        rpc: RpcInterface,
-        payer: PublicKey,
-        params: EndpointProgram.types.MessagingFee & {
-            dstEid: number
-            message: string
-            options: Uint8Array
-            composeMsg?: Uint8Array
-        },
-        remainingAccounts?: AccountMeta[],
-        commitment: Commitment = 'confirmed'
-    ): Promise<WrappedInstruction> {
-        const { dstEid, nativeFee, lzTokenFee, message, options, composeMsg } = params
-        const msgLibProgram = await this.getSendLibraryProgram(rpc, payer, dstEid)
-        const [oapp] = this.pda.oapp()
-        const [peer] = this.pda.peer(dstEid)
-        const receiverInfo = await accounts.fetchPeerConfig({ rpc }, peer, { commitment })
-        const packetPath: SolanaPacketPath = {
-            dstEid,
-            sender: oapp,
-            receiver: receiverInfo.peerAddress,
-        }
-        remainingAccounts =
-            remainingAccounts ??
-            (await this.endpointSDK.getSendIXAccountMetaForCPI(
-                rpc,
-                payer,
-                {
-                    path: packetPath,
-                    msgLibProgram,
-                },
-                commitment
-            ))
-        if (remainingAccounts === undefined) {
-            throw new Error('Failed to get remaining accounts for send instruction')
-        }
-        return instructions
-            .send(
-                { programs: this.programRepo },
-                {
-                    store: oapp,
-                    peer: peer,
-                    endpoint: this.endpointSDK.pda.setting()[0],
-                    // args
-                    dstEid,
-                    message,
-                    composeMsg: composeMsg ?? null,
-                    options,
-                    nativeFee: nativeFee,
-                    lzTokenFee: lzTokenFee ?? 0,
-                }
-            )
-            .addRemainingAccounts(remainingAccounts).items[0]
-    }
-
-    async quote(
-        rpc: RpcInterface,
-        payer: PublicKey,
-        params: {
-            dstEid: number
-            message: string
-            options: Uint8Array
-            composeMsg?: Uint8Array
-            payInLzToken: boolean
-        },
-        remainingAccounts?: AccountMeta[],
-        commitment: Commitment = 'confirmed'
-    ): Promise<EndpointProgram.types.MessagingFee> {
-        const { dstEid, message, options, payInLzToken, composeMsg } = params
-        const msgLibProgram = await this.getSendLibraryProgram(rpc, payer, dstEid)
-        const [oapp] = this.pda.oapp()
-
-        // const [endpointSettingPDA] = endpoint.deriver.setting()
-        const [peer] = this.pda.peer(dstEid)
-        const receiverInfo = await accounts.fetchPeerConfig({ rpc }, peer, { commitment })
-        const packetPath: SolanaPacketPath = {
-            dstEid,
-            sender: oapp,
-            receiver: receiverInfo.peerAddress,
-        }
-        remainingAccounts =
-            remainingAccounts ??
-            (await this.endpointSDK.getQuoteIXAccountMetaForCPI(rpc, payer, {
-                path: packetPath,
-                msgLibProgram,
-            }))
-        if (remainingAccounts === undefined) {
-            throw new Error('Failed to get remaining accounts for quote instruction')
-        }
-        const ix = instructions
-            .quoteSend(
-                {
-                    programs: this.programRepo,
-                },
-                {
-                    store: oapp,
-                    peer,
-                    endpoint: this.endpointSDK.pda.setting()[0],
-                    // args
-                    dstEid,
-                    message,
-                    composeMsg: composeMsg ?? null,
-                    options,
-                    payInLzToken,
-                    receiver: packetPath.receiver,
-                }
-            )
-            .addRemainingAccounts(remainingAccounts).items[0]
-
-        //TODO: use @solana-developers/helpers to get the compute units
-        const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-            units: 400000,
-        })
-
-        return simulateWeb3JsTransaction(
-            rpc,
-            [modifyComputeUnits, toWeb3JsInstruction(ix.instruction)],
-            this.programId,
-            payer,
-            EndpointProgram.types.getMessagingFeeSerializer(),
-            'confirmed'
-        )
     }
 
     async getSendLibraryProgram(
