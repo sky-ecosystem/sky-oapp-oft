@@ -19,8 +19,7 @@ export default async function () {
     [
       ethereumContract, // Chain A contract
       solanaContract, // Chain B contract
-      // @TODO: Update DVNs to final values. Below list is a placeholder.
-      [[], [['LayerZero Labs', 'Nethermind', 'P2P', 'Google', 'Nansen', 'Horizen', 'Frax'], 4]], // [ requiredDVN[], [ optionalDVN[], threshold ] ]
+      [[], [['LayerZero Labs', 'Nethermind', 'Canary', 'Deutsche Telekom', 'P2P', 'Horizen', 'Luganodes'], 4]], // [ requiredDVN[], [ optionalDVN[], threshold ] ]
       [15, undefined], // [A to B confirmations, B to A confirmations] undefined means it is one way
       [undefined, undefined], // Chain B enforcedOptions, Chain A enforcedOptions
     ],
