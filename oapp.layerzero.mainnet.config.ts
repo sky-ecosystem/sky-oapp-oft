@@ -30,6 +30,11 @@ export default async function () {
     contracts: [
       {
         contract: ethereumContract,
+        // @TODO: Uncomment and transfer delegate and owner to Sky Pause Proxy
+        // config: {
+        //   delegate: '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB',
+        //   owner: '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB',
+        // }
       },
       {
         contract: solanaContract,
