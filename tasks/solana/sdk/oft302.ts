@@ -130,3 +130,19 @@ export function setOFTConfig(
         { admin: admin, oftStore: oftStore, params: param }
     ).items[0]
 }
+
+export function setPause(
+    accounts: {
+        signer: Signer
+        oftStore: PublicKey
+    },
+    paused: boolean,
+    oftProgramId: PublicKey | ProgramRepositoryInterface
+): WrappedInstruction {
+    const programsRepo = typeof oftProgramId === 'string' ? createOFTProgramRepo(oftProgramId) : oftProgramId
+    const { signer, oftStore } = accounts
+    return instructions.setPause(
+        { programs: programsRepo },
+        { signer, oftStore: oftStore, paused }
+    ).items[0]
+}

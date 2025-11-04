@@ -90,7 +90,7 @@ The Governance program includes support for Solana and the current repository he
 
 Example command to generate a Governance message based on scenarios in the test suite:
 ```
-GOVERNANCE_ID=7iM1ZZT6jbBNC8ASb5weBNNMZSKPJusjBtovz6qWVH3 cargo test -p governance --test msg_codec -- --exact --show-output test_msg_codec::test_hello_world
+GOVERNANCE_ID=SKYGRikJcGSa3jC5HDyzDrVsmkCk3e5SqAurycny8PW cargo test -p governance --test msg_codec -- --exact --show-output test_msg_codec::test_hello_world
 ```
 
 If you change `GOVERNANCE_ID` then make sure to run:

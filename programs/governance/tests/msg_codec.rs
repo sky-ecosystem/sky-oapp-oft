@@ -24,7 +24,7 @@ mod test_msg_codec {
     }
 
     const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
-    const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
+    const PAYER: Pubkey = pubkey!("6Xu7SvWnBr1vo7Vst3cRZf2TW46PJxyZnNiv89RMMFuS");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
@@ -47,10 +47,10 @@ mod test_msg_codec {
         assert_governance_program_id();
 
         // hello world program id
-        let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
+        let program_id = Pubkey::try_from("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr").unwrap();
         let accounts = vec![];
         // Anchor example hello world "Initialize" instruction data that logs "Greetings"
-        let data = hex::decode("afaf6d1f0d989bed").unwrap();
+        let data = "✩₊˚.⋆☾⋆⁺₊✧".as_bytes().to_vec();
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id,
