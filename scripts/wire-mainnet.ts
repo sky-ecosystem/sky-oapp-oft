@@ -44,6 +44,8 @@ const programs: LAYERZERO_PROGRAMS = {
     ulnProgram,
 }
 
+// NOTE: for redundancy and validation purposes uncomment the following code
+// NOTE: Config setting except instantiation is handled by other commands in devtools flow
 // const REQUIRED_DVNS = ([] as PublicKey[]).sort((a, b) => a.toBase58().localeCompare(b.toBase58()));
 
 // const OPTIONAL_DVNS = [
