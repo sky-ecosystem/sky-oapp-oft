@@ -8,7 +8,8 @@ import {
 import { EndpointId } from '@layerzerolabs/lz-definitions';
 import BN from 'bn.js';
 
-import { GovernanceProgram } from '../src'
+import { GovernancePDADeriver, GovernanceProgram } from '../src'
+import { arrayify, hexZeroPad } from 'ethers/lib/utils';
 
 export type LAYERZERO_PROGRAMS = {
     endpointProgram: EndpointProgram.Endpoint;
@@ -16,7 +17,12 @@ export type LAYERZERO_PROGRAMS = {
     ulnProgram: UlnProgram.Uln;
 }
 
-export async function initGovernance(connection: Connection, programs: LAYERZERO_PROGRAMS, payer: Keypair, admin: Keypair, lzReceiveAlts: PublicKey[] = [], commitment: Commitment = 'finalized'): Promise<void> {
+type CustomWireUtilsConfiguration = {
+    commitment: Commitment;
+    validationOnly: boolean;
+}
+
+export async function initGovernance(connection: Connection, programs: LAYERZERO_PROGRAMS, payer: Keypair, admin: Keypair, lzReceiveAlts: PublicKey[] = [], { commitment, validationOnly }: CustomWireUtilsConfiguration = { commitment: 'finalized', validationOnly: false }): Promise<void> {
     const [governance] = programs.governanceProgram.idPDA()
     console.log('governancePDA base58', governance.toBase58());
     console.log('governancePDA hex', '0x' + governance.toBuffer().toString('hex'));
@@ -29,17 +35,21 @@ export async function initGovernance(connection: Connection, programs: LAYERZERO
     } catch (e) {
         /*governance not initialized*/
     }
+
     const ix = await programs.governanceProgram.initGovernance(
         connection,
         payer.publicKey,
         admin.publicKey, // admin/delegate double check it, is the same public key
         lzReceiveAlts
     )
-    if (ix == null) {
+    if (ix === null) {
         console.log('initGovernance: already initialized');
         return Promise.resolve()
     }
-    await sendAndConfirm(connection, [admin], [ix], commitment)
+
+    if (!validationOnly) {
+        await sendAndConfirm(connection, [admin], [ix], commitment)
+    }
 }
 
 export async function setPeers(
@@ -48,7 +58,7 @@ export async function setPeers(
     admin: Keypair,
     remote: EndpointId,
     remotePeer: Uint8Array,
-    commitment: Commitment = 'finalized'
+    { commitment, validationOnly }: CustomWireUtilsConfiguration = { commitment: 'finalized', validationOnly: false }
 ): Promise<void> {
     const ix = programs.governanceProgram.setRemote(admin.publicKey, remotePeer, remote)
     const [remotePDA] = programs.governanceProgram.governanceDeriver.remote(remote)
@@ -65,8 +75,11 @@ export async function setPeers(
         console.log('setRemote: already set');
         return Promise.resolve()
     }
-    console.log('setRemote: changing peer')
-    await sendAndConfirm(connection, [admin], [ix], commitment)
+
+    if (!validationOnly) {
+        console.log('setRemote: changing peer')
+        await sendAndConfirm(connection, [admin], [ix], commitment)
+    }
 }
 
 export async function initReceiveConfig(
@@ -270,4 +283,11 @@ export function equalULNConfig(config1: UlnProgram.types.UlnConfig, config2: Uln
     }
 
     return confirmationsEqual && config1.requiredDvnCount === config2.requiredDvnCount && config1.optionalDvnCount === config2.optionalDvnCount && config1.optionalDvnThreshold === config2.optionalDvnThreshold && config1.requiredDvns.length === config2.requiredDvns.length && config1.optionalDvns.length === config2.optionalDvns.length;
+}
+
+export function computeCPIAuthority(programs: LAYERZERO_PROGRAMS, { originEid, originCallerEvmAddress }: { originEid: EndpointId, originCallerEvmAddress: string }): PublicKey {
+    const deriver = new GovernancePDADeriver(programs.governanceProgram.program)
+    const originCaller = arrayify(hexZeroPad(originCallerEvmAddress, 32));
+
+    return deriver.cpiAuthority(originEid, Buffer.from(originCaller).toString('hex'))[0]
 }

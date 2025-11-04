@@ -28,9 +28,10 @@ mod test_msg_codec {
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
+    const ETHEREUM_V2_MAINNET_EID: u32 = 30101;
     const FUJI_PEER_ADDRESS: &str = "0x968647274C4eCD751e762De1e0Ee577687C0DEb1";
     const BSC_PEER_ADDRESS: &str = "0xFcF2F7F9d8dE3cf7C3dec9FcB33BCc88c0B2f8CC";
-    const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
+    const EVM_ORIGIN_CALLER: &str = "0x2beBFe397D497b66cB14461cB6ee467b4C3B7D61";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
@@ -1757,7 +1758,7 @@ mod test_msg_codec {
 
     fn get_cpi_authority() -> Pubkey {        
         let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
-            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &FUJI_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
+            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &ETHEREUM_V2_MAINNET_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
             &get_governance_program_id(),
         );
 

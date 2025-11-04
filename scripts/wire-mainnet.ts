@@ -15,7 +15,7 @@ import { EndpointId } from '@layerzerolabs/lz-definitions';
 import BN from 'bn.js';
 
 import { GovernanceProgram } from '../src'
-import { initGovernance, LAYERZERO_PROGRAMS, setPeers, initReceiveLibrary, initOAppNonce, setReceiveLibrary, initReceiveConfig, setReceiveConfig } from './wire-utils';
+import { initGovernance, LAYERZERO_PROGRAMS, setPeers, initReceiveLibrary, initOAppNonce, setReceiveLibrary, initReceiveConfig, setReceiveConfig, computeCPIAuthority } from './wire-utils';
 
 if (!process.env.SOLANA_PRIVATE_KEY) {
     throw new Error("SOLANA_PRIVATE_KEY env required");
@@ -60,7 +60,7 @@ const programs: LAYERZERO_PROGRAMS = {
 // }
 
 // const remotePeers: { [key in EndpointId]?: RemotePeer } = {
-//     [EndpointId.AVALANCHE_V2_TESTNET]: {
+//     [EndpointId.ETHEREUM_V2_MAINNET]: {
 //         address: process.env.GOVERNANCE_CONTROLLER_ADDRESS,
 //         receiveConfig: {
 //             confirmations: new BN(15),
@@ -77,14 +77,15 @@ const connection = new Connection(process.env.RPC_URL_SOLANA);
 const signer = Keypair.fromSecretKey(bs58.decode(process.env.SOLANA_PRIVATE_KEY));
 
 (async () => {
-    await initGovernance(connection, programs, signer, signer, [], 'finalized');
+    const validationOnly = false;
+    await initGovernance(connection, programs, signer, signer, [], { commitment: 'finalized', validationOnly });
 
     // NOTE: for redundancy and validation purposes uncomment the following code
     // for (const [remoteStr, remotePeer] of Object.entries(remotePeers)) {
     //     const remotePeerBytes = arrayify(hexZeroPad(remotePeer.address, 32))
     //     const remote = parseInt(remoteStr) as EndpointId
 
-    //     await setPeers(connection, programs, signer, remote, remotePeerBytes, 'finalized')
+    //     await setPeers(connection, programs, signer, remote, remotePeerBytes, { commitment: 'finalized', validationOnly })
     //     await initReceiveLibrary(connection, programs, signer, remote, 'finalized')
     //     await initOAppNonce(connection, programs, signer, remote, remotePeerBytes, 'finalized')
     //     await setReceiveLibrary(connection, programs, signer, remote, 'finalized')
