@@ -47,10 +47,8 @@ mod test_msg_codec {
     fn test_hello_world() {
         assert_governance_program_id();
 
-        // hello world program id
         let program_id = Pubkey::try_from("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr").unwrap();
         let accounts = vec![];
-        // Anchor example hello world "Initialize" instruction data that logs "Greetings"
         let data = "✩₊˚.⋆☾⋆⁺₊✧".as_bytes().to_vec();
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
