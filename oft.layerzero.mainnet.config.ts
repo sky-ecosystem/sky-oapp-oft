@@ -65,6 +65,11 @@ export default async function () {
       },
       {
         contract: solanaContract,
+        // @TODO: Uncomment and transfer delegate and owner to L1GovernanceRelay derived CPI authority PDA
+        // config: {
+        //   delegate: 'AYPtjx4Hc8us1ikULUedkmZ3wtiD6tmL7gK3qe4V3oHt',
+        //   owner: 'AYPtjx4Hc8us1ikULUedkmZ3wtiD6tmL7gK3qe4V3oHt',
+        // }
       }],
     connections,
   };
