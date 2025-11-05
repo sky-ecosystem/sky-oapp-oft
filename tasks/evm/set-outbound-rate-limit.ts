@@ -10,15 +10,20 @@ task('lz:oftadapter:set-outbound-rate-limit', '')
         const signer = await ethers.getNamedSigner('deployer')
         const oft = (await ethers.getContract('SkyOFTAdapter')).connect(signer)
 
-        const maxAmount = ethers.utils.parseUnits(taskArgs.amount, 18).toString()
+        const maxAmount = ethers.utils.parseUnits(taskArgs.amount, 18)
+        const uint128Max = ethers.BigNumber.from('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+
+        if (maxAmount.gt(uint128Max)) {
+            throw new Error('Amount exceeds the uint128 max')
+        }
 
         const outboundRateLimits = [{
             eid: dstEid,
-            limit: maxAmount,
+            limit: maxAmount.toString(),
             window: taskArgs.window,
         }]
 
-        const r = await oft.setRateLimits([], outboundRateLimits);
+        const tx = await oft.setRateLimits([], outboundRateLimits);
 
-        console.log(`Tx sent, hash: ${r.hash}`)
+        console.log(`Tx sent, hash: ${tx.hash}`)
     })
