@@ -17,9 +17,15 @@ const EVM_ENFORCED_OPTIONS: OAppEnforcedOption[] = [
   {
     msgType: 1,
     optionType: ExecutorOptionType.LZ_RECEIVE,
-    gas: 140000,
+    gas: 130000,
     value: 0,
-  }
+  },
+  {
+    msgType: 2,
+    optionType: ExecutorOptionType.LZ_RECEIVE,
+    gas: 130000,
+    value: 0,
+  },
 ];
 
 const CU_LIMIT = 200000 // This represents the CU limit for executing the `lz_receive` function on Solana.
@@ -33,10 +39,16 @@ const SPL_TOKEN_ACCOUNT_RENT_VALUE = 2039280 // This figure represents lamports 
 
 const SOLANA_ENFORCED_OPTIONS: OAppEnforcedOption[] = [
     {
-        msgType: 1,
-        optionType: ExecutorOptionType.LZ_RECEIVE,
-        gas: CU_LIMIT,
-        value: SPL_TOKEN_ACCOUNT_RENT_VALUE,
+      msgType: 1,
+      optionType: ExecutorOptionType.LZ_RECEIVE,
+      gas: CU_LIMIT,
+      value: SPL_TOKEN_ACCOUNT_RENT_VALUE,
+    },
+    {
+      msgType: 2,
+      optionType: ExecutorOptionType.LZ_RECEIVE,
+      gas: CU_LIMIT,
+      value: SPL_TOKEN_ACCOUNT_RENT_VALUE,
     },
 ]
 
