@@ -18,6 +18,7 @@ import { HardhatUserConfig, HttpNetworkAccountsUserConfig } from 'hardhat/types'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 
 import './tasks/index'
+import './type-extensions'
 
 // Set your preferred authentication method
 //
@@ -59,6 +60,14 @@ const config: HardhatUserConfig = {
         ],
     },
     networks: {
+        'ethereum-mainnet': {
+            eid: EndpointId.ETHEREUM_V2_MAINNET,
+            url: process.env.RPC_URL_ETHEREUM || 'https://0xrpc.io/eth',
+            accounts,
+            oftAdapter: {
+                tokenAddress: '0xdC035D45d973E3EC169d2276DDab16f1e407384F'
+            }
+        },
         'avalanche-testnet': {
             eid: EndpointId.AVALANCHE_V2_TESTNET,
             url: process.env.RPC_URL_AVALANCHE || 'https://api.avax-test.network/ext/bc/C/rpc',

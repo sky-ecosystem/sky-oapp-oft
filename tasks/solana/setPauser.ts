@@ -1,7 +1,7 @@
 import assert from 'assert'
 
 import { mplToolbox } from '@metaplex-foundation/mpl-toolbox'
-import { createSignerFromKeypair, publicKey, signerIdentity, transactionBuilder } from '@metaplex-foundation/umi'
+import { createSignerFromKeypair, none, publicKey, signerIdentity, some, transactionBuilder } from '@metaplex-foundation/umi'
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
 import { fromWeb3JsKeypair } from '@metaplex-foundation/umi-web3js-adapters'
 import { Keypair } from '@solana/web3.js'
@@ -12,40 +12,25 @@ import { types } from '@layerzerolabs/devtools-evm-hardhat'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 
 import { createSolanaConnectionFactory } from '../common/utils'
-import { setPeerConfig } from './sdk/oft302'
-import { RateLimiterType } from './sdk/generated/oft302'
+import { setOFTConfig } from './sdk/oft302'
 import { getExplorerTxLink } from '.'
 
 interface Args {
-    mint: string
     eid: EndpointId
-    dstEid: EndpointId
     programId: string
     oftStore: string
-    capacity: bigint
-    refillPerSecond: bigint
-    type: string
+    pauser: string
 }
 
 task(
-    'lz:oft:solana:outbound-rate-limit',
-    "Sets the Solana outbound rate limit"
+    'lz:oft:solana:set-pauser',
+    "Sets the Solana pauser"
 )
-    .addParam('mint', 'The OFT token mint public key')
     .addParam('programId', 'The OFT Program id')
     .addParam('eid', 'Solana mainnet (30168) or testnet (40168)', undefined, types.eid)
-    .addParam('dstEid', 'The destination endpoint ID', undefined, types.eid)
     .addParam('oftStore', 'The OFTStore account')
-    .addParam('capacity', 'The capacity of the rate limit', undefined, types.bigint)
-    .addParam('refillPerSecond', 'The refill rate of the rate limit', undefined, types.bigint)
-    .addParam('type', 'The type of the rate limit: net or gross', undefined)
+    .addParam('pauser', 'The pauser address', undefined, types.string)
     .setAction(async (taskArgs: Args, hre) => {
-        if (taskArgs.type !== 'net' && taskArgs.type !== 'gross') {
-            throw new Error('Invalid rate limit type. Must be either "net" or "gross".')
-        }
-        
-        const rateLimiterType = taskArgs.type === 'net' ? RateLimiterType.Net : RateLimiterType.Gross;
-
         const privateKey = process.env.SOLANA_PRIVATE_KEY
         assert(!!privateKey, 'SOLANA_PRIVATE_KEY is not defined in the environment variables.')
 
@@ -59,22 +44,15 @@ task(
         const umiWalletSigner = createSignerFromKeypair(umi, umiKeypair)
         umi.use(signerIdentity(umiWalletSigner))
 
-        const ix = setPeerConfig({
-                admin: umiWalletSigner,
-                oftStore: publicKey(taskArgs.oftStore),
-            },
-            {
-                __kind: 'OutboundRateLimit',
-                rateLimit: {
-                    capacity: taskArgs.capacity,
-                    refillPerSecond: taskArgs.refillPerSecond,
-                    rateLimiterType,
-                },
-                remote: taskArgs.dstEid,
-            },
-            publicKey(taskArgs.programId)
-        )
-       
+        const pauser = taskArgs.pauser;
+
+        const ix = setOFTConfig({
+            admin: umiWalletSigner,
+            oftStore: publicKey(taskArgs.oftStore),
+        }, {
+            __kind: 'Pauser',
+            fields: pauser.length > 0 ? [some(publicKey(taskArgs.pauser))] : [none()],
+        }, publicKey(taskArgs.programId));
         
         let txBuilder = transactionBuilder().add([ix])
         const tx = await txBuilder.buildWithLatestBlockhash(umi)
@@ -83,10 +61,9 @@ task(
         const { signature } = await txBuilder.sendAndConfirm(umi)
         const transactionSignatureBase58 = bs58.encode(signature)
 
-        console.log(`✅ Set outbound rate limit for destination endpoint id: ${taskArgs.dstEid}!`)
+        console.log(`✅ Set pauser for OFTStore: ${taskArgs.oftStore}!`)
         const isTestnet = taskArgs.eid == EndpointId.SOLANA_V2_TESTNET
         console.log(
             `View Solana transaction here: ${getExplorerTxLink(transactionSignatureBase58.toString(), isTestnet)}`
         )
     })
-    

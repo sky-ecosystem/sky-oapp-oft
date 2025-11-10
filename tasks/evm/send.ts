@@ -12,37 +12,47 @@ interface TaskArguments {
     dstEid: number
     amount: string
     to: string
-    contractName: string
 }
 
 const action: ActionType<TaskArguments> = async (
-    { dstEid, amount, to, contractName },
+    { dstEid, amount, to },
     hre: HardhatRuntimeEnvironment
 ) => {
-    const signer = await hre.ethers.getNamedSigner('deployer')
-    // @ts-ignore
-    const token = (await hre.ethers.getContract(contractName)).connect(signer)
+    if (dstEid !== EndpointId.SOLANA_V2_TESTNET && dstEid !== EndpointId.SOLANA_V2_MAINNET) {
+        throw new Error('Only sending to Solana is supported')
+    }
 
-    // if (isSepolia(hre.network.name)) {
-    //     // @ts-ignore
-    //     const erc20Token = (await hre.ethers.getContractAt(IERC20, address)).connect(signer)
-    //     const approvalTxResponse = await erc20Token.approve(token.address, amount)
-    //     const approvalTxReceipt = await approvalTxResponse.wait()
-    //     console.log(`approve: ${amount}: ${approvalTxReceipt.transactionHash}`)
-    // }
+    const signer = await hre.ethers.getNamedSigner('deployer')
+    const adapter = (await hre.ethers.getContract('SkyOFTAdapter')).connect(signer)
+    const tokenAddress = await adapter.token()
+    
+    const erc20Token = (await hre.ethers.getContractAt('IERC20', tokenAddress)).connect(signer)
+    const allowance = await erc20Token.allowance(signer.address, adapter.address)
+    if (allowance.lt(amount)) {
+        const approvalTxResponse = await erc20Token.approve(adapter.address, amount)
+        const approvalTxReceipt = await approvalTxResponse.wait()
+        console.log(`approve: ${amount}: ${approvalTxReceipt.transactionHash}`)
+    }
 
     const amountLD = BigNumber.from(amount)
+
+    const [currentAmountInFlight, amountCanBeSent] = await adapter.getAmountCanBeSent(dstEid)
+
+    if (amountLD.gt(amountCanBeSent)) {
+        throw new Error('Amount exceeds the Outbound Rate Limit')
+    }
+
     const sendParam = {
         dstEid,
         to: makeBytes32(bs58.decode(to)),
         amountLD: amountLD.toString(),
-        minAmountLD: amountLD.mul(9_000).div(10_000).toString(),
+        minAmountLD: amountLD.toString(),
         extraOptions: '0x',
         composeMsg: '0x',
         oftCmd: '0x',
     }
-    const [msgFee] = await token.functions.quoteSend(sendParam, false)
-    const txResponse = await token.functions.send(sendParam, msgFee, signer.address, {
+    const [msgFee] = await adapter.functions.quoteSend(sendParam, false)
+    const txResponse = await adapter.functions.send(sendParam, msgFee, signer.address, {
         value: msgFee.nativeFee,
         gasLimit: 500_000,
     })
@@ -57,4 +67,3 @@ task('send', 'Sends a transaction', action)
     .addParam('dstEid', 'Destination endpoint ID', undefined, types.int, false)
     .addParam('amount', 'Amount to send in wei', undefined, types.string, false)
     .addParam('to', 'Recipient address', undefined, types.string, false)
-    .addOptionalParam('contractName', 'Name of the contract in deployments folder', 'MyOFT', types.string)

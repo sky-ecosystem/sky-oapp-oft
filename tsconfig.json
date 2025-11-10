@@ -1,6 +1,7 @@
 {
   "exclude": ["node_modules"],
   "compilerOptions": {
+    "experimentalDecorators": true,
     "target": "es2020",
     "module": "commonjs",
     "esModuleInterop": true,

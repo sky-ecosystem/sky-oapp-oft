@@ -24,13 +24,14 @@ mod test_msg_codec {
     }
 
     const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
-    const PAYER: Pubkey = pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8");
+    const PAYER: Pubkey = pubkey!("6Xu7SvWnBr1vo7Vst3cRZf2TW46PJxyZnNiv89RMMFuS");
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
-    const FUJI_PEER_ADDRESS: &str = "0xc4116303c13512dD1ff416D3A48EBeC2f091a5E6";
+    const ETHEREUM_V2_MAINNET_EID: u32 = 30101;
+    const FUJI_PEER_ADDRESS: &str = "0x968647274C4eCD751e762De1e0Ee577687C0DEb1";
     const BSC_PEER_ADDRESS: &str = "0xFcF2F7F9d8dE3cf7C3dec9FcB33BCc88c0B2f8CC";
-    const EVM_ORIGIN_CALLER: &str = "0x0804a6e2798F42C7F3c97215DdF958d5500f8ec8";
+    const EVM_ORIGIN_CALLER: &str = "0x2beBFe397D497b66cB14461cB6ee467b4C3B7D61";
     const ULN_CONFIG_TYPE_EXECUTOR: u32 = 1;
     const ULN_CONFIG_TYPE_SEND_ULN: u32 = 2;
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
@@ -46,11 +47,9 @@ mod test_msg_codec {
     fn test_hello_world() {
         assert_governance_program_id();
 
-        // hello world program id
-        let program_id = Pubkey::try_from("3ynNB373Q3VAzKp7m4x238po36hjAGFXFJB4ybN2iTyg").unwrap();
+        let program_id = Pubkey::try_from("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr").unwrap();
         let accounts = vec![];
-        // Anchor example hello world "Initialize" instruction data that logs "Greetings"
-        let data = hex::decode("afaf6d1f0d989bed").unwrap();
+        let data = "✩₊˚.⋆☾⋆⁺₊✧".as_bytes().to_vec();
         let msg = GovernanceMessage {
             origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id,
@@ -314,6 +313,8 @@ mod test_msg_codec {
 
     #[test]
     fn test_governance_message_pause_oft<'a>() {
+        assert_governance_program_id();
+
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_pause");
         // Add the discriminator
@@ -345,16 +346,17 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: oft::id(),
-            accounts: accounts,
+            accounts,
             data: instruction_data,
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized governance message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
         // prepare_governance_message_simulation(&msg);
     }
@@ -1757,7 +1759,7 @@ mod test_msg_codec {
 
     fn get_cpi_authority() -> Pubkey {        
         let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
-            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &FUJI_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
+            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &ETHEREUM_V2_MAINNET_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
             &get_governance_program_id(),
         );
 

@@ -55,14 +55,34 @@ Verify EVM contract, eg. using:
 npx @layerzerolabs/verify-contract@latest -d deployments -n avalanche-testnet
 ```
 
-Now run:
+Now create an instance of Governance:
 ```
-pnpm config:governance
+pnpm wire:governance:solana:testnet
 ```
 
-It will create a Governance instance and configure it for you.
+"governancePDA base58" - logged from the command above is your "oapp" address for the next step.
 
-Take the: "governancePDA hex" from log of the above command and call `setPeer` on the EVM contract with its value and endpoint id. Eg. `setPeer, dstEid = 40168, peer = 0xa2a4c256938d341b8b41812a0348da0f489ec1bca07fdc7979717fdfb4aa8498`.
+ Create "deployments/solana-testnet/OApp.json":
+```
+{
+    "programId": "SKYGRikJcGSa3jC5HDyzDrVsmkCk3e5SqAurycny8PW",
+    "oapp": "8vXXGiaXFrKFUDw21H5Z57ex552Lh8WP9rVd2ktzmcCy"
+}
+```
+
+Go to oapp.layerzero.testnet.config.ts and update solanaContract.address to the "oapp" address as well.
+
+Run:
+```
+npx hardhat lz:oft:solana:init-config --oapp-config oapp.layerzero.testnet.config.ts --oapp true
+```
+
+It will initialize Send and Receive configs.
+
+Now set the messaging Security Stack configuration and peer:
+```
+npx hardhat lz:oapp:wire --oapp-config oapp.layerzero.testnet.config.ts --oapp true
+```
 
 ## Scenarios
 
@@ -70,7 +90,7 @@ The Governance program includes support for Solana and the current repository he
 
 Example command to generate a Governance message based on scenarios in the test suite:
 ```
-GOVERNANCE_ID=7iM1ZZT6jbBNC8ASb5weBNNMZSKPJusjBtovz6qWVH3 cargo test -p governance --test msg_codec -- --exact --show-output test_msg_codec::test_hello_world
+GOVERNANCE_ID=SKYGRikJcGSa3jC5HDyzDrVsmkCk3e5SqAurycny8PW cargo test -p governance --test msg_codec -- --exact --show-output test_msg_codec::test_hello_world
 ```
 
 If you change `GOVERNANCE_ID` then make sure to run:
