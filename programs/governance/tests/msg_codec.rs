@@ -313,6 +313,8 @@ mod test_msg_codec {
 
     #[test]
     fn test_governance_message_pause_oft<'a>() {
+        assert_governance_program_id();
+
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_pause");
         // Add the discriminator
@@ -344,16 +346,17 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: oft::id(),
-            accounts: accounts,
+            accounts,
             data: instruction_data,
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized governance message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
         // prepare_governance_message_simulation(&msg);
     }
