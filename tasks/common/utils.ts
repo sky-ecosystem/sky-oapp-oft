@@ -30,8 +30,9 @@ import {
 } from '@layerzerolabs/ua-devtools-evm-hardhat'
 
 import { createSimpleOAppFactory } from '../../src/wiring/factory'
-import { createOFTFactory, OFT } from '@layerzerolabs/ua-devtools-solana'
+import { createOFTFactory } from '../../src/wiring/oft/factory'
 import { CustomOAppSDK } from '../../src/wiring/sdk'
+import { OFT } from '../../src/wiring/oft/sdk'
 
 export const createSolanaConnectionFactory = () =>
     createConnectionFactory(

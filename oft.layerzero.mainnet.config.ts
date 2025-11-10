@@ -69,19 +69,17 @@ export default async function () {
     contracts: [
       {
         contract: ethereumContract,
-        // @TODO: Uncomment and transfer delegate and owner to Sky Pause Proxy
-        // config: {
-        //   delegate: '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB',
-        //   owner: '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB',
-        // }
+        config: {
+          delegate: '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB',
+          owner: '0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB',
+        }
       },
       {
         contract: solanaContract,
-        // @TODO: Uncomment and transfer delegate and owner to L1GovernanceRelay derived CPI authority PDA
-        // config: {
-        //   delegate: 'AYPtjx4Hc8us1ikULUedkmZ3wtiD6tmL7gK3qe4V3oHt',
-        //   owner: 'AYPtjx4Hc8us1ikULUedkmZ3wtiD6tmL7gK3qe4V3oHt',
-        // }
+        config: {
+          delegate: 'AYPtjx4Hc8us1ikULUedkmZ3wtiD6tmL7gK3qe4V3oHt',
+          owner: 'AYPtjx4Hc8us1ikULUedkmZ3wtiD6tmL7gK3qe4V3oHt',
+        }
       }],
     connections,
   };
