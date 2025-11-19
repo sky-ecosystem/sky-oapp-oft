@@ -1,95 +1,25 @@
-import { fetchMint } from '@metaplex-foundation/mpl-toolbox' // Import fetchToken function
-import { publicKey, unwrapOption } from '@metaplex-foundation/umi'
-import { toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
-import { PublicKey } from '@solana/web3.js'
+import { fetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata'
+import { fetchMint } from '@metaplex-foundation/mpl-toolbox'
+import { PublicKey as UmiPublicKey, publicKey, unwrapOption } from '@metaplex-foundation/umi'
+import { fromWeb3JsPublicKey, toWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
+import { Keypair, PublicKey } from '@solana/web3.js'
 import { task } from 'hardhat/config'
 
-import { denormalizePeer } from '@layerzerolabs/devtools'
+import { OmniPoint, denormalizePeer } from '@layerzerolabs/devtools'
 import { types } from '@layerzerolabs/devtools-evm-hardhat'
+import { isSquadsV4Vault } from '@layerzerolabs/devtools-solana'
 import { EndpointId, getNetworkForChainId } from '@layerzerolabs/lz-definitions'
 import { EndpointPDADeriver, EndpointProgram } from '@layerzerolabs/lz-solana-sdk-v2'
-import { OftPDA, oft } from '@layerzerolabs/oft-v2-solana-sdk'
+import { EndpointProgram as EndpointProgramUmi } from '@layerzerolabs/lz-solana-sdk-v2/umi'
+import { IMetadata, defaultFetchMetadata } from '@layerzerolabs/metadata-tools'
+import { OftPDA } from './sdk/pda'
+import { accounts, types as oft302types } from './sdk/oft302'
+import { EndpointV2 } from '@layerzerolabs/protocol-devtools-solana'
 
-import { decodeLzReceiveOptions, uint8ArrayToHex } from '../common/utils'
+import { getSolanaReceiveConfig, getSolanaSendConfig } from '../common/taskHelper'
+import { DebugLogger, createSolanaConnectionFactory, decodeLzReceiveOptions, uint8ArrayToHex } from '../common/utils'
 
 import { deriveConnection, getSolanaDeployment } from './index'
-
-// TODO: move this to tasks/common since it's not Solana-specific
-export enum KnownErrors {
-    // variable name format: <DOMAIN>_<REASON>
-    // e.g. If the user forgets to deploy the OFT Program, the variable name should be:
-    // FIX_SUGGESTION_OFT_PROGRAM_NOT_DEPLOYED
-    ULN_INIT_CONFIG_SKIPPED = 'ULN_INIT_CONFIG_SKIPPED',
-}
-
-// TODO: move this to tasks/common since it's not Solana-specific
-interface ErrorFixInfo {
-    tip: string
-    info?: string
-}
-
-// TODO: move this to tasks/common since it's not Solana-specific
-const ERRORS_FIXES_MAP: Record<KnownErrors, ErrorFixInfo> = {
-    [KnownErrors.ULN_INIT_CONFIG_SKIPPED]: {
-        tip: 'Did you run `npx hardhat lz:oft:solana:init-config --oapp-config <LZ_CONFIG_FILE_NAME> --solana-eid <SOLANA_EID>` ?',
-        info: 'You must run lz:oft:solana:init-config once before you run lz:oapp:wire. If you have added new pathways, you must also run lz:oft:solana:init-config again.',
-    },
-}
-
-// TODO: move this to tasks/common since it's not Solana-specific
-// Logger class for better loggin
-export class DebugLogger {
-    static keyValue(key: string, value: any, indentLevel = 0) {
-        const indent = ' '.repeat(indentLevel * 2)
-        console.log(`${indent}\x1b[33m${key}:\x1b[0m ${value}`)
-    }
-
-    static keyHeader(key: string, indentLevel = 0) {
-        const indent = ' '.repeat(indentLevel * 2)
-        console.log(`${indent}\x1b[33m${key}:\x1b[0m`)
-    }
-
-    static header(text: string) {
-        console.log(`\x1b[36m${text}\x1b[0m`)
-    }
-
-    static separator() {
-        console.log('\x1b[90m----------------------------------------\x1b[0m')
-    }
-
-    /**
-     * Logs an error (in red) and corresponding fix suggestion (in blue).
-     * Uses the ERRORS_FIXES_MAP to retrieve text based on the known error type.
-     *
-     * @param type Required KnownErrors enum member
-     * @param errorMsg Optional string message to append to the error.
-     */
-    static printErrorAndFixSuggestion(type: KnownErrors, errorMsg?: string) {
-        const fixInfo = ERRORS_FIXES_MAP[type]
-        if (!fixInfo) {
-            // Fallback if the error type is not recognized
-            console.log(`\x1b[31mError:\x1b[0m Unknown error type "${type}"`)
-            return
-        }
-
-        // If errorMsg is specified, append it in parentheses
-        const errorOutput = errorMsg ? `${type}: (${errorMsg})` : type
-
-        // Print the error type in red
-        console.log(`\x1b[31mError:\x1b[0m ${errorOutput}`)
-
-        // Print the tip in green
-        console.log(`\x1b[32mFix suggestion:\x1b[0m ${fixInfo.tip}`)
-
-        // Print the info in blue
-        if (fixInfo.info) {
-            console.log(`\x1b[34mElaboration:\x1b[0m ${fixInfo.info}`)
-        }
-
-        // log empty line to separate error messages
-        console.log()
-    }
-}
 
 const DEBUG_ACTIONS = {
     OFT_STORE: 'oft-store',
@@ -106,6 +36,28 @@ const DEBUG_ACTIONS = {
  * @param {string} oftStore
  */
 const getOftStore = (eid: EndpointId, oftStore?: string) => publicKey(oftStore ?? getSolanaDeployment(eid).oftStore)
+
+function getChainKeyForEid(metadata: IMetadata, eid: number): string {
+    const eidStr = String(eid)
+    for (const objectKey in metadata) {
+        const entry = metadata[objectKey]
+        if (typeof entry?.deployments !== 'undefined') {
+            for (const deployment of entry.deployments) {
+                if (deployment.eid === eidStr) {
+                    return deployment.chainKey
+                }
+            }
+        }
+    }
+    throw new Error(`Can't find chainKey for eid: "${eid}".`)
+}
+
+function formatDvnAddresses(addresses: string[], metadata?: IMetadata, chainKey?: string): string {
+    const dvnMap = (chainKey && metadata ? metadata[chainKey]?.dvns : undefined) as
+        | Record<string, { canonicalName?: string }>
+        | undefined
+    return addresses.map((addr) => dvnMap?.[addr]?.canonicalName ?? addr).join(', ')
+}
 
 type DebugTaskArgs = {
     eid: EndpointId
@@ -138,29 +90,54 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
         types.string
     )
     .setAction(async (taskArgs: DebugTaskArgs) => {
-        const { eid, oftStore, endpoint, dstEids, action } = taskArgs
+        const { eid, oftStore: oftStoreArg, endpoint, dstEids, action } = taskArgs
         const { umi, connection } = await deriveConnection(eid, true)
-        const store = getOftStore(eid, oftStore)
-        const oftStoreInfo = await oft.accounts.fetchOFTStore(umi, store)
+        const oftStore = getOftStore(eid, oftStoreArg)
+        const metadata = await defaultFetchMetadata()
+        const sourceChainKey = getChainKeyForEid(metadata, eid)
+
+        let oftStoreInfo
+        try {
+            oftStoreInfo = await accounts.fetchOFTStore(umi, oftStore)
+        } catch (e) {
+            console.error(`Failed to fetch OFTStore at ${oftStore.toString()}:`, e)
+            return
+        }
+        const nonceAccountChecksInfo: Partial<
+            Record<EndpointId, { data: EndpointProgramUmi.accounts.NonceAccountData; address: UmiPublicKey }>
+        > = {}
+
         const mintAccount = await fetchMint(umi, publicKey(oftStoreInfo.tokenMint))
 
         const epDeriver = new EndpointPDADeriver(new PublicKey(endpoint))
-        const [oAppRegistry] = epDeriver.oappRegistry(toWeb3JsPublicKey(store))
+        const [oAppRegistry] = epDeriver.oappRegistry(toWeb3JsPublicKey(oftStore))
         const oAppRegistryInfo = await EndpointProgram.accounts.OAppRegistry.fromAccountAddress(
             connection,
             oAppRegistry
         )
 
+        if (!oAppRegistryInfo) {
+            console.warn('OAppRegistry info not found.')
+            return
+        }
+
         const oftDeriver = new OftPDA(oftStoreInfo.header.owner)
+
+        const tokenMetadata = await fetchMetadataFromSeeds(umi, { mint: oftStoreInfo.tokenMint })
+
+        const adminIsSquadsV4Vault = await isSquadsV4Vault(oftStoreInfo.admin)
+        const delegateIsSquadsV4Vault = await isSquadsV4Vault(oAppRegistryInfo?.delegate?.toBase58())
 
         const printOftStore = async () => {
             DebugLogger.header('OFT Store Information')
-            DebugLogger.keyValue('Owner', oftStoreInfo.header.owner)
-            DebugLogger.keyValue('OFT Type', oft.types.OFTType[oftStoreInfo.oftType])
+            DebugLogger.keyValue('OFT Program', oftStoreInfo.header.owner)
+            DebugLogger.keyValue('OFT Type', oft302types.OFTType[oftStoreInfo.oftType])
             DebugLogger.keyValue('Admin', oftStoreInfo.admin)
             DebugLogger.keyValue('Token Mint', oftStoreInfo.tokenMint)
             DebugLogger.keyValue('Token Escrow', oftStoreInfo.tokenEscrow)
             DebugLogger.keyValue('Endpoint Program', oftStoreInfo.endpointProgram)
+            DebugLogger.keyValue('Pauser', JSON.stringify(oftStoreInfo.pauser))
+            DebugLogger.keyValue('Unpauser', JSON.stringify(oftStoreInfo.unpauser))
             DebugLogger.separator()
         }
 
@@ -183,6 +160,8 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
                 'Freeze Authority',
                 unwrapOption(mintAccount.freezeAuthority, () => 'None')
             )
+            DebugLogger.keyValue('Update Authority', tokenMetadata.updateAuthority)
+            DebugLogger.keyValue('Metadata is mutable', tokenMetadata.isMutable)
             DebugLogger.separator()
         }
 
@@ -191,25 +170,75 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
 
             DebugLogger.header('Checks')
             DebugLogger.keyValue('Admin (Owner) same as Delegate', oftStoreInfo.admin === delegate)
-            DebugLogger.keyValue('Token Mint Authority is OFT Store', unwrapOption(mintAccount.mintAuthority) === store)
+            DebugLogger.keyValue(
+                'Token Mint Authority is OFT Store',
+                unwrapOption(mintAccount.mintAuthority) === oftStore
+            )
+            DebugLogger.keyValue('Admin is Squads V4 Vault', adminIsSquadsV4Vault)
+            DebugLogger.keyValue('Delegate is Squads V4 Vault', delegateIsSquadsV4Vault)
+            dstEids.map((dstEid) => {
+                DebugLogger.keyHeader(`Nonce Account Checks`)
+                const nonceAccountCheckInfo = nonceAccountChecksInfo[dstEid]
+                if (nonceAccountCheckInfo) {
+                    const definedForDstEid = !!nonceAccountCheckInfo.data
+                    DebugLogger.keyValue(
+                        `Defined for ${dstEid} (${getNetworkForChainId(dstEid).chainName})`,
+                        definedForDstEid,
+                        2
+                    )
+                    if (!definedForDstEid) {
+                        console.warn(
+                            `Expected Nonce Account to exist at ${nonceAccountCheckInfo.address.toString()} for destination ${dstEid} (${getNetworkForChainId(dstEid).chainName}).`
+                        )
+                    }
+                }
+            })
             DebugLogger.separator()
         }
 
         const printPeerConfigs = async () => {
             const peerConfigs = dstEids.map((dstEid) => {
-                const peerConfig = oftDeriver.peer(store, dstEid)
+                const peerConfig = oftDeriver.peer(oftStore, dstEid)
                 return publicKey(peerConfig)
             })
+            const mockKeypair = new Keypair()
+            const point: OmniPoint = {
+                eid,
+                address: oftStore.toString(),
+            }
+            const endpointV2Sdk = new EndpointV2(
+                await createSolanaConnectionFactory()(eid),
+                point,
+                mockKeypair.publicKey // doesn't matter as we are not sending transactions
+            )
 
             DebugLogger.header('Peer Configurations')
-            const peerConfigInfos = await oft.accounts.safeFetchAllPeerConfig(umi, peerConfigs)
-            dstEids.forEach((dstEid, index) => {
+
+            const peerConfigInfos = await accounts.safeFetchAllPeerConfig(umi, peerConfigs)
+            for (let index = 0; index < dstEids.length; index++) {
+                const dstEid = dstEids[index]
                 const info = peerConfigInfos[index]
                 const network = getNetworkForChainId(dstEid)
+                const oAppReceiveConfig = await getSolanaReceiveConfig(endpointV2Sdk, dstEid, oftStore)
+                const oAppSendConfig = await getSolanaSendConfig(endpointV2Sdk, dstEid, oftStore)
+                // Show the chain info
                 DebugLogger.header(`${dstEid} (${network.chainName})`)
+
                 if (info) {
+                    // nonce account
+                    const nonceAccount = epDeriver.nonce(toWeb3JsPublicKey(oftStore), dstEid, info.peerAddress)[0]
+                    const nonceAccountInfo = await EndpointProgramUmi.accounts.fetchNonce(
+                        umi,
+                        fromWeb3JsPublicKey(nonceAccount)
+                    )
+                    nonceAccountChecksInfo[dstEid] = {
+                        data: nonceAccountInfo,
+                        address: fromWeb3JsPublicKey(nonceAccount),
+                    }
+                    // Existing PeerConfig info
                     DebugLogger.keyValue('PeerConfig Account', peerConfigs[index].toString())
                     DebugLogger.keyValue('Peer Address', denormalizePeer(info.peerAddress, dstEid))
+                    DebugLogger.keyValue('Nonce Account', nonceAccount.toString())
                     DebugLogger.keyHeader('Enforced Options')
                     DebugLogger.keyValue(
                         'Send',
@@ -221,13 +250,17 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
                         decodeLzReceiveOptions(uint8ArrayToHex(info.enforcedOptions.sendAndCall, true)),
                         2
                     )
+
+                    printOAppReceiveConfigs(oAppReceiveConfig, network.chainName, metadata, sourceChainKey)
+                    printOAppSendConfigs(oAppSendConfig, network.chainName, metadata, sourceChainKey)
                 } else {
+                    // No PeerConfig account
                     console.log(`No PeerConfig account found for ${dstEid} (${network.chainName}).`)
                 }
-                DebugLogger.separator()
-            })
-        }
 
+                DebugLogger.separator()
+            }
+        }
         if (action) {
             switch (action) {
                 case DEBUG_ACTIONS.OFT_STORE:
@@ -252,10 +285,82 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
                     console.error(`Invalid action specified. Use any of ${Object.keys(DEBUG_ACTIONS)}.`)
             }
         } else {
-            await printOftStore()
-            await printDelegate()
-            await printToken()
-            if (dstEids.length > 0) await printPeerConfigs()
+            const tasks = [printOftStore(), printDelegate(), printToken()]
+            if (dstEids.length > 0) tasks.push(printPeerConfigs())
+            await Promise.all(tasks)
+            // printChecks might depend on other tasks, so we don't add it to the tasks array
             await printChecks()
         }
     })
+
+function printOAppReceiveConfigs(
+    oAppReceiveConfig: Awaited<ReturnType<typeof getSolanaReceiveConfig>>,
+    peerChainName: string,
+    metadata?: IMetadata,
+    chainKey?: string
+) {
+    const oAppReceiveConfigIndexesToKeys: Record<number, string> = {
+        0: 'receiveLibrary',
+        1: 'receiveUlnConfig',
+        2: 'receiveLibraryTimeoutConfig',
+    }
+
+    if (!oAppReceiveConfig) {
+        console.log('No receive configs found.')
+        return
+    }
+
+    DebugLogger.keyValue(`Receive Configs (${peerChainName} to solana)`, '')
+    for (let i = 0; i < oAppReceiveConfig.length; i++) {
+        const item = oAppReceiveConfig[i]
+        if (typeof item === 'object' && item !== null) {
+            // Print each property in the object
+            DebugLogger.keyValue(`${oAppReceiveConfigIndexesToKeys[i]}`, '', 2)
+            for (const [propKey, propVal] of Object.entries(item)) {
+                const valueDisplay =
+                    (propKey === 'requiredDVNs' || propKey === 'optionalDVNs') && Array.isArray(propVal)
+                        ? formatDvnAddresses(propVal as string[], metadata, chainKey)
+                        : String(propVal)
+                DebugLogger.keyValue(`${propKey}`, valueDisplay, 3)
+            }
+        } else {
+            // Print a primitive (string, number, etc.)
+            DebugLogger.keyValue(`${oAppReceiveConfigIndexesToKeys[i]}`, String(item), 2)
+        }
+    }
+}
+
+function printOAppSendConfigs(
+    oAppSendConfig: Awaited<ReturnType<typeof getSolanaSendConfig>>,
+    peerChainName: string,
+    metadata?: IMetadata,
+    chainKey?: string
+) {
+    const sendOappConfigIndexesToKeys: Record<number, string> = {
+        0: 'sendLibrary',
+        1: 'sendUlnConfig',
+        2: 'sendExecutorConfig',
+    }
+
+    if (!oAppSendConfig) {
+        console.log('No send configs found.')
+        return
+    }
+
+    DebugLogger.keyValue(`Send Configs (solana to ${peerChainName})`, '')
+    for (let i = 0; i < oAppSendConfig.length; i++) {
+        const item = oAppSendConfig[i]
+        if (typeof item === 'object' && item !== null) {
+            DebugLogger.keyValue(`${sendOappConfigIndexesToKeys[i]}`, '', 2)
+            for (const [propKey, propVal] of Object.entries(item)) {
+                const valueDisplay =
+                    (propKey === 'requiredDVNs' || propKey === 'optionalDVNs') && Array.isArray(propVal)
+                        ? formatDvnAddresses(propVal as string[], metadata, chainKey)
+                        : String(propVal)
+                DebugLogger.keyValue(`${propKey}`, valueDisplay, 3)
+            }
+        } else {
+            DebugLogger.keyValue(`${sendOappConfigIndexesToKeys[i]}`, String(item), 2)
+        }
+    }
+}

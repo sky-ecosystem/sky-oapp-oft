@@ -29,7 +29,7 @@ interface Args {
 
 task(
     'lz:oft:solana:inbound-rate-limit',
-    "Sets the Solana and EVM rate limits from './scripts/solana/utils/constants.ts'"
+    "Sets the Solana Inbound rate limit"
 )
     .addParam('mint', 'The OFT token mint public key')
     .addParam('programId', 'The OFT Program id')
@@ -43,7 +43,7 @@ task(
         if (taskArgs.type !== 'net' && taskArgs.type !== 'gross') {
             throw new Error('Invalid rate limit type. Must be either "net" or "gross".')
         }
-        ``
+        
         const rateLimiterType = taskArgs.type === 'net' ? RateLimiterType.Net : RateLimiterType.Gross;
 
         const privateKey = process.env.SOLANA_PRIVATE_KEY
