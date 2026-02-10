@@ -1,5 +1,5 @@
 [workspace]
-members = ["programs/*"]
+members = ["programs/*", "scripts/convert_txs"]
 resolver = "2"
 
 # [features]
