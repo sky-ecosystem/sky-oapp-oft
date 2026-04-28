@@ -41,11 +41,12 @@ export const simulateTransaction = async (
     context: Umi,
     transaction: Transaction,
     connection: Connection,
-    options: { verifySignatures?: boolean; } = {}
+    options: { verifySignatures?: boolean; accounts?: PublicKey[] } = {}
   ) => {
     try {
       const tx = toWeb3JsTransaction(transaction);
       const result = await connection.simulateTransaction(tx, {
+        accounts: options.accounts ? { encoding: 'base64', addresses: options.accounts.map(acc => acc.toBase58()) } : undefined,
         sigVerify: options.verifySignatures,
       });
       return result.value;

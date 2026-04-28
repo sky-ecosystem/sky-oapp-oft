@@ -138,6 +138,7 @@ task('lz:oft:solana:debug', 'Manages OFTStore and OAppRegistry information')
             DebugLogger.keyValue('Endpoint Program', oftStoreInfo.endpointProgram)
             DebugLogger.keyValue('Pauser', JSON.stringify(oftStoreInfo.pauser))
             DebugLogger.keyValue('Unpauser', JSON.stringify(oftStoreInfo.unpauser))
+            DebugLogger.keyValue('Is paused', JSON.stringify(oftStoreInfo.paused))
             DebugLogger.separator()
         }
 

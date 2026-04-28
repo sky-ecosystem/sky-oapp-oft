@@ -23,8 +23,10 @@ mod test_msg_codec {
         pub remote_oapp: [u8; 32],
     }
 
-    const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
-    const PAYER: Pubkey = pubkey!("6Xu7SvWnBr1vo7Vst3cRZf2TW46PJxyZnNiv89RMMFuS");
+    const OFT_STORE_ADDRESS_MAINNET: Pubkey = pubkey!("BEvTHkTyXooyaJzP8egDUC7WQK8cyRrq5WvERZNWhuah");
+    const OFT_STORE_ADDRESS: Pubkey = OFT_STORE_ADDRESS_MAINNET;
+    const PAYER_MAINNET: Pubkey = pubkey!("HgsxLyn8175xEwRffPRN3DeARE2EVcEeXENr12HpadL6");
+    const PAYER: Pubkey = PAYER_MAINNET;
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
@@ -363,6 +365,8 @@ mod test_msg_codec {
 
     #[test]
     fn test_governance_message_unpause_oft<'a>() {
+        assert_governance_program_id();
+
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_pause");
         // Add the discriminator
@@ -394,18 +398,19 @@ mod test_msg_codec {
         ];
 
         let msg = GovernanceMessage {
-            origin_caller: [0; 32],
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
             program_id: oft::id(),
-            accounts: accounts,
+            accounts,
             data: instruction_data,
         };
 
         let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
+        msg.write_body(&mut buf).unwrap();
 
-        println!("Serialized governance message: {:?}", hex::encode(&buf));
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
 
-        // prepare_governance_message_simulation(&msg);
+        prepare_governance_message_simulation(&msg);
     }
 
     #[test]
