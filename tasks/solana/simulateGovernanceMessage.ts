@@ -7,7 +7,7 @@
  * decodes any writable account it recognizes (OFTStore / PeerConfig).
  */
 import { task } from 'hardhat/config'
-import { Message, PublicKey, VersionedTransaction } from '@solana/web3.js'
+import { Message, PublicKey, SystemProgram, VersionedTransaction } from '@solana/web3.js'
 import { Base64 } from 'js-base64'
 import { fromWeb3JsPublicKey } from '@metaplex-foundation/umi-web3js-adapters'
 
@@ -26,11 +26,7 @@ task(
 )
     .addParam('data', 'Base64-encoded message data from prepare_governance_message_simulation')
     .setAction(async (taskArgs: Args) => {
-        if (!process.env.SOLANA_PRIVATE_KEY) {
-            throw new Error('SOLANA_PRIVATE_KEY is not defined in the environment variables.')
-        }
-
-        const { connection } = await deriveConnection(30168)
+        const { connection } = await deriveConnection(30168, true)
 
         const message = Message.from(Buffer.from(taskArgs.data, 'base64'))
         const versionedTx = new VersionedTransaction(message)
@@ -55,16 +51,29 @@ task(
         }
 
         const ethereumPeerPda = new PublicKey(ETHEREUM_PEER_PDA)
+        const systemProgramId = SystemProgram.programId.toBase58()
         for (const [i, addr] of writable.entries()) {
-            const accData = simulation.value.accounts?.[i]?.data?.[0]
-            if (!accData) continue
+            const account = simulation.value.accounts?.[i]
+            const accData = account?.data?.[0]
+            if (!accData) {
+                if (account?.owner === systemProgramId) {
+                    console.warn(
+                        `warn: skipping ${addr.toBase58()} — system-owned (lamports only), no decodable data`
+                    )
+                    continue
+                }
+                throw new Error(
+                    `No account data returned for ${addr.toBase58()} (owner: ${account?.owner ?? 'null'})`
+                )
+            }
             const bytes = Base64.toUint8Array(accData)
 
             if (addr.equals(OFT_STORE)) {
                 const store = oftAccounts.deserializeOFTStore({
+                    publicKey: fromWeb3JsPublicKey(addr),
                     data: bytes,
                     executable: false,
-                    lamports: 0,
+                    lamports: { basisPoints: 0n, identifier: 'SOL', decimals: 9 },
                     owner: fromWeb3JsPublicKey(OFT_PROGRAM_ID),
                 })
                 console.log(`OFTStore (${addr.toBase58()}).paused`, store.paused)

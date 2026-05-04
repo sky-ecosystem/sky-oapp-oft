@@ -10,11 +10,7 @@ import { buildRateLimitIx, decodePeerConfigFromSimulation } from './simulateRate
 
 task('lz:oapp:solana:simulate-outbound-rate-limit', '')
     .setAction(async () => {
-        if (!process.env.SOLANA_PRIVATE_KEY) {
-            throw new Error('SOLANA_PRIVATE_KEY is not defined in the environment variables.')
-        }
-
-        const { connection, umi } = await deriveConnection(30168)
+        const { connection, umi } = await deriveConnection(30168, true)
 
         // From cargo test test_set_outbound_rate_limit:
         //   remote_eid=30101, refill_per_second=111, capacity=222222, type=Net

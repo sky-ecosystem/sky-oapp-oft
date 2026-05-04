@@ -11,15 +11,11 @@ import { accounts } from './sdk/oft302'
 
 task('lz:oapp:solana:simulate-unpause', '')
     .setAction(async () => {
-        if (!process.env.SOLANA_PRIVATE_KEY) {
-            throw new Error('SOLANA_PRIVATE_KEY is not defined in the environment variables.')
-        }
-
-        const { connection, umi } = await deriveConnection(30168)
+        const { connection, umi } = await deriveConnection(30168, true)
 
         const ix: Instruction = {
             keys: [
-                { pubkey: fromWeb3JsPublicKey(L1_GOV_RELAY_CPI_AUTHORITY), isSigner: true, isWritable: true },
+                { pubkey: fromWeb3JsPublicKey(L1_GOV_RELAY_CPI_AUTHORITY), isSigner: true, isWritable: false },
                 { pubkey: fromWeb3JsPublicKey(OFT_STORE), isSigner: false, isWritable: true },
             ],
             programId: fromWeb3JsPublicKey(OFT_PROGRAM_ID),
@@ -44,16 +40,17 @@ task('lz:oapp:solana:simulate-unpause', '')
         })
         console.log('simulation', simulation)
 
-        const rawData = simulation!.accounts[0]?.data[0]
+        const rawData = simulation?.accounts?.[0]?.data?.[0]
         if (!rawData) {
             throw new Error('No raw data found')
         }
         const rawDataDecoded = Base64.toUint8Array(rawData)
 
         const newOFTStore = accounts.deserializeOFTStore({
+            publicKey: fromWeb3JsPublicKey(OFT_STORE),
             data: rawDataDecoded,
             executable: false,
-            lamports: 0,
+            lamports: { basisPoints: 0n, identifier: 'SOL', decimals: 9 },
             owner: fromWeb3JsPublicKey(OFT_PROGRAM_ID),
         })
 
