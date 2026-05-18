@@ -90,12 +90,15 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         
         aOFT = SkyOFTAdapter(_deployAdapterProxy(address(aToken), address(endpoints[aEid]), address(this)));
         aOFT.setRateLimits(aInboundConfigs, aOutboundConfigs);
+        _enableSentinelUnbounded(aOFT);
 
         bOFT = SkyOFTAdapter(_deployAdapterProxy(address(bToken), address(endpoints[bEid]), address(this)));
         bOFT.setRateLimits(bInboundConfigs, bOutboundConfigs);
+        _enableSentinelUnbounded(bOFT);
 
         cOFT = SkyOFTAdapter(_deployAdapterProxy(address(cToken), address(endpoints[cEid]), address(this)));
         cOFT.setRateLimits(cInboundConfigs, cOutboundConfigs);
+        _enableSentinelUnbounded(cOFT);
 
         // config and wire the ofts
         address[] memory ofts = new address[](3);
@@ -128,6 +131,14 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
             type(ERC1967Proxy).creationCode,
             abi.encode(impl, abi.encodeCall(SkyOFTAdapter.initialize, (_delegate)))
         );
+    }
+
+    // @dev Configures the SENTINEL_EID buckets with effectively-unbounded limits so the global
+    // cap is inert; per-eid behavior remains the binding constraint for the existing test scenarios.
+    function _enableSentinelUnbounded(SkyOFTAdapter _oft) internal {
+        RateLimitConfig[] memory s = new RateLimitConfig[](1);
+        s[0] = RateLimitConfig({eid: _oft.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        _oft.setRateLimits(s, s);
     }
 
     function test_constructor() public view {
@@ -425,6 +436,36 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
     }
 
+    function test_receive_oft_fails_global_inbound_cap_aggregate() public {
+        // Tighten bOFT's global inbound cap below the per-chain limit so the global one binds first.
+        // Outbound sentinel stays effectively unbounded — required so `_debit` (called when receiving
+        // in Net mode) doesn't revert offsetting the global inbound bucket.
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: 4 ether, window: 60 seconds});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        bOFT.setRateLimits(sIn, sOut);
+
+        uint256 tokensToSend = 3 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(bEid, addressToBytes32(userB), tokensToSend, tokensToSend, options, "", "");
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+
+        // Two consecutive sends from A → B; aggregate (6) exceeds bOFT's global inbound cap (4).
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(userA));
+        aToken.approve(address(aOFT), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(userA));
+        vm.stopPrank();
+
+        // Packet 1: 3 ether, within per-chain (10) and global (4). Succeeds.
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0));
+
+        // Packet 2: aggregate 6 > global 4. Per-chain still has headroom — the global cap binds.
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
+    }
+
     function test_receive_oft_succeeds_after_waiting_limit() public {
 
         uint256 tokensToSend = 10 ether;
@@ -574,7 +615,7 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(200000, 0)
+            .addExecutorLzReceiveOption(220000, 0)
             .addExecutorLzComposeOption(0, 500000, 0);
         bytes memory composeMsg = hex"1234";
         SendParam memory sendParam = SendParam(
