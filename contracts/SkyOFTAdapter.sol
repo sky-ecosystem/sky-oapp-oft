@@ -23,17 +23,23 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     uint256 public feeBalance;
 
     /**
-     * @notice Initializes the SkyOFTAdapter contract.
+     * @notice Constructor sets immutables on the implementation; state is set via `initialize` on the proxy.
      *
      * @param _token The address of the underlying ERC20 token.
      * @param _lzEndpoint The LayerZero endpoint address.
-     * @param _delegate The address of the delegate.
      */
-    constructor(
-        address _token,
-        address _lzEndpoint,
-        address _delegate
-    ) SkyOFTCore(_token, _lzEndpoint, _delegate) {}
+    constructor(address _token, address _lzEndpoint) SkyOFTCore(_token, _lzEndpoint) {
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initializes the proxy.
+     * @param _delegate The delegate capable of making OApp configurations inside of the endpoint;
+     * also set as the initial owner.
+     */
+    function initialize(address _delegate) external initializer {
+        __SkyOFTCore_init(_delegate);
+    }
 
     /**
      * @notice Withdraws accumulated fees to a specified address.
@@ -124,7 +130,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
 
         // @dev If recipient is the zero address or the inner token, reroute to the dead address.
         if (_to == address(0) || _to == token()) _to = address(0xdead);
-        
+
         // @dev Unlock the tokens and transfer to the recipient.
         innerToken.safeTransfer(_to, _amountLD);
 

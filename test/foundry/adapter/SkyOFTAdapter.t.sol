@@ -27,6 +27,7 @@ import { ISkyOFT } from "../../../contracts/interfaces/ISkyOFT.sol";
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 // DevTools imports
@@ -87,19 +88,13 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         setUpEndpoints(3, LibraryType.UltraLightNode);
         setUpTokens();
         
-        aOFT = SkyOFTAdapter(
-            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(aToken), address(endpoints[aEid]), address(this)))
-        );
+        aOFT = SkyOFTAdapter(_deployAdapterProxy(address(aToken), address(endpoints[aEid]), address(this)));
         aOFT.setRateLimits(aInboundConfigs, aOutboundConfigs);
 
-        bOFT = SkyOFTAdapter(
-            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(bToken), address(endpoints[bEid]), address(this)))
-        );
+        bOFT = SkyOFTAdapter(_deployAdapterProxy(address(bToken), address(endpoints[bEid]), address(this)));
         bOFT.setRateLimits(bInboundConfigs, bOutboundConfigs);
 
-        cOFT = SkyOFTAdapter(
-            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(cToken), address(endpoints[cEid]), address(this)))
-        );
+        cOFT = SkyOFTAdapter(_deployAdapterProxy(address(cToken), address(endpoints[cEid]), address(this)));
         cOFT.setRateLimits(cInboundConfigs, cOutboundConfigs);
 
         // config and wire the ofts
@@ -125,6 +120,14 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         aToken = new MintBurnERC20Mock("aToken", "aToken");
         bToken = new MintBurnERC20Mock("bToken", "bToken");
         cToken = new MintBurnERC20Mock("cToken", "cToken");
+    }
+
+    function _deployAdapterProxy(address _token, address _endpoint, address _delegate) internal returns (address) {
+        address impl = _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(_token, _endpoint));
+        return _deployOApp(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(impl, abi.encodeCall(SkyOFTAdapter.initialize, (_delegate)))
+        );
     }
 
     function test_constructor() public view {
