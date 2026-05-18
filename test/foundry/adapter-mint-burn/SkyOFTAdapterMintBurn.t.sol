@@ -87,19 +87,13 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         setUpEndpoints(3, LibraryType.UltraLightNode);
         setUpTokens();
 
-        aOFT = SkyOFTAdapterMintBurn(
-            _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(address(aToken), address(endpoints[aEid]), address(this)))
-        );
+        aOFT = SkyOFTAdapterMintBurn(_deployAdapterProxy(address(aToken), address(endpoints[aEid]), address(this)));
         aOFT.setRateLimits(aInboundConfigs, aOutboundConfigs);
 
-        bOFT = SkyOFTAdapterMintBurn(
-            _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(address(bToken), address(endpoints[bEid]), address(this)))
-        );
+        bOFT = SkyOFTAdapterMintBurn(_deployAdapterProxy(address(bToken), address(endpoints[bEid]), address(this)));
         bOFT.setRateLimits(bInboundConfigs, bOutboundConfigs);
 
-        cOFT = SkyOFTAdapterMintBurn(
-            _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(address(cToken), address(endpoints[cEid]), address(this)))
-        );
+        cOFT = SkyOFTAdapterMintBurn(_deployAdapterProxy(address(cToken), address(endpoints[cEid]), address(this)));
         cOFT.setRateLimits(cInboundConfigs, cOutboundConfigs);
 
         // config and wire the ofts
@@ -124,6 +118,14 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
     }
 
     function assignMintingRights() public virtual {}
+
+    function _deployAdapterProxy(address _token, address _endpoint, address _delegate) internal returns (address) {
+        address impl = _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(_token, _endpoint));
+        return _deployOApp(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(impl, abi.encodeCall(SkyOFTAdapterMintBurn.initialize, (_delegate)))
+        );
+    }
 
     function test_constructor() public view {
         assertEq(aOFT.owner(), address(this));
