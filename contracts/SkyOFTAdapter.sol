@@ -20,10 +20,18 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
 contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
 
+    // @dev Reserved eid used by `inboundRateLimits` / `outboundRateLimits` to track aggregate
+    // cross-chain caps. Both directions MUST be configured via `setRateLimits` before the adapter
+    // is operational; without sentinel limits set, every `_credit` and `_debit` reverts.
+    // To leave a direction effectively unbounded, set its `limit` to `type(uint128).max` — large
+    // enough never to trigger, small enough to keep `_calculateDecay`'s `_limit * timeSinceLastUpdate`
+    // multiplication well within uint256.
+    uint32 public constant SENTINEL_EID = type(uint32).max;
+
     uint256 public feeBalance;
 
     /**
-     * @notice Constructor sets immutables on the implementation; state is set via `initialize` on the proxy.
+     * @notice Initializes the SkyOFTAdapter contract.
      *
      * @param _token The address of the underlying ERC20 token.
      * @param _lzEndpoint The LayerZero endpoint address.
@@ -32,11 +40,6 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         _disableInitializers();
     }
 
-    /**
-     * @notice Initializes the proxy.
-     * @param _delegate The delegate capable of making OApp configurations inside of the endpoint;
-     * also set as the initial owner.
-     */
     function initialize(address _delegate) external initializer {
         __SkyOFTCore_init(_delegate);
     }
@@ -104,6 +107,9 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         // @dev The fee remains on this chain, thus it is not included in the rate limit check.
         _checkAndUpdateRateLimit(_dstEid, amountReceivedLD, RateLimitDirection.Outbound);
 
+        // @dev Apply the global outbound cap (Net-mode mutual offset propagates to inbound sentinel).
+        _checkAndUpdateRateLimit(SENTINEL_EID, amountReceivedLD, RateLimitDirection.Outbound);
+
         // @dev Lock tokens by moving them into this contract from the caller.
         innerToken.safeTransferFrom(_from, address(this), amountSentLD);
 
@@ -127,6 +133,9 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     ) internal virtual override whenNotPaused returns (uint256 amountReceivedLD) {
         // @dev Check and update the rate limit based on the source endpoint ID (srcEid).
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);
+
+        // @dev Apply the global inbound cap (Net-mode mutual offset propagates to outbound sentinel).
+        _checkAndUpdateRateLimit(SENTINEL_EID, _amountLD, RateLimitDirection.Inbound);
 
         // @dev If recipient is the zero address or the inner token, reroute to the dead address.
         if (_to == address(0) || _to == token()) _to = address(0xdead);
