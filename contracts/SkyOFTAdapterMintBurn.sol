@@ -32,8 +32,7 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
 
     /**
      * @notice Initializes the proxy.
-     * @param _delegate The delegate capable of making OApp configurations inside of the endpoint;
-     * also set as the initial owner.
+     * @param _delegate The address of the delegate.
      */
     function initialize(address _delegate) external initializer {
         __SkyOFTCore_init(_delegate);
