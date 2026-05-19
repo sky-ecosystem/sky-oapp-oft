@@ -40,7 +40,6 @@ abstract contract SkyOFTCore is
 {
     using SafeERC20 for IERC20;
 
-    /// @custom:storage-location erc7201:sky.storage.SkyOFTCore
     struct SkyOFTCoreStorage {
         mapping(address pauser => bool canPause) pausers;
     }
@@ -77,8 +76,7 @@ abstract contract SkyOFTCore is
 
     /**
      * @dev Initializes the inherited upgradeable contracts. Must be called from the child's `initialize`.
-     * @param _delegate The delegate capable of making OApp configurations inside of the endpoint;
-     * also set as the initial owner.
+     * @param _delegate The address of the delegate.
      */
     function __SkyOFTCore_init(address _delegate) internal onlyInitializing {
         __OFTCore_init(_delegate);

@@ -20,15 +20,10 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
 contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
 
-    // @dev Reserved eid used by `inboundRateLimits` / `outboundRateLimits` to track aggregate
-    // cross-chain caps. Both directions MUST be configured via `setRateLimits` before the adapter
-    // is operational; without sentinel limits set, every `_credit` and `_debit` reverts.
-    // To leave a direction effectively unbounded, set its `limit` to `type(uint128).max` — large
-    // enough never to trigger, small enough to keep `_calculateDecay`'s `_limit * timeSinceLastUpdate`
-    // multiplication well within uint256.
+    // @dev Reserved eid for aggregate cross-chain caps. Unset sentinel limits brick every transfer.
+    // Use `type(uint128).max` for "effectively unbounded" — within uint256 for `_calculateDecay`.
     uint32 public constant SENTINEL_EID = type(uint32).max;
 
-    /// @custom:storage-location erc7201:sky.storage.SkyOFTAdapter
     struct SkyOFTAdapterStorage {
         uint256 feeBalance;
     }
@@ -56,6 +51,10 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the proxy.
+     * @param _delegate The address of the delegate.
+     */
     function initialize(address _delegate) external initializer {
         __SkyOFTCore_init(_delegate);
     }

@@ -23,7 +23,6 @@ import {
  * Designed to be inherited by other contracts requiring rate limiting to protect resources/services from excessive use.
  */
 abstract contract SkyRateLimiter is ISkyRateLimiter {
-    /// @custom:storage-location erc7201:sky.storage.SkyRateLimiter
     struct SkyRateLimiterStorage {
         RateLimitAccountingType rateLimitAccountingType;
         // Tracks rate limits for outbound transactions to a dstEid.
