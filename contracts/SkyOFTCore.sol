@@ -26,13 +26,9 @@ import {
  * @dev This contracts defines the core functionalities of the SkyOFT system, including rate limit management,
  * pauser management, and fee withdrawal.
  *
- * @dev TODO: decide upgrade-safety strategy for plain-slot state in this contract and `SkyRateLimiter`.
- *      Today, the only safe upgrade path is appending new state to the concrete leaves
- *      (`SkyOFTAdapter`, `SkyOFTAdapterMintBurn`); adding state to either abstract would shift the
- *      leaves' slot positions and corrupt proxy storage. Options:
- *        (a) reserve `uint256[N] private __gap;` arrays in `SkyRateLimiter` and `SkyOFTCore`,
- *        (b) move state into ERC-7201 namespaced storage (as `OFTCoreUpgradeable`/`FeeUpgradeable` do),
- *        (c) accept the append-only constraint and document it.
+ * @dev All mutable state in this contract and its ancestors lives in ERC-7201 namespaced storage,
+ *      so new state can safely be added to any layer of the inheritance graph without shifting
+ *      slot positions in deployed proxies.
  */
 abstract contract SkyOFTCore is
     ISkyOFT,
@@ -44,7 +40,23 @@ abstract contract SkyOFTCore is
 {
     using SafeERC20 for IERC20;
 
-    mapping(address pauser => bool canPause) public pausers;
+    /// @custom:storage-location erc7201:sky.storage.SkyOFTCore
+    struct SkyOFTCoreStorage {
+        mapping(address pauser => bool canPause) pausers;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("sky.storage.SkyOFTCore")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant SKY_OFT_CORE_STORAGE_LOCATION = 0xf9dea648e4f31f4a8d1fbdc7eeca2b36f48d9310e4a268bd28dd82005c1b7900;
+
+    function _getSkyOFTCoreStorage() internal pure returns (SkyOFTCoreStorage storage $) {
+        assembly {
+            $.slot := SKY_OFT_CORE_STORAGE_LOCATION
+        }
+    }
+
+    function pausers(address _pauser) external view returns (bool) {
+        return _getSkyOFTCoreStorage().pausers[_pauser];
+    }
 
     IERC20 internal immutable innerToken;
 
@@ -198,11 +210,12 @@ abstract contract SkyOFTCore is
      * @param _canPause Boolean indicating ability to pause cross-chain transfers.
      */
     function setPauser(address _pauser, bool _canPause) public onlyOwner {
+        SkyOFTCoreStorage storage $ = _getSkyOFTCoreStorage();
         // @dev Perform an idempotency check to prevent unnecessary state changes.
         // @dev Also prevents redundant event emissions.
-        if (pausers[_pauser] == _canPause) revert PauserIdempotent(_pauser);
+        if ($.pausers[_pauser] == _canPause) revert PauserIdempotent(_pauser);
 
-        pausers[_pauser] = _canPause;
+        $.pausers[_pauser] = _canPause;
         emit PauserSet(_pauser, _canPause);
     }
 
@@ -211,7 +224,7 @@ abstract contract SkyOFTCore is
      * @dev Only pausers can pause the contract.
      */
     function pause() external {
-        if (!pausers[msg.sender]) revert OnlyPauser(msg.sender);
+        if (!_getSkyOFTCoreStorage().pausers[msg.sender]) revert OnlyPauser(msg.sender);
         _pause();
     }
 

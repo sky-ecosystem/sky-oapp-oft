@@ -23,12 +23,35 @@ import {
  * Designed to be inherited by other contracts requiring rate limiting to protect resources/services from excessive use.
  */
 abstract contract SkyRateLimiter is ISkyRateLimiter {
-    RateLimitAccountingType public rateLimitAccountingType;
+    /// @custom:storage-location erc7201:sky.storage.SkyRateLimiter
+    struct SkyRateLimiterStorage {
+        RateLimitAccountingType rateLimitAccountingType;
+        // Tracks rate limits for outbound transactions to a dstEid.
+        mapping(uint32 dstEid => RateLimit) outboundRateLimits;
+        // Tracks rate limits for inbound transactions from a srcEid.
+        mapping(uint32 srcEid => RateLimit) inboundRateLimits;
+    }
 
-    // Tracks rate limits for outbound transactions to a dstEid.
-    mapping(uint32 dstEid => RateLimit) public outboundRateLimits;
-    // Tracks rate limits for inbound transactions from a srcEid.
-    mapping(uint32 srcEid => RateLimit) public inboundRateLimits;
+    // keccak256(abi.encode(uint256(keccak256("sky.storage.SkyRateLimiter")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant SKY_RATE_LIMITER_STORAGE_LOCATION = 0x868cf2e95349a11bfef6fbb57b8a2d9f17221bd478f74444896b781776317b00;
+
+    function _getSkyRateLimiterStorage() internal pure returns (SkyRateLimiterStorage storage $) {
+        assembly {
+            $.slot := SKY_RATE_LIMITER_STORAGE_LOCATION
+        }
+    }
+
+    function rateLimitAccountingType() external view returns (RateLimitAccountingType) {
+        return _getSkyRateLimiterStorage().rateLimitAccountingType;
+    }
+
+    function outboundRateLimits(uint32 _dstEid) external view returns (RateLimit memory) {
+        return _getSkyRateLimiterStorage().outboundRateLimits[_dstEid];
+    }
+
+    function inboundRateLimits(uint32 _srcEid) external view returns (RateLimit memory) {
+        return _getSkyRateLimiterStorage().inboundRateLimits[_srcEid];
+    }
 
     /**
      * @notice Get the current amount that can be sent to this destination endpoint id for the given rate limit window.
@@ -39,7 +62,7 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
     function getAmountCanBeSent(
         uint32 _dstEid
     ) public view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeSent) {
-        RateLimit storage orl = outboundRateLimits[_dstEid];
+        RateLimit storage orl = _getSkyRateLimiterStorage().outboundRateLimits[_dstEid];
         return _amountCanBeSent(orl.amountInFlight, orl.lastUpdated, orl.limit, orl.window);
     }
 
@@ -52,7 +75,7 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
     function getAmountCanBeReceived(
         uint32 _srcEid
     ) public view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeReceived) {
-        RateLimit storage irl = inboundRateLimits[_srcEid];
+        RateLimit storage irl = _getSkyRateLimiterStorage().inboundRateLimits[_srcEid];
         return _amountCanBeReceived(irl.amountInFlight, irl.lastUpdated, irl.limit, irl.window);
     }
 
@@ -62,11 +85,12 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
      * @param _direction Indicates whether the rate limits being set are for outbound or inbound.
      */
     function _setRateLimits(RateLimitConfig[] memory _rateLimitConfigs, RateLimitDirection _direction) internal virtual {
+        SkyRateLimiterStorage storage $ = _getSkyRateLimiterStorage();
         unchecked {
             for (uint256 i = 0; i < _rateLimitConfigs.length; i++) {
                 RateLimit storage rateLimit = _direction == RateLimitDirection.Outbound
-                    ? outboundRateLimits[_rateLimitConfigs[i].eid]
-                    : inboundRateLimits[_rateLimitConfigs[i].eid];
+                    ? $.outboundRateLimits[_rateLimitConfigs[i].eid]
+                    : $.inboundRateLimits[_rateLimitConfigs[i].eid];
 
                 // Checkpoint the existing rate limit to not retroactively apply the new decay rate.
                 _checkAndUpdateRateLimit(_rateLimitConfigs[i].eid, 0, _direction);
@@ -86,10 +110,11 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
      * @param _direction The direction of the rate limits to reset.
      */
     function _resetRateLimits(uint32[] memory _eids, RateLimitDirection _direction) internal virtual {
+        SkyRateLimiterStorage storage $ = _getSkyRateLimiterStorage();
         for (uint256 i = 0; i < _eids.length; i++) {
             RateLimit storage rateLimit = _direction == RateLimitDirection.Outbound
-                ? outboundRateLimits[_eids[i]]
-                : inboundRateLimits[_eids[i]];
+                ? $.outboundRateLimits[_eids[i]]
+                : $.inboundRateLimits[_eids[i]];
 
             rateLimit.amountInFlight = 0;
             rateLimit.lastUpdated = uint128(block.timestamp);
@@ -103,7 +128,7 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
      * @param _rateLimitAccountingType The new rate limit accounting type.
      */
     function _setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) internal {
-        rateLimitAccountingType = _rateLimitAccountingType;
+        _getSkyRateLimiterStorage().rateLimitAccountingType = _rateLimitAccountingType;
         emit RateLimitAccountingTypeSet(_rateLimitAccountingType);
     }
 
@@ -172,7 +197,7 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
     ) internal view virtual returns (uint256 currentAmountInFlight, uint256 amountCanBeReceived) {
         (currentAmountInFlight, amountCanBeReceived) = _calculateDecay(_amountInFlight, _lastUpdated, _limit, _window);
     }
-    
+
     /**
      * @notice Checks and updates the rate limit based on the endpoint ID and amount.
      * @param _eid The endpoint ID for which the rate limit needs to be checked and updated.
@@ -180,10 +205,11 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
      * @param _direction The direction (inbound or outbound) of the rate limits being checked.
      */
     function _checkAndUpdateRateLimit(uint32 _eid, uint256 _amount, RateLimitDirection _direction) internal {
+        SkyRateLimiterStorage storage $ = _getSkyRateLimiterStorage();
         // Select the correct mapping based on the direction of the rate limit
         RateLimit storage rl = _direction == RateLimitDirection.Outbound
-            ? outboundRateLimits[_eid]
-            : inboundRateLimits[_eid];
+            ? $.outboundRateLimits[_eid]
+            : $.inboundRateLimits[_eid];
 
         // Calculate current amount in flight and available capacity
         (uint256 currentAmountInFlight, uint256 availableCapacity) = _calculateDecay(
@@ -200,10 +226,10 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
         rl.amountInFlight = currentAmountInFlight + _amount;
         rl.lastUpdated = uint128(block.timestamp);
 
-        if (rateLimitAccountingType == RateLimitAccountingType.Net) {
+        if ($.rateLimitAccountingType == RateLimitAccountingType.Net) {
             RateLimit storage oppositeRL = _direction == RateLimitDirection.Outbound
-                ? inboundRateLimits[_eid]
-                : outboundRateLimits[_eid];
+                ? $.inboundRateLimits[_eid]
+                : $.outboundRateLimits[_eid];
             (uint256 otherCurrentAmountInFlight,) = _calculateDecay(
                 oppositeRL.amountInFlight,
                 oppositeRL.lastUpdated,

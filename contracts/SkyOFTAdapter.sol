@@ -28,7 +28,23 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     // multiplication well within uint256.
     uint32 public constant SENTINEL_EID = type(uint32).max;
 
-    uint256 public feeBalance;
+    /// @custom:storage-location erc7201:sky.storage.SkyOFTAdapter
+    struct SkyOFTAdapterStorage {
+        uint256 feeBalance;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("sky.storage.SkyOFTAdapter")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant SKY_OFT_ADAPTER_STORAGE_LOCATION = 0xa212a9105d34110ec7b56ba95a22a00c83c40de826beea9f21530155344fbd00;
+
+    function _getSkyOFTAdapterStorage() internal pure returns (SkyOFTAdapterStorage storage $) {
+        assembly {
+            $.slot := SKY_OFT_ADAPTER_STORAGE_LOCATION
+        }
+    }
+
+    function feeBalance() external view returns (uint256) {
+        return _getSkyOFTAdapterStorage().feeBalance;
+    }
 
     /**
      * @notice Initializes the SkyOFTAdapter contract.
@@ -52,11 +68,12 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
      * @dev Doesn't allow owner to pull from the locked assets of the contract, only from accumulated fees.
      */
     function withdrawFees(address _to, uint256 _amountLD) external onlyOwner {
-        uint256 balance = feeBalance;
+        SkyOFTAdapterStorage storage $ = _getSkyOFTAdapterStorage();
+        uint256 balance = $.feeBalance;
         if (_amountLD > balance) revert InsufficientFeeBalance(_amountLD, balance);
 
         // @dev Deduct the amount from the fee balance before transferring.
-        feeBalance -= _amountLD;
+        $.feeBalance -= _amountLD;
 
         innerToken.safeTransfer(_to, _amountLD);
         emit FeesWithdrawn(_to, _amountLD);
@@ -75,7 +92,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         if (_to == address(0)) revert InvalidAddressZero();
 
         // @dev Do not include the fee balance in the migration.
-        uint256 balance = innerToken.balanceOf(address(this)) - feeBalance;
+        uint256 balance = innerToken.balanceOf(address(this)) - _getSkyOFTAdapterStorage().feeBalance;
 
         innerToken.safeTransfer(_to, balance);
         emit LockedTokensMigrated(_to, balance);
@@ -115,7 +132,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
 
         // @dev Conditionally handle the fee.
         uint256 fee = amountSentLD - amountReceivedLD;
-        if (fee > 0) feeBalance += fee;
+        if (fee > 0) _getSkyOFTAdapterStorage().feeBalance += fee;
     }
 
     /**

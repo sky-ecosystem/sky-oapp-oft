@@ -100,8 +100,7 @@ contract SkyOFTAdapterUpgradeTest is TestHelperOz5WithRevertAssertions {
         aOFT.setRateLimits(empty, outbound);
         aOFT.setPauser(attacker, true);
 
-        (uint128 lastUpdatedBefore, uint48 windowBefore, uint256 inflightBefore, uint256 limitBefore) =
-            aOFT.outboundRateLimits(99);
+        RateLimit memory rlBefore = aOFT.outboundRateLimits(99);
         bool pauserBefore = aOFT.pausers(attacker);
         address ownerBefore = aOFT.owner();
 
@@ -110,12 +109,11 @@ contract SkyOFTAdapterUpgradeTest is TestHelperOz5WithRevertAssertions {
         aOFT.upgradeToAndCall(address(newImpl), "");
 
         // Verify state preserved through the proxy
-        (uint128 lastUpdatedAfter, uint48 windowAfter, uint256 inflightAfter, uint256 limitAfter) =
-            aOFT.outboundRateLimits(99);
-        assertEq(lastUpdatedAfter, lastUpdatedBefore);
-        assertEq(windowAfter, windowBefore);
-        assertEq(inflightAfter, inflightBefore);
-        assertEq(limitAfter, limitBefore);
+        RateLimit memory rlAfter = aOFT.outboundRateLimits(99);
+        assertEq(rlAfter.lastUpdated, rlBefore.lastUpdated);
+        assertEq(rlAfter.window, rlBefore.window);
+        assertEq(rlAfter.amountInFlight, rlBefore.amountInFlight);
+        assertEq(rlAfter.limit, rlBefore.limit);
         assertEq(aOFT.pausers(attacker), pauserBefore);
         assertEq(aOFT.owner(), ownerBefore);
 

@@ -12,7 +12,7 @@ import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Opti
 
 // OFT imports
 import { SkyOFTAdapter } from "../../../contracts/SkyOFTAdapter.sol";
-import { SkyRateLimiter, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
+import { SkyRateLimiter, RateLimit, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
 import { ISkyRateLimiter } from "../../../contracts/interfaces/ISkyRateLimiter.sol";
 import { IOFT, SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { MessagingFee, MessagingReceipt, Origin, OFTLimit, OFTFeeDetail } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
@@ -716,12 +716,12 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertEq(amountCanBeReceived, 0);
 
         // 4. Assert bEid IRL from aEID is exhausted.
-        (uint128 lastUpdated, uint48 window, uint256 amountInFlight, uint256 limit) = bOFT.inboundRateLimits(aEid);
+        RateLimit memory rl = bOFT.inboundRateLimits(aEid);
 
-        assertEq(amountInFlight, tokensToSend);
-        assertEq(lastUpdated, block.timestamp);
-        assertEq(limit, 10 ether);
-        assertEq(window, 60 seconds);
+        assertEq(rl.amountInFlight, tokensToSend);
+        assertEq(rl.lastUpdated, block.timestamp);
+        assertEq(rl.limit, 10 ether);
+        assertEq(rl.window, 60 seconds);
 
         // 5. Send 10 ether from aEid to bEid again.  This should not fail because ORL of aEID to bEid is 20 ether.
         vm.startPrank(userA);
@@ -756,11 +756,11 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(aEid, addressToBytes32(address(aOFT)), 1, address(0));
         (, amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
         assertEq(amountCanBeReceived, 10 ether);
-        (lastUpdated, window, amountInFlight, limit) = bOFT.inboundRateLimits(aEid);
-        assertEq(amountInFlight, 0);
-        assertEq(lastUpdated, block.timestamp);
-        assertEq(limit, 10 ether);
-        assertEq(window, 60 seconds);
+        rl = bOFT.inboundRateLimits(aEid);
+        assertEq(rl.amountInFlight, 0);
+        assertEq(rl.lastUpdated, block.timestamp);
+        assertEq(rl.limit, 10 ether);
+        assertEq(rl.window, 60 seconds);
 
         // 8. try to send 10 ether from bEid to aEid again, violating the ORL.
         (, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
