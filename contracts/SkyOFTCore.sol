@@ -71,6 +71,7 @@ abstract contract SkyOFTCore is
     function __SkyOFTCore_init(address _delegate) internal onlyInitializing {
         __OFTCore_init(_delegate);
         __Ownable_init(_delegate);
+        __Fee_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
     }
