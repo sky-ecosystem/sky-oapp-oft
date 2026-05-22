@@ -54,6 +54,7 @@ interface ISkyRateLimiter {
      */
     event RateLimitsChanged(RateLimitConfig[] rateLimitConfigs, RateLimitDirection direction);
     event RateLimitAccountingTypeSet(RateLimitAccountingType newRateLimitAccountingType);
+    event AggregateRateLimitAccountingTypeSet(RateLimitAccountingType newAggregateRateLimitAccountingType);
     event RateLimitsReset(uint32[] eids, RateLimitDirection direction);
 
     // @dev Error that is thrown when an amount exceeds the rate limit for a given direction.

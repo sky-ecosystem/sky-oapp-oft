@@ -58,6 +58,13 @@ interface ISkyOFT {
     function setRateLimitAccountingType(RateLimitAccountingType rateLimitAccountingType) external;
 
     /**
+     * @notice Sets the accounting type for the reserved aggregate eid.
+     * @param aggregateRateLimitAccountingType The new aggregate-slot accounting type.
+     * @dev You may want to call `resetRateLimits` for `RESERVED_AGGREGATE_EID` after changing this.
+     */
+    function setAggregateRateLimitAccountingType(RateLimitAccountingType aggregateRateLimitAccountingType) external;
+
+    /**
      * @notice Sets the pauser status for a given address.
      * @param _pauser The address to set the pauser status for.
      * @param _canPause Boolean indicating ability to pause cross-chain transfers.

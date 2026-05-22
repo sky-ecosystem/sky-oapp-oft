@@ -23,8 +23,17 @@ import {
  * Designed to be inherited by other contracts requiring rate limiting to protect resources/services from excessive use.
  */
 abstract contract SkyRateLimiter is ISkyRateLimiter {
+    // @dev Reserved eid for an aggregate (cross-chain) rate-limit slot.
+    // The limiter applies `aggregateRateLimitAccountingType` when called with this eid,
+    // and the per-eid `rateLimitAccountingType` for any other eid.
+    // Adapters opt in by calling _checkAndUpdateRateLimit with this eid; adapters that
+    // do not need an aggregate cap (e.g. mint/burn satellites) simply never reference it.
+    // Using `type(uint32).max` keeps this within uint256 range for `_calculateDecay`.
+    uint32 public constant RESERVED_AGGREGATE_EID = type(uint32).max;
+
     struct SkyRateLimiterStorage {
         RateLimitAccountingType rateLimitAccountingType;
+        RateLimitAccountingType aggregateRateLimitAccountingType;
         // Tracks rate limits for outbound transactions to a dstEid.
         mapping(uint32 dstEid => RateLimit) outboundRateLimits;
         // Tracks rate limits for inbound transactions from a srcEid.
@@ -42,6 +51,10 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
 
     function rateLimitAccountingType() external view returns (RateLimitAccountingType) {
         return _getSkyRateLimiterStorage().rateLimitAccountingType;
+    }
+
+    function aggregateRateLimitAccountingType() external view returns (RateLimitAccountingType) {
+        return _getSkyRateLimiterStorage().aggregateRateLimitAccountingType;
     }
 
     function outboundRateLimits(uint32 _dstEid) external view returns (RateLimit memory) {
@@ -129,6 +142,16 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
     function _setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) internal {
         _getSkyRateLimiterStorage().rateLimitAccountingType = _rateLimitAccountingType;
         emit RateLimitAccountingTypeSet(_rateLimitAccountingType);
+    }
+
+    /**
+     * @notice Sets the accounting type for the reserved aggregate eid.
+     * @dev You may want to call `_resetRateLimits` for `RESERVED_AGGREGATE_EID` after changing this.
+     * @param _aggregateRateLimitAccountingType The new aggregate-slot accounting type.
+     */
+    function _setAggregateRateLimitAccountingType(RateLimitAccountingType _aggregateRateLimitAccountingType) internal {
+        _getSkyRateLimiterStorage().aggregateRateLimitAccountingType = _aggregateRateLimitAccountingType;
+        emit AggregateRateLimitAccountingTypeSet(_aggregateRateLimitAccountingType);
     }
 
     /**
@@ -225,7 +248,10 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
         rl.amountInFlight = currentAmountInFlight + _amount;
         rl.lastUpdated = uint128(block.timestamp);
 
-        if ($.rateLimitAccountingType == RateLimitAccountingType.Net) {
+        RateLimitAccountingType accountingType = _eid == RESERVED_AGGREGATE_EID
+            ? $.aggregateRateLimitAccountingType
+            : $.rateLimitAccountingType;
+        if (accountingType == RateLimitAccountingType.Net) {
             RateLimit storage oppositeRL = _direction == RateLimitDirection.Outbound
                 ? $.inboundRateLimits[_eid]
                 : $.outboundRateLimits[_eid];
