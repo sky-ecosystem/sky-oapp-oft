@@ -19,7 +19,7 @@ struct RateLimit {
 * @notice Rate Limit Configuration struct.
  * @param eid The endpoint id.
  * @param window Defines the duration of the rate limiting window.
- * @param limit This represents the maximum allowed amount within a given window.
+ * @param limit This represents the maximum allowed amount within a given window. Use `type(uint128).max` for "effectively unbounded" to avoid overflow.
  */
 struct RateLimitConfig {
     uint32 eid;      // 4 bytes
