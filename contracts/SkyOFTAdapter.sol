@@ -21,7 +21,6 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
 
     // @dev Reserved eid for aggregate cross-chain caps. Unset sentinel limits brick every transfer.
-    // Use `type(uint128).max` for "effectively unbounded" — within uint256 for `_calculateDecay`.
     uint32 public constant SENTINEL_EID = type(uint32).max;
 
     struct SkyOFTAdapterStorage {
