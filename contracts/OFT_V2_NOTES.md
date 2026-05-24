@@ -1,0 +1,14 @@
+# OFT V2 — Notes and Disclaimers
+
+- **Deploy / init scripts are out of scope.** Deployments are expected to be run carefully via the existing hardhat scripts (with appropriate modifications) or via foundry commands.
+- **Global rate limits are assumed to be set at deployment/init**, just like per-eid limits. Failing to set them on a specific direction will block transfers on that direction.
+- **`SENTINEL_EID = type(uint32).max` is assumed not to collide** with a real LayerZero EID or any other sentinel value. Setters (`setPeer`, etc.) do not enforce this; it's an operator responsibility.
+- **Outbound rate limits on `SkyOFTAdapter` are kept even though they're not strictly required.** They make Net-mode accounting logic symmetric and simpler to reason about.
+- **A single `RateLimitAccountingType` governs both the per-eid (local) buckets and the global (sentinel) bucket.** Decoupling them was considered but not adopted.
+- **The global cap is asymmetric by design.** `SkyOFTAdapter` (L1 lockbox) enforces the sentinel; `SkyOFTAdapterMintBurn` (satellites) does not — the global cap exists to protect the L1 locked funds.
+- **ABI break on `outboundRateLimits` / `inboundRateLimits`.** The auto-generated mapping getter previously returned a flat tuple `(uint128, uint48, uint256, uint256)`. The new explicit getter returns `RateLimit memory`. Subgraphs, scripts, and dashboards consuming the old tuple shape need a coordinated update.
+- **Gas allocations need to be revisited, especially for compose.** The added `_checkAndUpdateRateLimit` SSTORE on the inbound path is non-trivial. Enforced options and OApp config baked in off-chain might need to be updated chain by chain.
+- **Receive-side starvation under matched per-eid limits.** By design, even when per-eid limits match on send and receive, the global inbound cap can still temporarily block traffic the send side allowed. Operators must monitor for starvation.
+- **`currentAmountInFlight` from the new view overrides is per-eid only.** When the sentinel is the binding constraint, the invariant `currentAmountInFlight + amountCanBeSent == limit` no longer holds.
+- **Quote functions report fees and receipts without enforcing rate limits.** As before, `_debitView`, `quoteOFT.oftReceipt`, and `quoteSend` compute results as if the transfer would go through; `send()` may still revert against the rate limit. `quoteOFT.oftLimit.maxAmountLD` IS sentinel-aware (via the overridden `getAmountCanBeSent`), so callers should compare their intended amount against `oftLimit.maxAmountLD` rather than trusting `oftReceipt` alone.
+- **Net mode on the global cap may weaken the protection.** Any deposit on any chain refills the attacker's available capacity.
