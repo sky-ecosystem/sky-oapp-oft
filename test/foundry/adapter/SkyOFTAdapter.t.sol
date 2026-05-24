@@ -466,6 +466,46 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
     }
 
+    function test_quoteOFT_reflects_global_outbound_cap() public {
+        // Tighten aOFT's global outbound cap below the per-eid cap so the global binds.
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: 3 ether, window: 60 seconds});
+        aOFT.setRateLimits(sIn, sOut);
+
+        // Per-eid bEid outbound is 10 ether; sentinel is 3 ether — sentinel binds.
+        (, uint256 amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(amountCanBeSent, 3 ether);
+
+        // quoteOFT.maxAmountLD reflects the binding sentinel cap.
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(bEid, addressToBytes32(userB), 1 ether, 1 ether, options, "", "");
+        (OFTLimit memory oftLimit,,) = aOFT.quoteOFT(sendParam);
+        assertEq(oftLimit.maxAmountLD, 3 ether);
+    }
+
+    function test_getAmountCanBeReceived_reflects_global_inbound_cap() public {
+        // Tighten bOFT's global inbound cap below per-eid; outbound stays unbounded.
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: 2 ether, window: 60 seconds});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        bOFT.setRateLimits(sIn, sOut);
+
+        // Per-eid aEid inbound is 10 ether; sentinel is 2 ether — sentinel binds.
+        (, uint256 amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(amountCanBeReceived, 2 ether);
+    }
+
+    function test_views_use_per_eid_when_sentinel_unbounded() public view {
+        // setUp leaves the sentinel effectively unbounded, so the per-eid limit binds.
+        (, uint256 amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(amountCanBeSent, 10 ether);
+        (, uint256 amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(amountCanBeReceived, 10 ether);
+    }
+
     function test_receive_oft_succeeds_after_waiting_limit() public {
 
         uint256 tokensToSend = 10 ether;
