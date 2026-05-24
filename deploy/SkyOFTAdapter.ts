@@ -49,6 +49,11 @@ const deploy: DeployFunction = async (hre) => {
         ],
         proxy: {
             proxyContract: 'UUPS',
+            // @dev Pin to upgradeToAndCall; hardhat-deploy's UUPS default ('upgradeTo') was removed in OZ v5.
+            upgradeFunction: {
+                methodName: 'upgradeToAndCall',
+                upgradeArgs: ['{implementation}', '{data}'],
+            },
             execute: {
                 init: {
                     methodName: 'initialize',
