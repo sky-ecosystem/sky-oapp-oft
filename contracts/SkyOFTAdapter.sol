@@ -59,6 +59,29 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     }
 
     /**
+     * @notice Outbound capacity to `_dstEid`, accounting for both the per-eid and the global (sentinel) caps.
+     * @dev Overridden so `quoteOFT` and external callers see the true binding constraint.
+     */
+    function getAmountCanBeSent(
+        uint32 _dstEid
+    ) public view override returns (uint256 currentAmountInFlight, uint256 amountCanBeSent) {
+        (currentAmountInFlight, amountCanBeSent) = super.getAmountCanBeSent(_dstEid);
+        (, uint256 sentinelCap) = super.getAmountCanBeSent(SENTINEL_EID);
+        if (sentinelCap < amountCanBeSent) amountCanBeSent = sentinelCap;
+    }
+
+    /**
+     * @notice Inbound capacity from `_srcEid`, accounting for both the per-eid and the global (sentinel) caps.
+     */
+    function getAmountCanBeReceived(
+        uint32 _srcEid
+    ) public view override returns (uint256 currentAmountInFlight, uint256 amountCanBeReceived) {
+        (currentAmountInFlight, amountCanBeReceived) = super.getAmountCanBeReceived(_srcEid);
+        (, uint256 sentinelCap) = super.getAmountCanBeReceived(SENTINEL_EID);
+        if (sentinelCap < amountCanBeReceived) amountCanBeReceived = sentinelCap;
+    }
+
+    /**
      * @notice Withdraws accumulated fees to a specified address.
      * @param _to The address to which the fees will be withdrawn.
      * @param _amountLD The amount of tokens to withdraw in local decimals.
