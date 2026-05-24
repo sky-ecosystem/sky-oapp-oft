@@ -21,6 +21,8 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
 
     // @dev Reserved eid for aggregate cross-chain caps. Unset sentinel limits brick every transfer.
+    // @dev Both inbound and outbound must be configured; setting only one side bricks every transfer
+    //      in the unconfigured direction across all peers.
     // @dev NOT included implicitly in `setRateLimits` / `resetRateLimits`: operators rotating limits or
     //      flipping `RateLimitAccountingType` must pass `SENTINEL_EID` in those arrays explicitly to
     //      affect the global cap alongside per-eid buckets.
@@ -64,6 +66,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     /**
      * @notice Outbound capacity to `_dstEid`, accounting for both the per-eid and the global (sentinel) caps.
      * @dev Overridden so `quoteOFT` and external callers see the true binding constraint.
+     * @dev `currentAmountInFlight` is the per-eid bucket only; `amountCanBeSent` is `min(per-eid, sentinel)`.
      */
     function getAmountCanBeSent(
         uint32 _dstEid
@@ -75,6 +78,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
 
     /**
      * @notice Inbound capacity from `_srcEid`, accounting for both the per-eid and the global (sentinel) caps.
+     * @dev `currentAmountInFlight` is the per-eid bucket only; `amountCanBeReceived` is `min(per-eid, sentinel)`.
      */
     function getAmountCanBeReceived(
         uint32 _srcEid
