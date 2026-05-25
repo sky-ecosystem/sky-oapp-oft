@@ -146,7 +146,8 @@ contract SkyOFTAdapterUpgradeTest is TestHelperOz5WithRevertAssertions {
 
     function test_upgrade_to_non_uups_reverts() public {
         NonUUPSContract bad = new NonUUPSContract();
-        vm.expectRevert(); // OZ reverts with ERC1967InvalidImplementation when proxiableUUID() doesn't exist or mismatches
+        // UUPSUpgradeable._upgradeToAndCallUUPS catches a failing proxiableUUID() call and reverts with ERC1967InvalidImplementation(newImplementation).
+        vm.expectRevert(abi.encodeWithSelector(ERC1967Utils.ERC1967InvalidImplementation.selector, address(bad)));
         aOFT.upgradeToAndCall(address(bad), "");
     }
 }
