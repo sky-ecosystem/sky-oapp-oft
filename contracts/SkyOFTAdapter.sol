@@ -46,7 +46,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     }
 
     /**
-     * @notice Initializes the SkyOFTAdapter contract.
+     * @notice Constructor sets immutables on the implementation; state is set via `initialize` on the proxy.
      *
      * @param _token The address of the underlying ERC20 token.
      * @param _lzEndpoint The LayerZero endpoint address.
