@@ -1,6 +1,6 @@
 # OFT V2 — Notes and Disclaimers
 
-- **Deploy / init scripts are out of scope.** Deployments are expected to be run carefully via the existing hardhat scripts (with appropriate modifications) or via foundry commands.
+- **Deploy / init scripts are out of scope.** Deployments are expected to be run carefully via the existing hardhat scripts (with appropriate modifications if needed) or via foundry commands.
 - **Global rate limits are assumed to be set at deployment/init**, just like per-eid limits. Failing to set them on a specific direction will block transfers on that direction.
 - **`SENTINEL_EID = type(uint32).max` is assumed not to collide** with a real LayerZero EID or any other sentinel value. Setters (`setPeer`, etc.) do not enforce this; it's an operator responsibility.
 - **Outbound rate limits on `SkyOFTAdapter` are kept even though they're not strictly required.** They make Net-mode accounting logic symmetric and simpler to reason about.
