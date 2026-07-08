@@ -1,18 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 #[cfg(test)]
 mod test_msg_codec {
-    use std::str::FromStr;
     use anchor_lang::prelude::*;
     use base64::Engine;
-    use oapp::{endpoint::{self, instructions::{InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams, SetSendLibraryParams}, InitConfigParams, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED, PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED}, LZ_RECEIVE_TYPES_SEED};
-    use oft::{instructions::{PeerConfigParam, SetOFTConfigParams, SetPauseParams, SetPeerConfigParams}, PEER_SEED};
-    use solana_program::pubkey::Pubkey;
+    use oapp::{
+        endpoint::{
+            self,
+            instructions::{
+                InitReceiveLibraryParams, InitSendLibraryParams, SetReceiveLibraryParams,
+                SetSendLibraryParams,
+            },
+            InitConfigParams, SetConfigParams, MESSAGE_LIB_SEED, NONCE_SEED, OAPP_SEED,
+            PENDING_NONCE_SEED, RECEIVE_LIBRARY_CONFIG_SEED, SEND_LIBRARY_CONFIG_SEED,
+        },
+        LZ_RECEIVE_TYPES_SEED,
+    };
+    use oft::{
+        instructions::{
+            PeerConfigParam, RateLimitParams, SetOFTConfigParams, SetPauseParams,
+            SetPeerConfigParams,
+        },
+        state::RateLimiterType,
+        PEER_SEED,
+    };
     use solana_program::bpf_loader_upgradeable;
+    use solana_program::pubkey::Pubkey;
     use solana_sdk::pubkey;
     use spl_token::instruction::TokenInstruction;
+    use std::str::FromStr;
 
     use governance::{
-        instructions::SetOAppConfigParams, msg_codec::{Acc, GovernanceMessage}, CPI_AUTHORITY_PLACEHOLDER, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER
+        instructions::SetOAppConfigParams,
+        msg_codec::{Acc, GovernanceMessage},
+        CPI_AUTHORITY_PLACEHOLDER, CPI_AUTHORITY_SEED, GOVERNANCE_SEED, PAYER_PLACEHOLDER,
     };
     use uln::state::{ExecutorConfig, UlnConfig};
 
@@ -23,8 +43,14 @@ mod test_msg_codec {
         pub remote_oapp: [u8; 32],
     }
 
-    const OFT_STORE_ADDRESS: Pubkey = pubkey!("627tpP7taNoCC2CvcV5qcftsVftpaeGiP78tyNEQoNLt");
-    const PAYER: Pubkey = pubkey!("6Xu7SvWnBr1vo7Vst3cRZf2TW46PJxyZnNiv89RMMFuS");
+    const OFT_STORE_ADDRESS_MAINNET: Pubkey =
+        pubkey!("BEvTHkTyXooyaJzP8egDUC7WQK8cyRrq5WvERZNWhuah");
+    const OFT_STORE_ADDRESS: Pubkey = OFT_STORE_ADDRESS_MAINNET;
+    const PAYER_MAINNET: Pubkey = pubkey!("HgsxLyn8175xEwRffPRN3DeARE2EVcEeXENr12HpadL6");
+    const PAYER: Pubkey = PAYER_MAINNET;
+    // Dedicated pauser wallet (direct, non-governance signer for set_pause(true)).
+    const PAUSER_MAINNET: Pubkey = pubkey!("5hARLsT1VA2AmuGL2AXUeSyyFG6o2Fcpb9S6aKXNsbeK");
+    const PAUSER: Pubkey = PAUSER_MAINNET;
     const MSG_LIB_KEY: Pubkey = pubkey!("2XgGZG4oP29U3w5h4nTk1V2LFHL23zKDPJjs3psGzLKQ");
     const FUJI_EID: u32 = 40106;
     const BSC_EID: u32 = 40102;
@@ -37,8 +63,10 @@ mod test_msg_codec {
     const ULN_CONFIG_TYPE_RECEIVE_ULN: u32 = 3;
 
     fn assert_governance_program_id() {
-        let a = governance::id();        
-        let b = Pubkey::from_str(&std::env::var("GOVERNANCE_ID").unwrap()).unwrap_or_else(|_| panic!("Incorrect GOVERNANCE_ID passed. Is it a valid Solana public key?"));
+        let a = governance::id();
+        let b = Pubkey::from_str(&std::env::var("GOVERNANCE_ID").unwrap()).unwrap_or_else(|_| {
+            panic!("Incorrect GOVERNANCE_ID passed. Is it a valid Solana public key?")
+        });
         println!("Governance Program ID: {:?}", a);
         assert_eq!(a, b, "Governance Program ID does not match environment variable GOVERNANCE_ID. Try running: cargo clean --profile dev");
     }
@@ -63,7 +91,9 @@ mod test_msg_codec {
         println!("dstTarget: {:?}", hex::encode(&msg.program_id));
         println!("dstCallData: {:?}", hex::encode(&buf));
 
-        let msg2 = GovernanceMessage::read_body(&mut buf.as_slice(), msg.origin_caller, msg.program_id).unwrap();
+        let msg2 =
+            GovernanceMessage::read_body(&mut buf.as_slice(), msg.origin_caller, msg.program_id)
+                .unwrap();
         assert_eq!(msg, msg2);
 
         prepare_governance_message_simulation(&msg);
@@ -104,13 +134,16 @@ mod test_msg_codec {
         assert_eq!(actual, expected);
         let mut serialized = Vec::new();
         actual.encode(&mut serialized).unwrap();
-        assert_eq!(GovernanceMessage::decode_origin_caller(&serialized).unwrap(), origin_caller);
+        assert_eq!(
+            GovernanceMessage::decode_origin_caller(&serialized).unwrap(),
+            origin_caller
+        );
     }
 
     #[test]
     fn test_spl_token_transfer() {
         assert_governance_program_id();
-        
+
         let mint_pubkey = pubkey!("HC8D1rWMtAifPRhUYD7PwKHMtMVLtwCjarfNVvcN3SGK");
         let mint_account = Acc {
             pubkey: mint_pubkey,
@@ -267,16 +300,25 @@ mod test_msg_codec {
         let buffer_address = pubkey!("6yfcTwqobTw9CP2etWDuogMbjinp63Ea4DbQKX5W3DNL");
 
         let (governance_oapp_address, _bump_seed) = get_governance_oapp_pda();
-        let instruction = bpf_loader_upgradeable::upgrade(&oft::id(), &buffer_address, &CPI_AUTHORITY_PLACEHOLDER, &governance_oapp_address);
+        let instruction = bpf_loader_upgradeable::upgrade(
+            &oft::id(),
+            &buffer_address,
+            &CPI_AUTHORITY_PLACEHOLDER,
+            &governance_oapp_address,
+        );
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
             program_id: bpf_loader_upgradeable::id(),
-            accounts: instruction.accounts.iter().map(|a| Acc {
-                pubkey: a.pubkey,
-                is_signer: a.is_signer,
-                is_writable: a.is_writable,
-            }).collect(),
+            accounts: instruction
+                .accounts
+                .iter()
+                .map(|a| Acc {
+                    pubkey: a.pubkey,
+                    is_signer: a.is_signer,
+                    is_writable: a.is_writable,
+                })
+                .collect(),
             data: instruction.data.clone(),
         };
 
@@ -290,16 +332,24 @@ mod test_msg_codec {
 
     #[test]
     fn test_transfer_upgrade_authority<'a>() {
-        let instruction = bpf_loader_upgradeable::set_upgrade_authority(&oft::id(), &CPI_AUTHORITY_PLACEHOLDER, Some(&pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8")));
+        let instruction = bpf_loader_upgradeable::set_upgrade_authority(
+            &oft::id(),
+            &CPI_AUTHORITY_PLACEHOLDER,
+            Some(&pubkey!("Fty7h4FYAN7z8yjqaJExMHXbUoJYMcRjWYmggSxLbHp8")),
+        );
 
         let msg = GovernanceMessage {
             origin_caller: [0; 32],
             program_id: bpf_loader_upgradeable::id(),
-            accounts: instruction.accounts.iter().map(|a| Acc {
-                pubkey: a.pubkey,
-                is_signer: a.is_signer,
-                is_writable: a.is_writable,
-            }).collect(),
+            accounts: instruction
+                .accounts
+                .iter()
+                .map(|a| Acc {
+                    pubkey: a.pubkey,
+                    is_signer: a.is_signer,
+                    is_writable: a.is_writable,
+                })
+                .collect(),
             data: instruction.data.clone(),
         };
 
@@ -320,9 +370,55 @@ mod test_msg_codec {
         // Add the discriminator
         instruction_data.extend_from_slice(&discriminator);
 
-        let set_pause_params = SetPauseParams {
-            paused: true,
+        let set_pause_params = SetPauseParams { paused: true };
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&set_pause_params, &mut instruction_data)
+            .expect("Failed to serialize SetPauseParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        let accounts = vec![
+            // signer — pauser wallet (set_pause(true) is restricted to the dedicated pauser, not governance CPI authority)
+            Acc {
+                pubkey: PAUSER,
+                is_signer: true,
+                is_writable: false,
+            },
+            // OFT store account
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: true,
+            },
+        ];
+
+        let msg = GovernanceMessage {
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
+            program_id: oft::id(),
+            accounts,
+            data: instruction_data,
         };
+
+        let mut buf = Vec::new();
+        msg.write_body(&mut buf).unwrap();
+
+        println!("dstTarget: {:?}", hex::encode(&msg.program_id));
+        println!("dstCallData: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_governance_message_unpause_oft<'a>() {
+        assert_governance_program_id();
+
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_pause");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let set_pause_params = SetPauseParams { paused: false };
 
         // Serialize the SendParams struct using Borsh
         borsh::BorshSerialize::serialize(&set_pause_params, &mut instruction_data)
@@ -358,54 +454,7 @@ mod test_msg_codec {
         println!("dstTarget: {:?}", hex::encode(&msg.program_id));
         println!("dstCallData: {:?}", hex::encode(&buf));
 
-        // prepare_governance_message_simulation(&msg);
-    }
-
-    #[test]
-    fn test_governance_message_unpause_oft<'a>() {
-        let mut instruction_data = Vec::new();
-        let discriminator = sighash("global", "set_pause");
-        // Add the discriminator
-        instruction_data.extend_from_slice(&discriminator);
-
-        let set_pause_params = SetPauseParams {
-            paused: false,
-        };
-
-        // Serialize the SendParams struct using Borsh
-        borsh::BorshSerialize::serialize(&set_pause_params, &mut instruction_data)
-            .expect("Failed to serialize SetPauseParams");
-
-        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
-
-        let accounts = vec![
-            // signer
-            Acc {
-                pubkey: CPI_AUTHORITY_PLACEHOLDER,
-                is_signer: true,
-                is_writable: false,
-            },
-            // OFT store account
-            Acc {
-                pubkey: OFT_STORE_ADDRESS,
-                is_signer: false,
-                is_writable: true,
-            },
-        ];
-
-        let msg = GovernanceMessage {
-            origin_caller: [0; 32],
-            program_id: oft::id(),
-            accounts: accounts,
-            data: instruction_data,
-        };
-
-        let mut buf = Vec::new();
-        msg.encode(&mut buf).unwrap();
-
-        println!("Serialized governance message: {:?}", hex::encode(&buf));
-
-        // prepare_governance_message_simulation(&msg);
+        prepare_governance_message_simulation(&msg);
     }
 
     #[test]
@@ -483,13 +532,14 @@ mod test_msg_codec {
     #[test]
     fn test_governance_message_oapp_set_delegate() {
         assert_governance_program_id();
-        
+
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_oapp_config");
         // Add the discriminator
         instruction_data.extend_from_slice(&discriminator);
 
-        let params = SetOAppConfigParams::Delegate(pubkey!("22222222222222222222222222222222222222222222"));
+        let params =
+            SetOAppConfigParams::Delegate(pubkey!("22222222222222222222222222222222222222222222"));
 
         // Serialize the SendParams struct using Borsh
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
@@ -498,10 +548,7 @@ mod test_msg_codec {
         let (governance_oapp_address, _) = get_governance_oapp_pda();
         let (lz_receive_types_accounts_address, _) = get_lz_receive_types_accounts_pda();
         let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                governance_oapp_address.as_ref()
-            ],
+            &[OAPP_SEED, governance_oapp_address.as_ref()],
             &endpoint::id(),
         );
 
@@ -593,7 +640,7 @@ mod test_msg_codec {
                 pubkey: OFT_STORE_ADDRESS,
                 is_signer: false,
                 is_writable: true,
-            }
+            },
         ];
 
         let msg = GovernanceMessage {
@@ -686,6 +733,162 @@ mod test_msg_codec {
     }
 
     #[test]
+    fn test_set_outbound_rate_limit<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_peer_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = SetPeerConfigParams {
+            remote_eid: ETHEREUM_V2_MAINNET_EID,
+            config: PeerConfigParam::OutboundRateLimit(Some(RateLimitParams {
+                refill_per_second: Some(111),
+                capacity: Some(222222),
+                rate_limiter_type: Some(RateLimiterType::Net),
+            })),
+        };
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetPeerConfigParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        println!("OFT Program ID: {:?}", oft::id());
+        println!("Governance Program ID: {:?}", governance::id());
+
+        let (peer_address, _bump_seed) = Pubkey::find_program_address(
+            &[
+                PEER_SEED,
+                &OFT_STORE_ADDRESS.to_bytes(),
+                &params.remote_eid.to_be_bytes(),
+            ],
+            &oft::id(),
+        );
+
+        let accounts = vec![
+            // admin as signer
+            Acc {
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
+                is_signer: true,
+                is_writable: true,
+            },
+            // peer
+            Acc {
+                pubkey: peer_address,
+                is_signer: false,
+                is_writable: true,
+            },
+            // OFT store account
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: false,
+            },
+            // system program
+            Acc {
+                pubkey: solana_program::system_program::ID,
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        println!("Peer address: {:?}", peer_address);
+
+        let msg = GovernanceMessage {
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
+            program_id: oft::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.encode(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
+    fn test_set_inbound_rate_limit<'a>() {
+        let mut instruction_data = Vec::new();
+        let discriminator = sighash("global", "set_peer_config");
+        // Add the discriminator
+        instruction_data.extend_from_slice(&discriminator);
+
+        let params = SetPeerConfigParams {
+            remote_eid: ETHEREUM_V2_MAINNET_EID,
+            config: PeerConfigParam::InboundRateLimit(Some(RateLimitParams {
+                refill_per_second: Some(111),
+                capacity: Some(222222),
+                rate_limiter_type: Some(RateLimiterType::Net),
+            })),
+        };
+
+        // Serialize the SendParams struct using Borsh
+        borsh::BorshSerialize::serialize(&params, &mut instruction_data)
+            .expect("Failed to serialize SetPeerConfigParams");
+
+        println!("Instruction data (hex): {}", hex::encode(&instruction_data));
+
+        println!("OFT Program ID: {:?}", oft::id());
+        println!("Governance Program ID: {:?}", governance::id());
+
+        let (peer_address, _bump_seed) = Pubkey::find_program_address(
+            &[
+                PEER_SEED,
+                &OFT_STORE_ADDRESS.to_bytes(),
+                &params.remote_eid.to_be_bytes(),
+            ],
+            &oft::id(),
+        );
+
+        let accounts = vec![
+            // admin as signer
+            Acc {
+                pubkey: CPI_AUTHORITY_PLACEHOLDER,
+                is_signer: true,
+                is_writable: true,
+            },
+            // peer
+            Acc {
+                pubkey: peer_address,
+                is_signer: false,
+                is_writable: true,
+            },
+            // OFT store account
+            Acc {
+                pubkey: OFT_STORE_ADDRESS,
+                is_signer: false,
+                is_writable: false,
+            },
+            // system program
+            Acc {
+                pubkey: solana_program::system_program::ID,
+                is_signer: false,
+                is_writable: false,
+            },
+        ];
+
+        println!("Peer address: {:?}", peer_address);
+
+        let msg = GovernanceMessage {
+            origin_caller: evm_address_to_bytes32(EVM_ORIGIN_CALLER),
+            program_id: oft::id(),
+            accounts: accounts,
+            data: instruction_data,
+        };
+
+        let mut buf = Vec::new();
+        msg.encode(&mut buf).unwrap();
+
+        println!("Serialized governance message: {:?}", hex::encode(&buf));
+
+        prepare_governance_message_simulation(&msg);
+    }
+
+    #[test]
     fn test_governance_message_set_send_config<'a>() {
         let mut instruction_data = Vec::new();
         let discriminator = sighash("global", "set_config");
@@ -697,9 +900,7 @@ mod test_msg_codec {
             required_dvn_count: 1,
             optional_dvn_count: 0,
             optional_dvn_threshold: 0,
-            required_dvns: vec![
-                pubkey!("4VDjp6XQaxoZf5RGwiPU9NR1EXSZn2TP4ATMmiSzLfhb")
-            ],
+            required_dvns: vec![pubkey!("4VDjp6XQaxoZf5RGwiPU9NR1EXSZn2TP4ATMmiSzLfhb")],
             optional_dvns: vec![],
         };
 
@@ -717,19 +918,11 @@ mod test_msg_codec {
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
             .expect("Failed to serialize SetConfigParams");
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.oapp.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.oapp.as_ref()], &endpoint::id());
 
         let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
-            &[
-                MESSAGE_LIB_SEED,
-                MSG_LIB_KEY.to_bytes().as_ref()
-            ],
+            &[MESSAGE_LIB_SEED, MSG_LIB_KEY.to_bytes().as_ref()],
             &endpoint::id(),
         );
 
@@ -839,19 +1032,11 @@ mod test_msg_codec {
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
             .expect("Failed to serialize SetConfigParams");
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.oapp.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.oapp.as_ref()], &endpoint::id());
 
         let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
-            &[
-                MESSAGE_LIB_SEED,
-                MSG_LIB_KEY.to_bytes().as_ref()
-            ],
+            &[MESSAGE_LIB_SEED, MSG_LIB_KEY.to_bytes().as_ref()],
             &endpoint::id(),
         );
 
@@ -947,9 +1132,7 @@ mod test_msg_codec {
             required_dvn_count: 1,
             optional_dvn_count: 0,
             optional_dvn_threshold: 0,
-            required_dvns: vec![
-                pubkey!("4VDjp6XQaxoZf5RGwiPU9NR1EXSZn2TP4ATMmiSzLfhb")
-            ],
+            required_dvns: vec![pubkey!("4VDjp6XQaxoZf5RGwiPU9NR1EXSZn2TP4ATMmiSzLfhb")],
             optional_dvns: vec![],
         };
 
@@ -967,19 +1150,11 @@ mod test_msg_codec {
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
             .expect("Failed to serialize SetConfigParams");
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.oapp.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.oapp.as_ref()], &endpoint::id());
 
         let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
-            &[
-                MESSAGE_LIB_SEED,
-                MSG_LIB_KEY.to_bytes().as_ref()
-            ],
+            &[MESSAGE_LIB_SEED, MSG_LIB_KEY.to_bytes().as_ref()],
             &endpoint::id(),
         );
 
@@ -1090,19 +1265,14 @@ mod test_msg_codec {
 
         println!("OFT Program ID: {:?}", oft::id());
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.sender.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.sender.as_ref()], &endpoint::id());
 
         let (send_library_config, _bump_seed) = Pubkey::find_program_address(
             &[
                 SEND_LIBRARY_CONFIG_SEED,
                 &params.sender.to_bytes(),
-                &params.eid.to_be_bytes()
+                &params.eid.to_be_bytes(),
             ],
             &endpoint::id(),
         );
@@ -1174,19 +1344,14 @@ mod test_msg_codec {
 
         println!("OFT Program ID: {:?}", oft::id());
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.receiver.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.receiver.as_ref()], &endpoint::id());
 
         let (receive_library_config, _bump_seed) = Pubkey::find_program_address(
             &[
                 RECEIVE_LIBRARY_CONFIG_SEED,
                 &params.receiver.to_bytes(),
-                &params.eid.to_be_bytes()
+                &params.eid.to_be_bytes(),
             ],
             &endpoint::id(),
         );
@@ -1251,20 +1416,15 @@ mod test_msg_codec {
 
         println!("OFT Program ID: {:?}", oft::id());
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.local_oapp.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.local_oapp.as_ref()], &endpoint::id());
 
         let (nonce, _bump_seed) = Pubkey::find_program_address(
             &[
                 NONCE_SEED,
                 &params.local_oapp.to_bytes(),
                 &params.remote_eid.to_be_bytes(),
-                &params.remote_oapp[..]
+                &params.remote_oapp[..],
             ],
             &endpoint::id(),
         );
@@ -1274,7 +1434,7 @@ mod test_msg_codec {
                 PENDING_NONCE_SEED,
                 &params.local_oapp.to_bytes(),
                 &params.remote_eid.to_be_bytes(),
-                &params.remote_oapp[..]
+                &params.remote_oapp[..],
             ],
             &endpoint::id(),
         );
@@ -1340,28 +1500,20 @@ mod test_msg_codec {
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
             .expect("Failed to serialize SetSendLibraryParams");
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.sender.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.sender.as_ref()], &endpoint::id());
 
         let (send_library_config, _bump_seed) = Pubkey::find_program_address(
             &[
                 SEND_LIBRARY_CONFIG_SEED,
                 &params.sender.to_bytes(),
-                &params.eid.to_be_bytes()
+                &params.eid.to_be_bytes(),
             ],
             &endpoint::id(),
         );
 
         let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
-            &[
-                MESSAGE_LIB_SEED,
-                params.new_lib.to_bytes().as_ref()
-            ],
+            &[MESSAGE_LIB_SEED, params.new_lib.to_bytes().as_ref()],
             &endpoint::id(),
         );
 
@@ -1435,28 +1587,20 @@ mod test_msg_codec {
         borsh::BorshSerialize::serialize(&params, &mut instruction_data)
             .expect("Failed to serialize SetReceiveLibraryParams");
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.receiver.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.receiver.as_ref()], &endpoint::id());
 
         let (receive_library_config, _bump_seed) = Pubkey::find_program_address(
             &[
                 RECEIVE_LIBRARY_CONFIG_SEED,
                 &params.receiver.to_bytes(),
-                &params.eid.to_be_bytes()
+                &params.eid.to_be_bytes(),
             ],
             &endpoint::id(),
         );
 
         let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
-            &[
-                MESSAGE_LIB_SEED,
-                params.new_lib.to_bytes().as_ref()
-            ],
+            &[MESSAGE_LIB_SEED, params.new_lib.to_bytes().as_ref()],
             &endpoint::id(),
         );
 
@@ -1609,19 +1753,11 @@ mod test_msg_codec {
 
         println!("Instruction data (hex): {}", hex::encode(&instruction_data));
 
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                params.oapp.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, params.oapp.as_ref()], &endpoint::id());
 
         let (message_lib_info, _bump_seed) = Pubkey::find_program_address(
-            &[
-                MESSAGE_LIB_SEED,
-                MSG_LIB_KEY.to_bytes().as_ref()
-            ],
+            &[MESSAGE_LIB_SEED, MSG_LIB_KEY.to_bytes().as_ref()],
             &endpoint::id(),
         );
 
@@ -1695,7 +1831,6 @@ mod test_msg_codec {
         prepare_governance_message_simulation(&msg);
     }
 
-
     pub fn sighash(namespace: &str, name: &str) -> [u8; 8] {
         let preimage = format!("{}:{}", namespace, name);
 
@@ -1732,34 +1867,46 @@ mod test_msg_codec {
     }
 
     fn prepare_governance_message_simulation(message: &GovernanceMessage) {
-        use solana_sdk::transaction::Transaction;
         use solana_sdk::instruction::Instruction;
+        use solana_sdk::transaction::Transaction;
 
         let tx = Transaction::new_with_payer(
             &[Instruction {
                 program_id: message.program_id,
-                accounts: message.accounts.iter().map(|a| AccountMeta {
-                    pubkey: if a.pubkey == CPI_AUTHORITY_PLACEHOLDER {
-                        get_cpi_authority()
-                    } else if a.pubkey == PAYER_PLACEHOLDER {
-                        PAYER
-                    } else {
-                        a.pubkey
-                    },
-                    is_signer: a.is_signer,
-                    is_writable: a.is_writable,
-                }).collect(),
+                accounts: message
+                    .accounts
+                    .iter()
+                    .map(|a| AccountMeta {
+                        pubkey: if a.pubkey == CPI_AUTHORITY_PLACEHOLDER {
+                            get_cpi_authority()
+                        } else if a.pubkey == PAYER_PLACEHOLDER {
+                            PAYER
+                        } else {
+                            a.pubkey
+                        },
+                        is_signer: a.is_signer,
+                        is_writable: a.is_writable,
+                    })
+                    .collect(),
                 data: message.data.clone(),
             }],
             Some(&PAYER),
         );
-    
-        println!("\n{}", base64::engine::general_purpose::STANDARD.encode(tx.message_data()));
+
+        println!(
+            "\n{}",
+            base64::engine::general_purpose::STANDARD.encode(tx.message_data())
+        );
     }
 
-    fn get_cpi_authority() -> Pubkey {        
+    fn get_cpi_authority() -> Pubkey {
         let (cpi_authority, _bump_seed) = Pubkey::find_program_address(
-            &[CPI_AUTHORITY_SEED, get_governance_oapp_pda().0.to_bytes().as_ref(), &ETHEREUM_V2_MAINNET_EID.to_be_bytes(), &evm_address_to_bytes32(EVM_ORIGIN_CALLER)],
+            &[
+                CPI_AUTHORITY_SEED,
+                get_governance_oapp_pda().0.to_bytes().as_ref(),
+                &ETHEREUM_V2_MAINNET_EID.to_be_bytes(),
+                &evm_address_to_bytes32(EVM_ORIGIN_CALLER),
+            ],
             &get_governance_program_id(),
         );
 
@@ -1767,13 +1914,8 @@ mod test_msg_codec {
     }
 
     fn get_oft_oapp_registry() -> Pubkey {
-        let (oapp_registry, _bump_seed) = Pubkey::find_program_address(
-            &[
-                OAPP_SEED,
-                OFT_STORE_ADDRESS.as_ref()
-            ],
-            &endpoint::id(),
-        );
+        let (oapp_registry, _bump_seed) =
+            Pubkey::find_program_address(&[OAPP_SEED, OFT_STORE_ADDRESS.as_ref()], &endpoint::id());
 
         oapp_registry
     }
@@ -1781,10 +1923,7 @@ mod test_msg_codec {
     fn get_governance_oapp_pda() -> (Pubkey, u8) {
         let governance_id: u64 = 0;
         let (pda, bump_seed) = Pubkey::find_program_address(
-            &[
-                GOVERNANCE_SEED,
-                &governance_id.to_be_bytes()
-            ],
+            &[GOVERNANCE_SEED, &governance_id.to_be_bytes()],
             &get_governance_program_id(),
         );
 
@@ -1795,10 +1934,7 @@ mod test_msg_codec {
         let (governance_oapp_address, _) = get_governance_oapp_pda();
 
         let (pda, bump_seed) = Pubkey::find_program_address(
-            &[
-                LZ_RECEIVE_TYPES_SEED,
-                &governance_oapp_address.to_bytes()
-            ],
+            &[LZ_RECEIVE_TYPES_SEED, &governance_oapp_address.to_bytes()],
             &get_governance_program_id(),
         );
 

@@ -1,8 +1,13 @@
 import { ErrorWithLogs, ProgramError, Transaction, Umi } from '@metaplex-foundation/umi'
 import { toWeb3JsTransaction } from '@metaplex-foundation/umi-web3js-adapters'
 import { Connection, PublicKey } from '@solana/web3.js'
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes'
 import { backOff } from 'exponential-backoff'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
+
+export const ixDataFromBs58 = (s: string): Uint8Array => new Uint8Array(bs58.decode(s))
+export const ixDataFromHex = (s: string): Uint8Array =>
+    Uint8Array.from(Buffer.from(s.startsWith('0x') ? s.slice(2) : s, 'hex'))
 
 import { ChainType, EndpointId, endpointIdToChainType } from '@layerzerolabs/lz-definitions'
 import { OAppOmniGraph } from '@layerzerolabs/ua-devtools'
@@ -41,11 +46,12 @@ export const simulateTransaction = async (
     context: Umi,
     transaction: Transaction,
     connection: Connection,
-    options: { verifySignatures?: boolean; } = {}
+    options: { verifySignatures?: boolean; accounts?: PublicKey[] } = {}
   ) => {
     try {
       const tx = toWeb3JsTransaction(transaction);
       const result = await connection.simulateTransaction(tx, {
+        accounts: options.accounts ? { encoding: 'base64', addresses: options.accounts.map(acc => acc.toBase58()) } : undefined,
         sigVerify: options.verifySignatures,
       });
       return result.value;
