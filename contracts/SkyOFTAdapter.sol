@@ -20,15 +20,6 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
 contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
 
-    // @dev Reserved eid for aggregate cross-chain caps lives on `SkyRateLimiter.RESERVED_AGGREGATE_EID`.
-    // @dev Unset aggregate limits brick every transfer; use `type(uint128).max` for "effectively
-    //      unbounded" — keeps `_calculateDecay`'s `limit * timeSinceLastUpdate` within uint256.
-    // @dev Both inbound and outbound must be configured; setting only one side bricks every transfer
-    //      in the unconfigured direction across all peers.
-    // @dev NOT included implicitly in `setRateLimits` / `resetRateLimits`: operators rotating limits or
-    //      flipping either accounting type must pass `RESERVED_AGGREGATE_EID` in those arrays explicitly
-    //      to affect the global cap alongside per-eid buckets.
-
     struct SkyOFTAdapterStorage {
         uint256 feeBalance;
     }
@@ -73,7 +64,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         uint32 _dstEid
     ) public view override returns (uint256 currentAmountInFlight, uint256 amountCanBeSent) {
         (currentAmountInFlight, amountCanBeSent) = super.getAmountCanBeSent(_dstEid);
-        (, uint256 sentinelCap) = super.getAmountCanBeSent(RESERVED_AGGREGATE_EID);
+        (, uint256 sentinelCap) = super.getAmountCanBeSent(SENTINEL_EID);
         if (sentinelCap < amountCanBeSent) amountCanBeSent = sentinelCap;
     }
 
@@ -85,7 +76,7 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         uint32 _srcEid
     ) public view override returns (uint256 currentAmountInFlight, uint256 amountCanBeReceived) {
         (currentAmountInFlight, amountCanBeReceived) = super.getAmountCanBeReceived(_srcEid);
-        (, uint256 sentinelCap) = super.getAmountCanBeReceived(RESERVED_AGGREGATE_EID);
+        (, uint256 sentinelCap) = super.getAmountCanBeReceived(SENTINEL_EID);
         if (sentinelCap < amountCanBeReceived) amountCanBeReceived = sentinelCap;
     }
 
@@ -153,8 +144,8 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         // @dev The fee remains on this chain, thus it is not included in the rate limit check.
         _checkAndUpdateRateLimit(_dstEid, amountReceivedLD, RateLimitDirection.Outbound);
 
-        // @dev Apply the global outbound cap (Net-mode mutual offset propagates to inbound aggregate slot).
-        _checkAndUpdateRateLimit(RESERVED_AGGREGATE_EID, amountReceivedLD, RateLimitDirection.Outbound);
+        // @dev Apply the global outbound cap (Net-mode mutual offset propagates to inbound sentinel).
+        _checkAndUpdateRateLimit(SENTINEL_EID, amountReceivedLD, RateLimitDirection.Outbound);
 
         // @dev Lock tokens by moving them into this contract from the caller.
         innerToken.safeTransferFrom(_from, address(this), amountSentLD);
@@ -180,8 +171,8 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         // @dev Check and update the rate limit based on the source endpoint ID (srcEid).
         _checkAndUpdateRateLimit(_srcEid, _amountLD, RateLimitDirection.Inbound);
 
-        // @dev Apply the global inbound cap (Net-mode mutual offset propagates to outbound aggregate slot).
-        _checkAndUpdateRateLimit(RESERVED_AGGREGATE_EID, _amountLD, RateLimitDirection.Inbound);
+        // @dev Apply the global inbound cap (Net-mode mutual offset propagates to outbound sentinel).
+        _checkAndUpdateRateLimit(SENTINEL_EID, _amountLD, RateLimitDirection.Inbound);
 
         // @dev If recipient is the zero address or the inner token, reroute to the dead address.
         if (_to == address(0) || _to == token()) _to = address(0xdead);

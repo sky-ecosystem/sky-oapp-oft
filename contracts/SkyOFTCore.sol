@@ -202,7 +202,7 @@ abstract contract SkyOFTCore is
     /**
      * @notice Sets the accounting type for the reserved aggregate eid.
      * @param _aggregateRateLimitAccountingType The new aggregate-slot accounting type.
-     * @dev You may want to call `resetRateLimits` for `RESERVED_AGGREGATE_EID` after changing this.
+     * @dev You may want to call `resetRateLimits` for `SENTINEL_EID` after changing this.
      */
     function setAggregateRateLimitAccountingType(RateLimitAccountingType _aggregateRateLimitAccountingType) external onlyOwner {
         _setAggregateRateLimitAccountingType(_aggregateRateLimitAccountingType);

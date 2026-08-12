@@ -471,6 +471,8 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         // (the way it would under Net). This test distinguishes Gross's no-offset semantics
         // from Net's mutual-offset semantics, specifically for the sentinel.
         aOFT.setRateLimitAccountingType(RateLimitAccountingType.Gross);
+        // @dev The sentinel bucket has its own accounting type and must be set separately.
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
 
         // Tighten aOFT's sentinel outbound to 4 ether (inbound sentinel stays unbounded).
         RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
@@ -514,6 +516,112 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
         aOFT.send{ value: nextFee.nativeFee }(nextSend, nextFee, payable(userA));
         vm.stopPrank();
+    }
+
+    // @dev Tighten aOFT's sentinel outbound cap; inbound stays unbounded so receives never revert on it.
+    function _tightenAggregateOutbound(uint256 _outLimit) internal {
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: _outLimit, window: 60 seconds});
+        aOFT.setRateLimits(sIn, sOut);
+    }
+
+    // @dev Round-trips 3 ether a→b→a so aOFT's `_credit` runs and offsetting is observable.
+    function _roundTripThreeEther() internal {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+
+        SendParam memory aToB = SendParam(bEid, addressToBytes32(userB), 3 ether, 3 ether, options, "", "");
+        MessagingFee memory aFee = aOFT.quoteSend(aToB, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 3 ether);
+        aOFT.send{ value: aFee.nativeFee }(aToB, aFee, payable(userA));
+        vm.stopPrank();
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
+
+        SendParam memory bToA = SendParam(aEid, addressToBytes32(userA), 3 ether, 3 ether, options, "", "");
+        MessagingFee memory bFee = bOFT.quoteSend(bToA, false);
+        vm.startPrank(userB);
+        bToken.approve(address(bOFT), 3 ether);
+        bOFT.send{ value: bFee.nativeFee }(bToA, bFee, payable(userB));
+        vm.stopPrank();
+        verifyAndExecutePackets(aEid, addressToBytes32(address(aOFT)));
+    }
+
+    function test_aggregate_accounting_type_defaults_to_net() public view {
+        // @dev Both default to the enum zero value, Net — the permissive mode. Nothing sets them at init.
+        assertEq(uint8(aOFT.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+    }
+
+    function test_aggregate_gross_while_per_eid_net() public {
+        // The special case this feature exists for: sentinel forbids offsetting, per-eid still allows it.
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+        assertEq(uint8(aOFT.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+
+        _tightenAggregateOutbound(4 ether);
+        _roundTripThreeEther();
+
+        // Per-eid is Net → the receive offset the outbound bucket back to 0.
+        assertEq(aOFT.outboundRateLimits(bEid).amountInFlight, 0);
+        // Aggregate is Gross → the receive did NOT offset it; the 3 ether sent still counts.
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 3 ether);
+
+        // The aggregate cap (4) therefore still binds even though the per-eid bucket is empty.
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory nextSend = SendParam(bEid, addressToBytes32(userB), 2 ether, 2 ether, options, "", "");
+        MessagingFee memory nextFee = aOFT.quoteSend(nextSend, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 2 ether);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
+        aOFT.send{ value: nextFee.nativeFee }(nextSend, nextFee, payable(userA));
+        vm.stopPrank();
+    }
+
+    function test_aggregate_net_while_per_eid_gross() public {
+        // Mirror image of the above; together they pin which field governs which bucket.
+        aOFT.setRateLimitAccountingType(RateLimitAccountingType.Gross);
+        // @dev The per-eid setter does not cascade: the sentinel is still on its `Net` default here.
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Net);
+
+        _tightenAggregateOutbound(4 ether);
+        _roundTripThreeEther();
+
+        // Per-eid is Gross → no offset, the 3 ether sent still counts.
+        assertEq(aOFT.outboundRateLimits(bEid).amountInFlight, 3 ether);
+        // Aggregate is Net → the receive offset it back to 0.
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 0);
+
+        // With the aggregate bucket emptied by the offset, a further 2 ether fits under the cap of 4.
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory nextSend = SendParam(bEid, addressToBytes32(userB), 2 ether, 2 ether, options, "", "");
+        MessagingFee memory nextFee = aOFT.quoteSend(nextSend, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 2 ether);
+        aOFT.send{ value: nextFee.nativeFee }(nextSend, nextFee, payable(userA));
+        vm.stopPrank();
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 2 ether);
+    }
+
+    function test_set_aggregate_accounting_type_emits_event() public {
+        vm.expectEmit(address(aOFT));
+        emit ISkyRateLimiter.AggregateRateLimitAccountingTypeSet(RateLimitAccountingType.Gross);
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Gross));
+        assertEq(uint8(aOFT.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+    }
+
+    function test_only_owner_can_set_aggregate_accounting_type() public {
+        assertEq(aOFT.owner(), address(this));
+
+        vm.prank(userB);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, userB));
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+
+        // Unchanged by the failed call.
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
     }
 
     function test_receive_oft_fails_global_inbound_cap_aggregate() public {
