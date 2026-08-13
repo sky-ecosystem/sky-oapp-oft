@@ -193,19 +193,12 @@ abstract contract SkyOFTCore is
     /**
      * @notice Sets the rate limit accounting type.
      * @param _rateLimitAccountingType The new rate limit accounting type.
+     * @dev Per-eid buckets only; the `SENTINEL_EID` bucket has its own accounting type, set via
+     * `ISkyOFTAdapter.setAggregateRateLimitAccountingType`.
      * @dev You may want to call `resetRateLimits` after changing the rate limit accounting type.
      */
     function setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) external onlyOwner {
         _setRateLimitAccountingType(_rateLimitAccountingType);
-    }
-
-    /**
-     * @notice Sets the accounting type for the reserved aggregate eid.
-     * @param _aggregateRateLimitAccountingType The new aggregate-slot accounting type.
-     * @dev You may want to call `resetRateLimits` for `SENTINEL_EID` after changing this.
-     */
-    function setAggregateRateLimitAccountingType(RateLimitAccountingType _aggregateRateLimitAccountingType) external onlyOwner {
-        _setAggregateRateLimitAccountingType(_aggregateRateLimitAccountingType);
     }
 
     /**

@@ -583,7 +583,6 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         aOFT.setRateLimitAccountingType(RateLimitAccountingType.Gross);
         // @dev The per-eid setter does not cascade: the sentinel is still on its `Net` default here.
         assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
-        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Net);
 
         _tightenAggregateOutbound(4 ether);
         _roundTripThreeEther();

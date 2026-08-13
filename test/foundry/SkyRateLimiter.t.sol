@@ -32,7 +32,11 @@ contract SkyRateLimiterImpl is SkyRateLimiter {
     function setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) external {
         _setRateLimitAccountingType(_rateLimitAccountingType);
     }
-    
+
+    function setAggregateRateLimitAccountingType(RateLimitAccountingType _aggregateRateLimitAccountingType) external {
+        _setAggregateRateLimitAccountingType(_aggregateRateLimitAccountingType);
+    }
+
     // Expose internal functions for testing
     function calculateDecay(
         uint256 _amountInFlight,
@@ -506,6 +510,81 @@ contract SkyRateLimiterTest is Test {
         vm.expectEmit(true, true, true, true);
         emit ISkyRateLimiter.RateLimitsReset(eids, RateLimitDirection.Inbound);
         rateLimiter.resetRateLimits(eids, RateLimitDirection.Inbound);
+
+        // Test AggregateRateLimitAccountingTypeSet event
+        vm.expectEmit(true, true, true, true);
+        emit ISkyRateLimiter.AggregateRateLimitAccountingTypeSet(RateLimitAccountingType.Gross);
+        rateLimiter.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+    }
+
+    // @dev Gives the SENTINEL_EID buckets the same limits as eidA, so the only difference between the
+    // two eids in the tests below is which accounting type governs them.
+    function _setSentinelRateLimits() internal {
+        RateLimitConfig[] memory configs = new RateLimitConfig[](1);
+        configs[0] = RateLimitConfig({ eid: rateLimiter.SENTINEL_EID(), limit: limit, window: window });
+        rateLimiter.setRateLimits(configs, RateLimitDirection.Outbound);
+        rateLimiter.setRateLimits(configs, RateLimitDirection.Inbound);
+    }
+
+    function test_accounting_types_default_to_net() public view {
+        assertEq(uint8(rateLimiter.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+        assertEq(uint8(rateLimiter.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+    }
+
+    function test_accounting_type_setters_do_not_cascade() public {
+        rateLimiter.setRateLimitAccountingType(RateLimitAccountingType.Gross);
+        assertEq(uint8(rateLimiter.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+
+        rateLimiter.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+        rateLimiter.setRateLimitAccountingType(RateLimitAccountingType.Net);
+        assertEq(uint8(rateLimiter.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Gross));
+    }
+
+    // @dev Pins the `_eid == SENTINEL_EID` branch in `_checkAndUpdateRateLimit`: the sentinel bucket
+    // must follow `aggregateRateLimitAccountingType` while every other eid follows `rateLimitAccountingType`.
+    function test_sentinel_bucket_uses_aggregate_accounting_type() public {
+        _setSentinelRateLimits();
+        rateLimiter.setRateLimitAccountingType(RateLimitAccountingType.Net);
+        rateLimiter.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+
+        rateLimiter.outflow(eidA, limit);
+        rateLimiter.outflow(rateLimiter.SENTINEL_EID(), limit);
+
+        rateLimiter.inflow(eidA, limit);
+        rateLimiter.inflow(rateLimiter.SENTINEL_EID(), limit);
+
+        // eidA is Net: the inflow offset the outbound bucket back to empty.
+        (amountInFlight, amountCanBeSent) = rateLimiter.getAmountCanBeSent(eidA);
+        assertEq(amountInFlight, 0);
+        assertEq(amountCanBeSent, limit);
+
+        // The sentinel is Gross: its inflow did NOT offset, so the outbound bucket is still full.
+        (amountInFlight, amountCanBeSent) = rateLimiter.getAmountCanBeSent(rateLimiter.SENTINEL_EID());
+        assertEq(amountInFlight, limit);
+        assertEq(amountCanBeSent, 0);
+    }
+
+    // @dev Mirror of the above; together they pin which field governs which bucket.
+    function test_per_eid_buckets_use_per_eid_accounting_type() public {
+        _setSentinelRateLimits();
+        rateLimiter.setRateLimitAccountingType(RateLimitAccountingType.Gross);
+        rateLimiter.setAggregateRateLimitAccountingType(RateLimitAccountingType.Net);
+
+        rateLimiter.outflow(eidA, limit);
+        rateLimiter.outflow(rateLimiter.SENTINEL_EID(), limit);
+
+        rateLimiter.inflow(eidA, limit);
+        rateLimiter.inflow(rateLimiter.SENTINEL_EID(), limit);
+
+        // eidA is Gross: no offset, the outbound bucket is still full.
+        (amountInFlight, amountCanBeSent) = rateLimiter.getAmountCanBeSent(eidA);
+        assertEq(amountInFlight, limit);
+        assertEq(amountCanBeSent, 0);
+
+        // The sentinel is Net: its inflow offset the outbound bucket back to empty.
+        (amountInFlight, amountCanBeSent) = rateLimiter.getAmountCanBeSent(rateLimiter.SENTINEL_EID());
+        assertEq(amountInFlight, 0);
+        assertEq(amountCanBeSent, limit);
     }
 
     function test_edge_cases() public {

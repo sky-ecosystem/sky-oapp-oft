@@ -22,6 +22,7 @@ import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messa
 import { DoubleEndedQueue } from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import { SkyOFTCore } from "../../../contracts/SkyOFTCore.sol";
 import { ISkyOFT } from "../../../contracts/interfaces/ISkyOFT.sol";
+import { ISkyOFTAdapter } from "../../../contracts/interfaces/ISkyOFTAdapter.sol";
 
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -281,6 +282,24 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         );
         RateLimitConfig[] memory aEmptyInboundConfigs = new RateLimitConfig[](0);
         aOFT.setRateLimits(aEmptyInboundConfigs, aNewOutboundConfigs);
+    }
+
+    // @dev The aggregate cap is enforced only by `SkyOFTAdapter` (the L1 lockbox); satellites never
+    // charge `SENTINEL_EID`. The setter is therefore declared on `ISkyOFTAdapter` and must stay off
+    // this contract's ABI — otherwise the owner could flip a setting that is never enforced here and
+    // emit `AggregateRateLimitAccountingTypeSet`, telling monitoring a policy exists when it does not.
+    function test_aggregate_accounting_type_setter_not_exposed() public {
+        // @dev Selector is taken from the interface so this test follows any signature change.
+        (bool success, ) = address(aOFT).call(
+            abi.encodeWithSelector(
+                ISkyOFTAdapter.setAggregateRateLimitAccountingType.selector,
+                RateLimitAccountingType.Gross
+            )
+        );
+        assertFalse(success, "satellite must not expose the aggregate accounting-type setter");
+
+        // The value stays readable and pinned to its `Net` default.
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
     }
 
     function test_send_oft() public {
