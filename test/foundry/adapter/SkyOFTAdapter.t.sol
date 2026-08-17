@@ -153,6 +153,42 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertEq(aOFT.token(), address(aToken));
         assertEq(bOFT.token(), address(bToken));
         assertEq(cOFT.token(), address(cToken));
+
+        // @dev The sentinel must stay outside real LZ eid space: the per-eid and global buckets are
+        // separated only by mapping key, so a collision would alias them and double-charge transfers.
+        assertEq(aOFT.SENTINEL_EID(), type(uint32).max);
+    }
+
+    // @dev Reads the rate-limit getters through the `ISkyRateLimiter` type, the way an integrator
+    // would. Pins two things the rest of the suite leaves loose: that the declared interface is
+    // actually reachable, and the `RateLimit` struct return shape field by field in BOTH directions
+    // (the ABI-descriptor change called out in OFT_V2_NOTES.md).
+    // @dev Inbound and outbound are given deliberately different limits/windows so that a swap of the
+    // two mappings would fail here; symmetric values would hide it.
+    function test_rate_limit_getters_through_interface() public {
+        ISkyRateLimiter rl = ISkyRateLimiter(address(aOFT));
+
+        assertEq(rl.SENTINEL_EID(), type(uint32).max);
+        assertEq(uint8(rl.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+        assertEq(uint8(rl.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+
+        RateLimitConfig[] memory inbound = new RateLimitConfig[](1);
+        inbound[0] = RateLimitConfig({eid: 99, limit: 7 ether, window: 30 seconds});
+        RateLimitConfig[] memory outbound = new RateLimitConfig[](1);
+        outbound[0] = RateLimitConfig({eid: 99, limit: 5 ether, window: 60 seconds});
+        aOFT.setRateLimits(inbound, outbound);
+
+        RateLimit memory o = rl.outboundRateLimits(99);
+        assertEq(o.limit, 5 ether);
+        assertEq(o.window, 60 seconds);
+        assertEq(o.amountInFlight, 0);
+        assertEq(o.lastUpdated, block.timestamp);
+
+        RateLimit memory i = rl.inboundRateLimits(99);
+        assertEq(i.limit, 7 ether);
+        assertEq(i.window, 30 seconds);
+        assertEq(i.amountInFlight, 0);
+        assertEq(i.lastUpdated, block.timestamp);
     }
 
     function test_set_rates() public {
