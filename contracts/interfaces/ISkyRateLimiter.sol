@@ -54,10 +54,17 @@ interface ISkyRateLimiter {
      */
     event RateLimitsChanged(RateLimitConfig[] rateLimitConfigs, RateLimitDirection direction);
     event RateLimitAccountingTypeSet(RateLimitAccountingType newRateLimitAccountingType);
+    event AggregateRateLimitAccountingTypeSet(RateLimitAccountingType newAggregateRateLimitAccountingType);
     event RateLimitsReset(uint32[] eids, RateLimitDirection direction);
 
     // @dev Error that is thrown when an amount exceeds the rate limit for a given direction.
     error RateLimitExceeded();
+
+    function SENTINEL_EID() external view returns (uint32);
+    function rateLimitAccountingType() external view returns (RateLimitAccountingType);
+    function aggregateRateLimitAccountingType() external view returns (RateLimitAccountingType);
+    function outboundRateLimits(uint32 dstEid) external view returns (RateLimit memory);
+    function inboundRateLimits(uint32 srcEid) external view returns (RateLimit memory);
 
     /**
      * @notice Get the current amount that can be sent to this destination endpoint id for the given rate limit window.

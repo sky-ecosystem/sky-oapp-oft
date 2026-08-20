@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.22;
 
+import { RateLimitAccountingType } from "./ISkyRateLimiter.sol";
+
 interface ISkyOFTAdapter {
     // Events
     event LockedTokensMigrated(address indexed to, uint256 amountLD);
@@ -17,4 +19,11 @@ interface ISkyOFTAdapter {
      * @dev The migration EXCLUDES accumulated fees.
      */
     function migrateLockedTokens(address _to) external;
+
+    /**
+     * @notice Sets the accounting type for the reserved aggregate eid.
+     * @param aggregateRateLimitAccountingType The new aggregate-slot accounting type.
+     * @dev You may want to call `resetRateLimits` for `SENTINEL_EID` after changing this.
+     */
+    function setAggregateRateLimitAccountingType(RateLimitAccountingType aggregateRateLimitAccountingType) external;
 }

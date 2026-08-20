@@ -13,6 +13,7 @@ import {
  * @title SkyRateLimiter
  * @dev Abstract contract for implementing net and gross rate limiting functionality.
  * @dev Toggle between net and gross accounting by calling `_setRateLimitAccountingType`.
+ * @dev The `SENTINEL_EID` bucket has its own toggle, `_setAggregateRateLimitAccountingType`.
  * ---------------------------------------------------------------------------------------------------------------------
  * Net accounting allows two operations to offset each other's net impact (e.g., inflow v.s. outflow of assets).
  * A flexible rate limit that grows during congestive periods and shrinks during calm periods could give some
@@ -23,8 +24,19 @@ import {
  * Designed to be inherited by other contracts requiring rate limiting to protect resources/services from excessive use.
  */
 abstract contract SkyRateLimiter is ISkyRateLimiter {
+    // @dev Reserved eid for aggregate cross-chain caps. Unset sentinel limits brick every transfer.
+    // @dev Both inbound and outbound must be configured; setting only one side bricks every transfer
+    //      in the unconfigured direction across all peers.
+    // @dev NOT included implicitly in `setRateLimits` / `resetRateLimits`: operators rotating limits, or
+    //      resetting the buckets after flipping either accounting type, must pass `SENTINEL_EID` in those
+    //      arrays explicitly to affect the global cap alongside per-eid buckets.
+    // @dev The sentinel bucket uses `aggregateRateLimitAccountingType`; every other eid uses
+    //      `rateLimitAccountingType`. Both default to `Net` and are set independently.
+    uint32 public constant SENTINEL_EID = type(uint32).max;
+
     struct SkyRateLimiterStorage {
         RateLimitAccountingType rateLimitAccountingType;
+        RateLimitAccountingType aggregateRateLimitAccountingType;
         // Tracks rate limits for outbound transactions to a dstEid.
         mapping(uint32 dstEid => RateLimit) outboundRateLimits;
         // Tracks rate limits for inbound transactions from a srcEid.
@@ -42,6 +54,10 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
 
     function rateLimitAccountingType() external view returns (RateLimitAccountingType) {
         return _getSkyRateLimiterStorage().rateLimitAccountingType;
+    }
+
+    function aggregateRateLimitAccountingType() external view returns (RateLimitAccountingType) {
+        return _getSkyRateLimiterStorage().aggregateRateLimitAccountingType;
     }
 
     function outboundRateLimits(uint32 _dstEid) external view returns (RateLimit memory) {
@@ -129,6 +145,16 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
     function _setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) internal {
         _getSkyRateLimiterStorage().rateLimitAccountingType = _rateLimitAccountingType;
         emit RateLimitAccountingTypeSet(_rateLimitAccountingType);
+    }
+
+    /**
+     * @notice Sets the accounting type for the reserved aggregate eid.
+     * @dev You may want to call `_resetRateLimits` for `SENTINEL_EID` after changing this.
+     * @param _aggregateRateLimitAccountingType The new aggregate-slot accounting type.
+     */
+    function _setAggregateRateLimitAccountingType(RateLimitAccountingType _aggregateRateLimitAccountingType) internal {
+        _getSkyRateLimiterStorage().aggregateRateLimitAccountingType = _aggregateRateLimitAccountingType;
+        emit AggregateRateLimitAccountingTypeSet(_aggregateRateLimitAccountingType);
     }
 
     /**
@@ -225,7 +251,10 @@ abstract contract SkyRateLimiter is ISkyRateLimiter {
         rl.amountInFlight = currentAmountInFlight + _amount;
         rl.lastUpdated = uint128(block.timestamp);
 
-        if ($.rateLimitAccountingType == RateLimitAccountingType.Net) {
+        RateLimitAccountingType accountingType = _eid == SENTINEL_EID
+            ? $.aggregateRateLimitAccountingType
+            : $.rateLimitAccountingType;
+        if (accountingType == RateLimitAccountingType.Net) {
             RateLimit storage oppositeRL = _direction == RateLimitDirection.Outbound
                 ? $.inboundRateLimits[_eid]
                 : $.outboundRateLimits[_eid];

@@ -5,7 +5,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { ISkyOFTAdapter } from "./interfaces/ISkyOFTAdapter.sol";
-import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
+import { SkyOFTCore, RateLimitDirection, RateLimitAccountingType } from "./SkyOFTCore.sol";
 
 /**
  * @title SkyOFTAdapter Contract
@@ -19,14 +19,6 @@ import { SkyOFTCore, RateLimitDirection } from "./SkyOFTCore.sol";
  */
 contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
     using SafeERC20 for IERC20;
-
-    // @dev Reserved eid for aggregate cross-chain caps. Unset sentinel limits brick every transfer.
-    // @dev Both inbound and outbound must be configured; setting only one side bricks every transfer
-    //      in the unconfigured direction across all peers.
-    // @dev NOT included implicitly in `setRateLimits` / `resetRateLimits`: operators rotating limits or
-    //      flipping `RateLimitAccountingType` must pass `SENTINEL_EID` in those arrays explicitly to
-    //      affect the global cap alongside per-eid buckets.
-    uint32 public constant SENTINEL_EID = type(uint32).max;
 
     struct SkyOFTAdapterStorage {
         uint256 feeBalance;
@@ -86,6 +78,17 @@ contract SkyOFTAdapter is ISkyOFTAdapter, SkyOFTCore {
         (currentAmountInFlight, amountCanBeReceived) = super.getAmountCanBeReceived(_srcEid);
         (, uint256 sentinelCap) = super.getAmountCanBeReceived(SENTINEL_EID);
         if (sentinelCap < amountCanBeReceived) amountCanBeReceived = sentinelCap;
+    }
+
+    /**
+     * @notice Sets the accounting type for the reserved aggregate eid.
+     * @param _aggregateRateLimitAccountingType The new aggregate-slot accounting type.
+     * @dev You may want to call `resetRateLimits` for `SENTINEL_EID` after changing this.
+     */
+    function setAggregateRateLimitAccountingType(
+        RateLimitAccountingType _aggregateRateLimitAccountingType
+    ) external onlyOwner {
+        _setAggregateRateLimitAccountingType(_aggregateRateLimitAccountingType);
     }
 
     /**
