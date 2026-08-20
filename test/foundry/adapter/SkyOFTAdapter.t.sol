@@ -12,7 +12,7 @@ import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Opti
 
 // OFT imports
 import { SkyOFTAdapter } from "../../../contracts/SkyOFTAdapter.sol";
-import { SkyRateLimiter, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
+import { SkyRateLimiter, RateLimit, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
 import { ISkyRateLimiter } from "../../../contracts/interfaces/ISkyRateLimiter.sol";
 import { IOFT, SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { MessagingFee, MessagingReceipt, Origin, OFTLimit, OFTFeeDetail } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
@@ -27,6 +27,7 @@ import { ISkyOFT } from "../../../contracts/interfaces/ISkyOFT.sol";
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 // DevTools imports
@@ -87,20 +88,17 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         setUpEndpoints(3, LibraryType.UltraLightNode);
         setUpTokens();
         
-        aOFT = SkyOFTAdapter(
-            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(aToken), address(endpoints[aEid]), address(this)))
-        );
+        aOFT = SkyOFTAdapter(_deployAdapterProxy(address(aToken), address(endpoints[aEid]), address(this)));
         aOFT.setRateLimits(aInboundConfigs, aOutboundConfigs);
+        _enableSentinelUnbounded(aOFT);
 
-        bOFT = SkyOFTAdapter(
-            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(bToken), address(endpoints[bEid]), address(this)))
-        );
+        bOFT = SkyOFTAdapter(_deployAdapterProxy(address(bToken), address(endpoints[bEid]), address(this)));
         bOFT.setRateLimits(bInboundConfigs, bOutboundConfigs);
+        _enableSentinelUnbounded(bOFT);
 
-        cOFT = SkyOFTAdapter(
-            _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(address(cToken), address(endpoints[cEid]), address(this)))
-        );
+        cOFT = SkyOFTAdapter(_deployAdapterProxy(address(cToken), address(endpoints[cEid]), address(this)));
         cOFT.setRateLimits(cInboundConfigs, cOutboundConfigs);
+        _enableSentinelUnbounded(cOFT);
 
         // config and wire the ofts
         address[] memory ofts = new address[](3);
@@ -127,6 +125,22 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         cToken = new MintBurnERC20Mock("cToken", "cToken");
     }
 
+    function _deployAdapterProxy(address _token, address _endpoint, address _delegate) internal returns (address) {
+        address impl = _deployOApp(type(SkyOFTAdapter).creationCode, abi.encode(_token, _endpoint));
+        return _deployOApp(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(impl, abi.encodeCall(SkyOFTAdapter.initialize, (_delegate)))
+        );
+    }
+
+    // @dev Configures the SENTINEL_EID buckets with effectively-unbounded limits so the global
+    // cap is inert; per-eid behavior remains the binding constraint for the existing test scenarios.
+    function _enableSentinelUnbounded(SkyOFTAdapter _oft) internal {
+        RateLimitConfig[] memory s = new RateLimitConfig[](1);
+        s[0] = RateLimitConfig({eid: _oft.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        _oft.setRateLimits(s, s);
+    }
+
     function test_constructor() public view {
         assertEq(aOFT.owner(), address(this));
         assertEq(bOFT.owner(), address(this));
@@ -139,6 +153,42 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertEq(aOFT.token(), address(aToken));
         assertEq(bOFT.token(), address(bToken));
         assertEq(cOFT.token(), address(cToken));
+
+        // @dev The sentinel must stay outside real LZ eid space: the per-eid and global buckets are
+        // separated only by mapping key, so a collision would alias them and double-charge transfers.
+        assertEq(aOFT.SENTINEL_EID(), type(uint32).max);
+    }
+
+    // @dev Reads the rate-limit getters through the `ISkyRateLimiter` type, the way an integrator
+    // would. Pins two things the rest of the suite leaves loose: that the declared interface is
+    // actually reachable, and the `RateLimit` struct return shape field by field in BOTH directions
+    // (the ABI-descriptor change called out in OFT_V2_NOTES.md).
+    // @dev Inbound and outbound are given deliberately different limits/windows so that a swap of the
+    // two mappings would fail here; symmetric values would hide it.
+    function test_rate_limit_getters_through_interface() public {
+        ISkyRateLimiter rl = ISkyRateLimiter(address(aOFT));
+
+        assertEq(rl.SENTINEL_EID(), type(uint32).max);
+        assertEq(uint8(rl.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+        assertEq(uint8(rl.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+
+        RateLimitConfig[] memory inbound = new RateLimitConfig[](1);
+        inbound[0] = RateLimitConfig({eid: 99, limit: 7 ether, window: 30 seconds});
+        RateLimitConfig[] memory outbound = new RateLimitConfig[](1);
+        outbound[0] = RateLimitConfig({eid: 99, limit: 5 ether, window: 60 seconds});
+        aOFT.setRateLimits(inbound, outbound);
+
+        RateLimit memory o = rl.outboundRateLimits(99);
+        assertEq(o.limit, 5 ether);
+        assertEq(o.window, 60 seconds);
+        assertEq(o.amountInFlight, 0);
+        assertEq(o.lastUpdated, block.timestamp);
+
+        RateLimit memory i = rl.inboundRateLimits(99);
+        assertEq(i.limit, 7 ether);
+        assertEq(i.window, 30 seconds);
+        assertEq(i.amountInFlight, 0);
+        assertEq(i.lastUpdated, block.timestamp);
     }
 
     function test_set_rates() public {
@@ -422,6 +472,303 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
     }
 
+    function test_send_oft_fails_global_outbound_cap_aggregate() public {
+        // Precondition: aOFT's per-eid outbound to bEid is the looser cap, so the sentinel binds first.
+        assertEq(aOFT.outboundRateLimits(bEid).limit, 10 ether);
+
+        // Tighten aOFT's global outbound cap below the per-eid cap so the global one binds first.
+        // Inbound sentinel stays effectively unbounded — required so Net-mode offset on `_debit`
+        // doesn't revert touching the global inbound bucket.
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: 4 ether, window: 60 seconds});
+        aOFT.setRateLimits(sIn, sOut);
+
+        uint256 tokensToSend = 3 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(bEid, addressToBytes32(userB), tokensToSend, tokensToSend, options, "", "");
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+
+        vm.startPrank(userA);
+        // Send 1: 3 ether, within per-eid (10) and global (4). Succeeds.
+        aToken.approve(address(aOFT), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(userA));
+
+        // Send 2: aggregate 6 > global 4. Per-eid still has headroom — the global cap binds.
+        aToken.approve(address(aOFT), tokensToSend);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(userA));
+        vm.stopPrank();
+    }
+
+    function test_gross_mode_receive_does_not_offset_sentinel_outbound() public {
+        // In Gross mode, an inbound receive must NOT decrement the sentinel outbound bucket
+        // (the way it would under Net). This test distinguishes Gross's no-offset semantics
+        // from Net's mutual-offset semantics, specifically for the sentinel.
+        aOFT.setRateLimitAccountingType(RateLimitAccountingType.Gross);
+        // @dev The sentinel bucket has its own accounting type and must be set separately.
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+
+        // Tighten aOFT's sentinel outbound to 4 ether (inbound sentinel stays unbounded).
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: 4 ether, window: 60 seconds});
+        aOFT.setRateLimits(sIn, sOut);
+
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+
+        // Send 3 ether a→b. Sentinel outbound in-flight = 3.
+        SendParam memory aToB = SendParam(bEid, addressToBytes32(userB), 3 ether, 3 ether, options, "", "");
+        MessagingFee memory aFee = aOFT.quoteSend(aToB, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 3 ether);
+        aOFT.send{ value: aFee.nativeFee }(aToB, aFee, payable(userA));
+        vm.stopPrank();
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 3 ether);
+
+        // Deliver to b, then have b send 3 ether back to a. This triggers aOFT._credit, which
+        // would decrement sentinel outbound under Net but must leave it untouched under Gross.
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
+
+        SendParam memory bToA = SendParam(aEid, addressToBytes32(userA), 3 ether, 3 ether, options, "", "");
+        MessagingFee memory bFee = bOFT.quoteSend(bToA, false);
+        vm.startPrank(userB);
+        bToken.approve(address(bOFT), 3 ether);
+        bOFT.send{ value: bFee.nativeFee }(bToA, bFee, payable(userB));
+        vm.stopPrank();
+        verifyAndExecutePackets(aEid, addressToBytes32(address(aOFT)));
+
+        // Under Gross, sentinel outbound in-flight is still 3 (unchanged by the receive).
+        // (Under Net, this would be 0 after the offset.)
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 3 ether);
+
+        // The sentinel outbound cap (4) still binds: a 2-ether send would push aggregate to 5 → revert.
+        SendParam memory nextSend = SendParam(bEid, addressToBytes32(userB), 2 ether, 2 ether, options, "", "");
+        MessagingFee memory nextFee = aOFT.quoteSend(nextSend, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 2 ether);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
+        aOFT.send{ value: nextFee.nativeFee }(nextSend, nextFee, payable(userA));
+        vm.stopPrank();
+    }
+
+    // @dev Tighten aOFT's sentinel outbound cap; inbound stays unbounded so receives never revert on it.
+    function _tightenAggregateOutbound(uint256 _outLimit) internal {
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: _outLimit, window: 60 seconds});
+        aOFT.setRateLimits(sIn, sOut);
+    }
+
+    // @dev Round-trips 3 ether a→b→a so aOFT's `_credit` runs and offsetting is observable.
+    function _roundTripThreeEther() internal {
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+
+        SendParam memory aToB = SendParam(bEid, addressToBytes32(userB), 3 ether, 3 ether, options, "", "");
+        MessagingFee memory aFee = aOFT.quoteSend(aToB, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 3 ether);
+        aOFT.send{ value: aFee.nativeFee }(aToB, aFee, payable(userA));
+        vm.stopPrank();
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
+
+        SendParam memory bToA = SendParam(aEid, addressToBytes32(userA), 3 ether, 3 ether, options, "", "");
+        MessagingFee memory bFee = bOFT.quoteSend(bToA, false);
+        vm.startPrank(userB);
+        bToken.approve(address(bOFT), 3 ether);
+        bOFT.send{ value: bFee.nativeFee }(bToA, bFee, payable(userB));
+        vm.stopPrank();
+        verifyAndExecutePackets(aEid, addressToBytes32(address(aOFT)));
+    }
+
+    function test_aggregate_accounting_type_defaults_to_net() public view {
+        // @dev Both default to the enum zero value, Net — the permissive mode. Nothing sets them at init.
+        assertEq(uint8(aOFT.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+    }
+
+    function test_aggregate_gross_while_per_eid_net() public {
+        // The special case this feature exists for: sentinel forbids offsetting, per-eid still allows it.
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+        assertEq(uint8(aOFT.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+
+        _tightenAggregateOutbound(4 ether);
+        _roundTripThreeEther();
+
+        // Per-eid is Net → the receive offset the outbound bucket back to 0.
+        assertEq(aOFT.outboundRateLimits(bEid).amountInFlight, 0);
+        // Aggregate is Gross → the receive did NOT offset it; the 3 ether sent still counts.
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 3 ether);
+
+        // The aggregate cap (4) therefore still binds even though the per-eid bucket is empty.
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory nextSend = SendParam(bEid, addressToBytes32(userB), 2 ether, 2 ether, options, "", "");
+        MessagingFee memory nextFee = aOFT.quoteSend(nextSend, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 2 ether);
+        vm.expectRevert(abi.encodeWithSelector(ISkyRateLimiter.RateLimitExceeded.selector));
+        aOFT.send{ value: nextFee.nativeFee }(nextSend, nextFee, payable(userA));
+        vm.stopPrank();
+    }
+
+    function test_aggregate_net_while_per_eid_gross() public {
+        // Mirror image of the above; together they pin which field governs which bucket.
+        aOFT.setRateLimitAccountingType(RateLimitAccountingType.Gross);
+        // @dev The per-eid setter does not cascade: the sentinel is still on its `Net` default here.
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+
+        _tightenAggregateOutbound(4 ether);
+        _roundTripThreeEther();
+
+        // Per-eid is Gross → no offset, the 3 ether sent still counts.
+        assertEq(aOFT.outboundRateLimits(bEid).amountInFlight, 3 ether);
+        // Aggregate is Net → the receive offset it back to 0.
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 0);
+
+        // With the aggregate bucket emptied by the offset, a further 2 ether fits under the cap of 4.
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory nextSend = SendParam(bEid, addressToBytes32(userB), 2 ether, 2 ether, options, "", "");
+        MessagingFee memory nextFee = aOFT.quoteSend(nextSend, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 2 ether);
+        aOFT.send{ value: nextFee.nativeFee }(nextSend, nextFee, payable(userA));
+        vm.stopPrank();
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).amountInFlight, 2 ether);
+    }
+
+    function test_set_aggregate_accounting_type_emits_event() public {
+        vm.expectEmit(address(aOFT));
+        emit ISkyRateLimiter.AggregateRateLimitAccountingTypeSet(RateLimitAccountingType.Gross);
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Gross));
+        assertEq(uint8(aOFT.rateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+    }
+
+    function test_only_owner_can_set_aggregate_accounting_type() public {
+        assertEq(aOFT.owner(), address(this));
+
+        vm.prank(userB);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, userB));
+        aOFT.setAggregateRateLimitAccountingType(RateLimitAccountingType.Gross);
+
+        // Unchanged by the failed call.
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
+    }
+
+    function test_receive_oft_fails_global_inbound_cap_aggregate() public {
+        // Precondition: bOFT's per-eid inbound from aEid is the looser cap, so the sentinel binds first.
+        assertEq(bOFT.inboundRateLimits(aEid).limit, 10 ether);
+
+        // Tighten bOFT's global inbound cap below the per-chain limit so the global one binds first.
+        // Outbound sentinel stays effectively unbounded — required so `_debit` (called when receiving
+        // in Net mode) doesn't revert offsetting the global inbound bucket.
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: 4 ether, window: 60 seconds});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        bOFT.setRateLimits(sIn, sOut);
+
+        uint256 tokensToSend = 3 ether;
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(bEid, addressToBytes32(userB), tokensToSend, tokensToSend, options, "", "");
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+
+        // Two consecutive sends from A → B; aggregate (6) exceeds bOFT's global inbound cap (4).
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(userA));
+        aToken.approve(address(aOFT), tokensToSend);
+        aOFT.send{ value: fee.nativeFee }(sendParam, fee, payable(userA));
+        vm.stopPrank();
+
+        // Packet 1: 3 ether, within per-chain (10) and global (4). Succeeds.
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0));
+
+        // Packet 2: aggregate 6 > global 4. Per-chain still has headroom — the global cap binds.
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)), 1, address(0), abi.encodePacked(ISkyRateLimiter.RateLimitExceeded.selector), "");
+    }
+
+    function test_outbound_views_reflect_global_cap() public {
+        // Precondition: aOFT's per-eid outbound to bEid is the looser cap, so the sentinel binds.
+        assertEq(aOFT.outboundRateLimits(bEid).limit, 10 ether);
+
+        // Tighten aOFT's global outbound cap below the per-eid cap so the global binds.
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: aOFT.SENTINEL_EID(), limit: 3 ether, window: 60 seconds});
+        aOFT.setRateLimits(sIn, sOut);
+
+        // Cold state: per-eid (10) > sentinel (3), sentinel binds at 3.
+        (uint256 currentAmountInFlight, uint256 amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentAmountInFlight, 0);
+        assertEq(amountCanBeSent, 3 ether);
+
+        // Send 1 ether — bumps both per-eid and sentinel outbound buckets by 1.
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(bEid, addressToBytes32(userB), 1 ether, 1 ether, options, "", "");
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 1 ether);
+        aOFT.send{value: fee.nativeFee}(sendParam, fee, payable(userA));
+        vm.stopPrank();
+
+        // After send: currentAmountInFlight reflects per-eid (1 ether), amountCanBeSent = min(10-1, 3-1) = 2.
+        (currentAmountInFlight, amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(currentAmountInFlight, 1 ether);
+        assertEq(amountCanBeSent, 2 ether);
+
+        // quoteOFT.maxAmountLD reflects the same binding sentinel cap.
+        (OFTLimit memory oftLimit,,) = aOFT.quoteOFT(sendParam);
+        assertEq(oftLimit.maxAmountLD, 2 ether);
+    }
+
+    function test_inbound_views_reflect_global_cap() public {
+        // Tighten bOFT's global inbound cap below per-eid; outbound stays unbounded.
+        RateLimitConfig[] memory sIn = new RateLimitConfig[](1);
+        sIn[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: 2 ether, window: 60 seconds});
+        RateLimitConfig[] memory sOut = new RateLimitConfig[](1);
+        sOut[0] = RateLimitConfig({eid: bOFT.SENTINEL_EID(), limit: type(uint128).max, window: 1});
+        bOFT.setRateLimits(sIn, sOut);
+
+        // Cold state: per-eid (10) > sentinel (2), sentinel binds at 2.
+        (uint256 currentAmountInFlight, uint256 amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentAmountInFlight, 0);
+        assertEq(amountCanBeReceived, 2 ether);
+
+        // Send 1 ether a→b and deliver — bumps bOFT's inbound aEid bucket and its sentinel by 1.
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
+        SendParam memory sendParam = SendParam(bEid, addressToBytes32(userB), 1 ether, 1 ether, options, "", "");
+        MessagingFee memory fee = aOFT.quoteSend(sendParam, false);
+        vm.startPrank(userA);
+        aToken.approve(address(aOFT), 1 ether);
+        aOFT.send{value: fee.nativeFee}(sendParam, fee, payable(userA));
+        vm.stopPrank();
+        verifyAndExecutePackets(bEid, addressToBytes32(address(bOFT)));
+
+        // After delivery: currentAmountInFlight reflects per-eid (1 ether), amountCanBeReceived = min(10-1, 2-1) = 1.
+        (currentAmountInFlight, amountCanBeReceived) = bOFT.getAmountCanBeReceived(aEid);
+        assertEq(currentAmountInFlight, 1 ether);
+        assertEq(amountCanBeReceived, 1 ether);
+    }
+
+    function test_views_use_per_eid_when_sentinel_unbounded() public view {
+        // Precondition: setUp left both sentinel buckets effectively unbounded.
+        assertEq(aOFT.outboundRateLimits(aOFT.SENTINEL_EID()).limit, type(uint128).max);
+        assertEq(aOFT.inboundRateLimits(aOFT.SENTINEL_EID()).limit, type(uint128).max);
+
+        // With the sentinel unbounded, the per-eid limit binds.
+        (, uint256 amountCanBeSent) = aOFT.getAmountCanBeSent(bEid);
+        assertEq(amountCanBeSent, 10 ether);
+        (, uint256 amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
+        assertEq(amountCanBeReceived, 10 ether);
+    }
+
+
     function test_receive_oft_succeeds_after_waiting_limit() public {
 
         uint256 tokensToSend = 10 ether;
@@ -571,7 +918,7 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(200000, 0)
+            .addExecutorLzReceiveOption(220000, 0)
             .addExecutorLzComposeOption(0, 500000, 0);
         bytes memory composeMsg = hex"1234";
         SendParam memory sendParam = SendParam(
@@ -672,12 +1019,12 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertEq(amountCanBeReceived, 0);
 
         // 4. Assert bEid IRL from aEID is exhausted.
-        (uint128 lastUpdated, uint48 window, uint256 amountInFlight, uint256 limit) = bOFT.inboundRateLimits(aEid);
+        RateLimit memory rl = bOFT.inboundRateLimits(aEid);
 
-        assertEq(amountInFlight, tokensToSend);
-        assertEq(lastUpdated, block.timestamp);
-        assertEq(limit, 10 ether);
-        assertEq(window, 60 seconds);
+        assertEq(rl.amountInFlight, tokensToSend);
+        assertEq(rl.lastUpdated, block.timestamp);
+        assertEq(rl.limit, 10 ether);
+        assertEq(rl.window, 60 seconds);
 
         // 5. Send 10 ether from aEid to bEid again.  This should not fail because ORL of aEID to bEid is 20 ether.
         vm.startPrank(userA);
@@ -712,11 +1059,11 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(aEid, addressToBytes32(address(aOFT)), 1, address(0));
         (, amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
         assertEq(amountCanBeReceived, 10 ether);
-        (lastUpdated, window, amountInFlight, limit) = bOFT.inboundRateLimits(aEid);
-        assertEq(amountInFlight, 0);
-        assertEq(lastUpdated, block.timestamp);
-        assertEq(limit, 10 ether);
-        assertEq(window, 60 seconds);
+        rl = bOFT.inboundRateLimits(aEid);
+        assertEq(rl.amountInFlight, 0);
+        assertEq(rl.lastUpdated, block.timestamp);
+        assertEq(rl.limit, 10 ether);
+        assertEq(rl.window, 60 seconds);
 
         // 8. try to send 10 ether from bEid to aEid again, violating the ORL.
         (, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
@@ -1379,5 +1726,42 @@ contract SkyOFTAdapterTest is TestHelperOz5WithRevertAssertions {
         assertEq(oftFeeDetails.length, 0, "Fee details array should be empty when no fee is charged");
         assertEq(oftReceipt.amountSentLD, tokensToSend, "Amount sent should equal tokens to send");
         assertEq(oftReceipt.amountReceivedLD, tokensToSend, "Amount received should equal tokens to send");
+    }
+
+    // @dev Each test below verifies that the ERC-7201 storage-slot constant in the contract matches the
+    //      formula documented in its preceding comment. The strategy: compute the slot from the documented
+    //      formula, write a sentinel value to that slot via `vm.store`, and assert the contract's read path
+    //      sees the written value. If the constant in the file drifted from the formula, the contract would
+    //      read a different slot and the assertion would fail.
+
+    function test_SkyRateLimiter_storage_slot_matches_derivation() public {
+        bytes32 expectedSlot = keccak256(abi.encode(uint256(keccak256("sky.storage.SkyRateLimiter")) - 1)) & ~bytes32(uint256(0xff));
+        // Direct check against the hardcoded constant in SkyRateLimiter.sol.
+        assertEq(expectedSlot, bytes32(uint256(0x868cf2e95349a11bfef6fbb57b8a2d9f17221bd478f74444896b781776317b00)));
+        // Behavioral check: rateLimitAccountingType is at offset 0 of the namespaced struct.
+        vm.store(address(aOFT), expectedSlot, bytes32(uint256(uint8(RateLimitAccountingType.Gross))));
+        assertEq(uint256(aOFT.rateLimitAccountingType()), uint256(RateLimitAccountingType.Gross));
+    }
+
+    function test_SkyOFTCore_storage_slot_matches_derivation() public {
+        bytes32 expectedBase = keccak256(abi.encode(uint256(keccak256("sky.storage.SkyOFTCore")) - 1)) & ~bytes32(uint256(0xff));
+        // Direct check against the hardcoded constant in SkyOFTCore.sol.
+        assertEq(expectedBase, bytes32(uint256(0xf9dea648e4f31f4a8d1fbdc7eeca2b36f48d9310e4a268bd28dd82005c1b7900)));
+        // Behavioral check: pausers is a mapping at offset 0 of the namespaced struct.
+        // Mapping value slot for key `k` at base slot `b`: keccak256(abi.encode(k, b)).
+        address probe = address(0xBEEF);
+        bytes32 valueSlot = keccak256(abi.encode(probe, expectedBase));
+        vm.store(address(aOFT), valueSlot, bytes32(uint256(1)));
+        assertTrue(aOFT.pausers(probe));
+    }
+
+    function test_SkyOFTAdapter_storage_slot_matches_derivation() public {
+        bytes32 expectedSlot = keccak256(abi.encode(uint256(keccak256("sky.storage.SkyOFTAdapter")) - 1)) & ~bytes32(uint256(0xff));
+        // Direct check against the hardcoded constant in SkyOFTAdapter.sol.
+        assertEq(expectedSlot, bytes32(uint256(0xa212a9105d34110ec7b56ba95a22a00c83c40de826beea9f21530155344fbd00)));
+        // Behavioral check: feeBalance (uint256) is at offset 0 of the namespaced struct.
+        uint256 sentinel = 123456 ether;
+        vm.store(address(aOFT), expectedSlot, bytes32(sentinel));
+        assertEq(aOFT.feeBalance(), sentinel);
     }
 }

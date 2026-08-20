@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.22;
 
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
-import { Fee } from "@layerzerolabs/oft-evm/contracts/Fee.sol";
-import { OFTCore, SendParam, OFTLimit, OFTFeeDetail, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
+import { FeeUpgradeable } from "@layerzerolabs/oft-evm-upgradeable/contracts/oft/FeeUpgradeable.sol";
+import { OFTCoreUpgradeable } from "@layerzerolabs/oft-evm-upgradeable/contracts/oft/OFTCoreUpgradeable.sol";
+import { SendParam, OFTLimit, OFTFeeDetail, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 
 import { ISkyOFT } from "./interfaces/ISkyOFT.sol";
 import {
@@ -22,27 +23,77 @@ import {
  * @notice The SkyOFTCore contract, which manages cross-chain transfer rate limits and fees.
  * @dev This contracts defines the core functionalities of the SkyOFT system, including rate limit management,
  * pauser management, and fee withdrawal.
+ *
+ * @dev All mutable state in this contract and its ancestors lives in ERC-7201 namespaced storage,
+ *      so new state can safely be added to any layer of the inheritance graph without shifting
+ *      slot positions in deployed proxies.
  */
-abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable {
-    using SafeERC20 for IERC20;
+abstract contract SkyOFTCore is
+    ISkyOFT,
+    OFTCoreUpgradeable,
+    SkyRateLimiter,
+    FeeUpgradeable,
+    PausableUpgradeable,
+    UUPSUpgradeable
+{
 
-    mapping(address pauser => bool canPause) public pausers;
+    struct SkyOFTCoreStorage {
+        mapping(address pauser => bool canPause) pausers;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("sky.storage.SkyOFTCore")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant SKY_OFT_CORE_STORAGE_LOCATION = 0xf9dea648e4f31f4a8d1fbdc7eeca2b36f48d9310e4a268bd28dd82005c1b7900;
+
+    function _getSkyOFTCoreStorage() internal pure returns (SkyOFTCoreStorage storage $) {
+        assembly {
+            $.slot := SKY_OFT_CORE_STORAGE_LOCATION
+        }
+    }
+
+    function pausers(address _pauser) external view returns (bool) {
+        return _getSkyOFTCoreStorage().pausers[_pauser];
+    }
 
     IERC20 internal immutable innerToken;
 
     /**
-     * @notice Initializes the SkyOFTCore contract.
+     * @notice Sets immutables on the implementation contract.
      *
      * @param _token The address of the underlying ERC20 token.
      * @param _lzEndpoint The LayerZero endpoint address.
-     * @param _delegate The address of the delegate.
+     *
+     * @dev State (owner, peers, pause flag, etc.) is set via `__SkyOFTCore_init` from the child's `initialize`.
      */
     constructor(
         address _token,
-        address _lzEndpoint,
-        address _delegate
-    ) OFTCore(IERC20Metadata(_token).decimals(), _lzEndpoint, _delegate) Ownable(_delegate){
+        address _lzEndpoint
+    ) OFTCoreUpgradeable(IERC20Metadata(_token).decimals(), _lzEndpoint) {
         innerToken = IERC20(_token);
+    }
+
+    /**
+     * @dev Initializes the inherited upgradeable contracts. Must be called from the child's `initialize`.
+     * @param _delegate The address of the delegate.
+     */
+    function __SkyOFTCore_init(address _delegate) internal onlyInitializing {
+        __OFTCore_init(_delegate);
+        __Ownable_init(_delegate);
+        __Fee_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+    }
+
+    /**
+     * @dev Restricts proxy upgrades to the owner.
+     * @dev Required hook for UUPS proxies.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /**
+     * @notice Returns the address of the current implementation behind the proxy.
+     */
+    function getImplementation() external view returns (address) {
+        return ERC1967Utils.getImplementation();
     }
 
     /**
@@ -110,11 +161,11 @@ abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable 
      * @notice Sets the cross-chain tx rate limits for specific endpoints based on provided configurations.
      * It allows configuration of rate limits either for outbound and inbound directions.
      * This method is designed to be called by contract admins for updating the system's rate limiting behavior.
-     * 
+     *
      * @notice WARNING: Changing rate limits without first calling resetRateLimits() MIGHT result in unexpected behavior.
      * DYOR on Rate Limits across every VM to ensure compatibility.
      * Especially consider inflight decay rates when reducing limits.
-     * 
+     *
      * @param _rateLimitConfigsInbound Array of INBOUND `RateLimitConfig` structs that specify new rate limit settings.
      * @param _rateLimitConfigsOutbound Array of OUTBOUND `RateLimitConfig` structs that specify new rate limit settings.
      *
@@ -142,6 +193,8 @@ abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable 
     /**
      * @notice Sets the rate limit accounting type.
      * @param _rateLimitAccountingType The new rate limit accounting type.
+     * @dev Per-eid buckets only; the `SENTINEL_EID` bucket has its own accounting type, set via
+     * `ISkyOFTAdapter.setAggregateRateLimitAccountingType`.
      * @dev You may want to call `resetRateLimits` after changing the rate limit accounting type.
      */
     function setRateLimitAccountingType(RateLimitAccountingType _rateLimitAccountingType) external onlyOwner {
@@ -154,11 +207,12 @@ abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable 
      * @param _canPause Boolean indicating ability to pause cross-chain transfers.
      */
     function setPauser(address _pauser, bool _canPause) public onlyOwner {
+        SkyOFTCoreStorage storage $ = _getSkyOFTCoreStorage();
         // @dev Perform an idempotency check to prevent unnecessary state changes.
         // @dev Also prevents redundant event emissions.
-        if (pausers[_pauser] == _canPause) revert PauserIdempotent(_pauser);
+        if ($.pausers[_pauser] == _canPause) revert PauserIdempotent(_pauser);
 
-        pausers[_pauser] = _canPause;
+        $.pausers[_pauser] = _canPause;
         emit PauserSet(_pauser, _canPause);
     }
 
@@ -167,7 +221,7 @@ abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable 
      * @dev Only pausers can pause the contract.
      */
     function pause() external {
-        if (!pausers[msg.sender]) revert OnlyPauser(msg.sender);
+        if (!_getSkyOFTCoreStorage().pausers[msg.sender]) revert OnlyPauser(msg.sender);
         _pause();
     }
 
@@ -208,4 +262,4 @@ abstract contract SkyOFTCore is ISkyOFT, OFTCore, SkyRateLimiter, Fee, Pausable 
             revert SlippageExceeded(amountReceivedLD, _minAmountLD);
         }
     }
-} 
+}

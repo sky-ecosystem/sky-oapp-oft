@@ -53,6 +53,8 @@ interface ISkyOFT {
     /**
      * @notice Sets the rate limit accounting type.
      * @param rateLimitAccountingType The new rate limit accounting type.
+     * @dev Per-eid buckets only; the `SENTINEL_EID` bucket has its own accounting type, set via
+     * `ISkyOFTAdapter.setAggregateRateLimitAccountingType`.
      * @dev You may want to call `resetRateLimits` after changing the rate limit accounting type.
      */
     function setRateLimitAccountingType(RateLimitAccountingType rateLimitAccountingType) external;

@@ -19,7 +19,7 @@ struct RateLimit {
 * @notice Rate Limit Configuration struct.
  * @param eid The endpoint id.
  * @param window Defines the duration of the rate limiting window.
- * @param limit This represents the maximum allowed amount within a given window.
+ * @param limit This represents the maximum allowed amount within a given window. Use `type(uint128).max` for "effectively unbounded" to avoid overflow.
  */
 struct RateLimitConfig {
     uint32 eid;      // 4 bytes
@@ -54,10 +54,17 @@ interface ISkyRateLimiter {
      */
     event RateLimitsChanged(RateLimitConfig[] rateLimitConfigs, RateLimitDirection direction);
     event RateLimitAccountingTypeSet(RateLimitAccountingType newRateLimitAccountingType);
+    event AggregateRateLimitAccountingTypeSet(RateLimitAccountingType newAggregateRateLimitAccountingType);
     event RateLimitsReset(uint32[] eids, RateLimitDirection direction);
 
     // @dev Error that is thrown when an amount exceeds the rate limit for a given direction.
     error RateLimitExceeded();
+
+    function SENTINEL_EID() external view returns (uint32);
+    function rateLimitAccountingType() external view returns (RateLimitAccountingType);
+    function aggregateRateLimitAccountingType() external view returns (RateLimitAccountingType);
+    function outboundRateLimits(uint32 dstEid) external view returns (RateLimit memory);
+    function inboundRateLimits(uint32 srcEid) external view returns (RateLimit memory);
 
     /**
      * @notice Get the current amount that can be sent to this destination endpoint id for the given rate limit window.

@@ -21,17 +21,22 @@ contract SkyOFTAdapterMintBurn is SkyOFTCore {
     using SafeERC20 for IERC20;
 
     /**
-     * @notice Initializes the SkyOFTAdapterMintBurn contract.
+     * @notice Constructor sets immutables on the implementation; state is set via `initialize` on the proxy.
      *
      * @param _token The address of the underlying ERC20 token.
      * @param _lzEndpoint The LayerZero endpoint address.
+     */
+    constructor(address _token, address _lzEndpoint) SkyOFTCore(_token, _lzEndpoint) {
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initializes the proxy.
      * @param _delegate The address of the delegate.
      */
-    constructor(
-        address _token,
-        address _lzEndpoint,
-        address _delegate
-    ) SkyOFTCore(_token, _lzEndpoint, _delegate) {}
+    function initialize(address _delegate) external initializer {
+        __SkyOFTCore_init(_delegate);
+    }
 
     /**
      * @notice Returns the balance of fees accumulated in the contract.
