@@ -44,10 +44,23 @@ const deploy: DeployFunction = async (hre) => {
     const { address } = await deploy(contractName, {
         from: deployer,
         args: [
-            hre.network.config.oftAdapter.tokenAddress, // token address
-            endpointV2Deployment.address, // LayerZero's EndpointV2 address
-            deployer, // owner
+            hre.network.config.oftAdapter.tokenAddress, // token address (impl immutable)
+            endpointV2Deployment.address, // LayerZero's EndpointV2 address (impl immutable)
         ],
+        proxy: {
+            proxyContract: 'UUPS',
+            // @dev Pin to upgradeToAndCall; hardhat-deploy's UUPS default ('upgradeTo') was removed in OZ v5.
+            upgradeFunction: {
+                methodName: 'upgradeToAndCall',
+                upgradeArgs: ['{implementation}', '{data}'],
+            },
+            execute: {
+                init: {
+                    methodName: 'initialize',
+                    args: [deployer], // delegate, becomes the Ownable owner; controls upgrades via _authorizeUpgrade
+                },
+            },
+        },
         log: true,
         skipIfAlreadyDeployed: false,
     })

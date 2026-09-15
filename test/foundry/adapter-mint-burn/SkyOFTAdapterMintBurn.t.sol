@@ -11,7 +11,7 @@ import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Opti
 
 // OFT imports
 import { SkyOFTAdapterMintBurn } from "../../../contracts/SkyOFTAdapterMintBurn.sol";
-import { SkyRateLimiter, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
+import { SkyRateLimiter, RateLimit, RateLimitConfig, RateLimitDirection, RateLimitAccountingType } from "../../../contracts/SkyRateLimiter.sol";
 import { ISkyRateLimiter } from "../../../contracts/interfaces/ISkyRateLimiter.sol";
 import { IOFT, SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { MessagingFee, MessagingReceipt, Origin, OFTLimit, OFTFeeDetail } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
@@ -22,6 +22,7 @@ import { PacketV1Codec } from "@layerzerolabs/lz-evm-protocol-v2/contracts/messa
 import { DoubleEndedQueue } from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import { SkyOFTCore } from "../../../contracts/SkyOFTCore.sol";
 import { ISkyOFT } from "../../../contracts/interfaces/ISkyOFT.sol";
+import { ISkyOFTAdapter } from "../../../contracts/interfaces/ISkyOFTAdapter.sol";
 
 // OZ imports
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -87,19 +88,13 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         setUpEndpoints(3, LibraryType.UltraLightNode);
         setUpTokens();
 
-        aOFT = SkyOFTAdapterMintBurn(
-            _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(address(aToken), address(endpoints[aEid]), address(this)))
-        );
+        aOFT = SkyOFTAdapterMintBurn(_deployAdapterProxy(address(aToken), address(endpoints[aEid]), address(this)));
         aOFT.setRateLimits(aInboundConfigs, aOutboundConfigs);
 
-        bOFT = SkyOFTAdapterMintBurn(
-            _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(address(bToken), address(endpoints[bEid]), address(this)))
-        );
+        bOFT = SkyOFTAdapterMintBurn(_deployAdapterProxy(address(bToken), address(endpoints[bEid]), address(this)));
         bOFT.setRateLimits(bInboundConfigs, bOutboundConfigs);
 
-        cOFT = SkyOFTAdapterMintBurn(
-            _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(address(cToken), address(endpoints[cEid]), address(this)))
-        );
+        cOFT = SkyOFTAdapterMintBurn(_deployAdapterProxy(address(cToken), address(endpoints[cEid]), address(this)));
         cOFT.setRateLimits(cInboundConfigs, cOutboundConfigs);
 
         // config and wire the ofts
@@ -124,6 +119,14 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
     }
 
     function assignMintingRights() public virtual {}
+
+    function _deployAdapterProxy(address _token, address _endpoint, address _delegate) internal returns (address) {
+        address impl = _deployOApp(type(SkyOFTAdapterMintBurn).creationCode, abi.encode(_token, _endpoint));
+        return _deployOApp(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(impl, abi.encodeCall(SkyOFTAdapterMintBurn.initialize, (_delegate)))
+        );
+    }
 
     function test_constructor() public view {
         assertEq(aOFT.owner(), address(this));
@@ -279,6 +282,24 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         );
         RateLimitConfig[] memory aEmptyInboundConfigs = new RateLimitConfig[](0);
         aOFT.setRateLimits(aEmptyInboundConfigs, aNewOutboundConfigs);
+    }
+
+    // @dev The aggregate cap is enforced only by `SkyOFTAdapter` (the L1 lockbox); satellites never
+    // charge `SENTINEL_EID`. The setter is therefore declared on `ISkyOFTAdapter` and must stay off
+    // this contract's ABI — otherwise the owner could flip a setting that is never enforced here and
+    // emit `AggregateRateLimitAccountingTypeSet`, telling monitoring a policy exists when it does not.
+    function test_aggregate_accounting_type_setter_not_exposed() public {
+        // @dev Selector is taken from the interface so this test follows any signature change.
+        (bool success, ) = address(aOFT).call(
+            abi.encodeWithSelector(
+                ISkyOFTAdapter.setAggregateRateLimitAccountingType.selector,
+                RateLimitAccountingType.Gross
+            )
+        );
+        assertFalse(success, "satellite must not expose the aggregate accounting-type setter");
+
+        // The value stays readable and pinned to its `Net` default.
+        assertEq(uint8(aOFT.aggregateRateLimitAccountingType()), uint8(RateLimitAccountingType.Net));
     }
 
     function test_send_oft() public {
@@ -673,12 +694,12 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         assertEq(amountCanBeReceived, 0);
 
         // 4. Assert bEid IRL from aEID is exhausted.
-        (uint128 lastUpdated, uint48 window, uint256 amountInFlight, uint256 limit) = bOFT.inboundRateLimits(aEid);
+        RateLimit memory rl = bOFT.inboundRateLimits(aEid);
 
-        assertEq(amountInFlight, tokensToSend);
-        assertEq(lastUpdated, block.timestamp);
-        assertEq(limit, 10 ether);
-        assertEq(window, 60 seconds);
+        assertEq(rl.amountInFlight, tokensToSend);
+        assertEq(rl.lastUpdated, block.timestamp);
+        assertEq(rl.limit, 10 ether);
+        assertEq(rl.window, 60 seconds);
 
         // 5. Send 10 ether from aEid to bEid again.  This should not fail because ORL of aEID to bEid is 20 ether.
         vm.startPrank(userA);
@@ -713,11 +734,11 @@ contract SkyOFTAdapterMintBurnTest is TestHelperOz5WithRevertAssertions {
         verifyAndExecutePackets(aEid, addressToBytes32(address(aOFT)), 1, address(0));
         (, amountCanBeReceived) = aOFT.getAmountCanBeReceived(bEid);
         assertEq(amountCanBeReceived, 10 ether);
-        (lastUpdated, window, amountInFlight, limit) = bOFT.inboundRateLimits(aEid);
-        assertEq(amountInFlight, 0);
-        assertEq(lastUpdated, block.timestamp);
-        assertEq(limit, 10 ether);
-        assertEq(window, 60 seconds);
+        rl = bOFT.inboundRateLimits(aEid);
+        assertEq(rl.amountInFlight, 0);
+        assertEq(rl.lastUpdated, block.timestamp);
+        assertEq(rl.limit, 10 ether);
+        assertEq(rl.window, 60 seconds);
 
         // 8. try to send 10 ether from bEid to aEid again, violating the ORL.
         (, amountCanBeSent) = bOFT.getAmountCanBeSent(aEid);
