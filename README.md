@@ -386,3 +386,22 @@ npx hardhat lz:ownable:transfer-ownership --oapp-config layerzero.config.ts --so
 ### Troubleshooting
 
 Refer to the [Solana Troubleshooting page on the LayerZero Docs](https://docs.layerzero.network/v2/developers/solana/troubleshooting/common-errors) to see how to solve common error when deploying Solana OFTs.
+
+## Audits
+
+Audit reports are hosted on the auditors' public portfolio pages:
+
+| Auditor | Report | Date |
+| --- | --- | --- |
+| ChainSecurity | [Sky OApp OFT](https://www.chainsecurity.com/security-audit/sky-oapp-oft/) | 2026-08-21 |
+| Cantina | [Sky: OFT Adapter v2](https://cantina.xyz/portfolio/9adc18fb-00c9-4fa3-97fe-ea43bf288481) | 2026-08-16 |
+| Cantina | [Sky OFT: Cross-chain Governance Payloads](https://cantina.xyz/portfolio/5900a399-ec2e-4e3c-aa9f-54b0a110b5c5) | 2026-05-04 |
+| Cantina | [Sky: Plasma SkyLink Bridge Deployment Validation](https://cantina.xyz/portfolio/10c453c8-321e-4f11-9466-7906ef39475c) | 2026-04-16 |
+| Cantina | [Sky: Avalanche SkyLink Bridge Deployment Validation](https://cantina.xyz/portfolio/8deb51bb-909d-4419-a289-10c105e0269e) | 2026-04-02 |
+| ChainSecurity | [Sky Governance OApp](https://www.chainsecurity.com/security-audit/sky-governance-oapp/) | 2025-10-17 |
+| Cantina | [Sky: LZ Governance EVM](https://cantina.xyz/portfolio/1b56236e-82c4-494d-af93-750e7d949c04) | 2025-09-26 |
+| Cantina | [Sky: LZ EVM Token Bridge](https://cantina.xyz/portfolio/36b85725-583c-4696-ae0d-6a8dded09757) | 2025-09-26 |
+| Cantina | [Sky: LZ Solana Governance](https://cantina.xyz/portfolio/3119cb7e-ad8b-4448-b2fa-adba0a8b3812) | 2025-09-26 |
+| Cantina | [Sky: LZ Solana Token Bridge](https://cantina.xyz/portfolio/cd4179dd-3a0e-499d-b1e9-aa63ee5dd3f0) | 2025-09-26 |
+
+ChainSecurity reports are cumulative: each portfolio page hosts the latest version of the report, which covers all previously reviewed versions.
